@@ -1,11 +1,15 @@
 # c4 report: pad top bar overflow at 568x320 in the TV look
 
+## Summary
+
+Owner question, no file changed. At 568x320 in the TV look the pad top bar row overflows by 12 px (controller_top_bar.dart:89). Options in the Options section: A narrower segment padding, B scroll or overflow menu, C declare unsupported and keep the test exception. The test exception stays.
+
 Status: stopped, owner question. No file changed (the test is back as it was).
 
 ## Measurement
 - With the knownTopBarOverflow exception removed, `connect_narrow_test` "568x320 in the TV look" fails:
   `A RenderFlex overflowed by 12 pixels on the right`, the Row at controller_top_bar.dart:89 (`_ControllerTopBar`).
-- That Row: constraints 0<=w<=548 (568 - barPadding 12 + 8), height 48.
+- That Row: constraints 0<=w<=548 (568 - 12 - 8 (left 12, right 8)), height 48.
 - Non-flexible children: SizedBox 8 + BarModes + Settings 48 + Diagnostics 48 = 560, so BarModes is about 456 dp wide.
   The Expanded chip/ping part already gets 0 dp, so it cannot give up more room. (Inferred from the 12 px; I
   did not print the child widths.)

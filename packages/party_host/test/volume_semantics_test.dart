@@ -35,7 +35,7 @@ String? _sliderSpokenValue(WidgetTester tester, String key) {
 /// the menu look and the TV look.
 void main() {
   for (final palette in ['Sunny', 'Night']) {
-    testWidgets('the $palette palette: each Sounds and Music slider reads the percentage shown above it', (
+    testWidgets('the $palette palette: each Sounds and Music slider speaks and shows its own percentage', (
       tester,
     ) async {
       await forEachLook(tester, (look) async {

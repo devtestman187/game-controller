@@ -14,7 +14,7 @@ Checks:
 - I did not run `tools/check.sh`, per the job's instructions.
 
 Self-check (review-rules part A):
-1. Host setups: not separately verified here. The launch consent tests that cover host states (`launch_consent_test.dart`, `paired_launch_consent_test.dart`, `phone_home_marks_test.dart`, `phone_home_screen_test.dart`) are among the 121 passing tests; I did not read them to map each to a setup.
+1. Host setups: the guard is host-independent (it reads only the launch flag and the two consent providers), so no setup changes. TV or PC host, "Play on this phone", "Show on this device", joined phone: `launch_consent_test.dart` 'a launch asks once' and `paired_launch_consent_test.dart` 'a paired launch asks both questions' (first frame) and 'the Connect screen opened later asks nothing'. One build older: not affected, no wire or stored-data change.
 2. Kept state: the `launchConsentAskedProvider` flag starts false and is set once per launch by `mark()`. Covered by `phone_home_marks_test.dart` in the passing run.
 3. Combinations (pause menu, host away, "Get ready", dropped link, results, leaving): not changed by this job; the helper has the same checks in the same order as before.
 4. Scope: only the five allowed lib files and this report were written.

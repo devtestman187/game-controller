@@ -13,3 +13,9 @@
 - c2 should: stray report path - should - fixed (A4 line in the report).
 - c2 could: ShellBack constructor dartdoc - trivial - fixed.
 - c4: no change; owner question (options A/B/C in c4-report.md): pad top bar at 568x320 TV look needs a design choice.
+
+# Wave 2 review (c3, c5, c4)
+- c3 should: volume test name - should - fixed (renamed).
+- c5 should: self-check A1 names no test - should - fixed (mapped to tests).
+- c4 could x2: barPadding expression, Summary block - trivial - fixed.
+- Decision: launchConsentDue name kept (brief's name; side effect noted in dartdoc is a could). c3 covers palettes only: accepted.
