@@ -20,3 +20,13 @@ HAND-FIX-EVENT c2: 28 lines changed, replaced ladder level ?
 2026-11-25 05:40:55 RUN_MAX_MIN=194 min (computed backstop of the jobs still to do)
 2026-11-25 05:42:17 reviewed wave1: 7 finding(s)
 RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): c2 (their logs: docs/briefs/m16/close/flash-<job>.log)
+2026-11-25 05:56:17 RUN_MAX_MIN=194 min (computed backstop of the jobs still to do)
+2026-11-25 05:56:17 start at 5458d1e6 on HEAD
+2026-11-25 05:56:17 worker: claude
+2026-11-25 05:56:34 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-25 05:56:50 skip t1 (already done)
+2026-11-25 05:56:51 skip c1 (already done)
+2026-11-25 05:56:51 WARN: c2 was committed by hand (3194239f); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-25 05:56:52 hand-fixed c2: tests-first proof and worker review done (marked in done.txt)
+2026-11-25 05:56:52 skip c2 (already done)
+2026-11-25 05:56:52 wave 1 review: wave1-review-report.md does not cover c2, so its review is wave1-c2
