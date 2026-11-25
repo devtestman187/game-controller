@@ -337,3 +337,5 @@ HAND-FIX n8e2 n8e3: committed by hand because the combined check ran without par
 2026-11-25 02:05:22 committed n8e6: 2e455893 connection, game_kit: say "screen" in user-visible text, not "TV"
 2026-11-25 02:05:24 committed n8e4: 8c8738b1 Wording: TV to screen in controller_app status and log strings
 2026-11-25 02:05:25 committed n8e1: 53579879 Phone text: say screen, not TV (n8e1)
+2026-11-25 02:05:27 reviewed wave7: 4 finding(s)
+2026-11-25 02:05:27 STOPPED: PAUSED after wave 8 (RUN_PAUSE_AFTER_WAVE=1): its review is committed; verdict it, add fix jobs to the next wave of waves.txt, commit, restart

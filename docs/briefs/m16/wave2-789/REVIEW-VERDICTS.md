@@ -41,3 +41,15 @@
 - phone_home_marks_test.dart:76-82 and :84-91 pass on the old code - must - f3
 - tap-under-marks assertions, inverted reason :182 - should - f3 (reason) / code-health
 - tools/mine.sh:286 churn_revert touches files dirty before the job - should - tooling note in REPORT.md and kit Proposed lesson
+## wave 6 (f2 f3 n8b3; review file wave6-review-report.md)
+- launch_home_test.dart:55 and :108 pass on the old code - must - f5 (with the hosting-live test, should :1)
+- run.log:255 n8b3 committed with 5 known red tests - invalid as a finding (f4 repaired them in the next wave; full controller_app suite is green at the f4 commit)
+- launch_route.dart:17 with no TV discovered the pad connects to the remembered address (connection.dart:197-199) against the Q7 A text - OWNER QUESTION (non-blocking): keep (a failed connect then goes to Home) or route to Home at once when the remembered host is not found live
+- TV-look pass in launch_home_test (the phone never shows the TV look) - minor - code-health
+- n8b3-report counts, A1-A6 lines, toConnect default undocumented - trivial - toConnect default is recorded in REPORT.md
+- docs/dev-tools.md:345 - trivial - fixed by hand
+## wave 7 (f4 n8e2 n8e3)
+- f4-report.md:5 no part A self-check lines - must(doc) - minor: noted in REPORT.md; f4 was a repair; no new job
+- phone_home_screen.dart:139-146 demo branches untested - should - f6
+- host_gyro_test cause unverified - minor - REPORT.md: cause (launch restore timing) is the worker's claim, restoreMode itself is covered by gyro_mode_test.dart
+- site_shots.dart:238 comment - trivial - code-health
