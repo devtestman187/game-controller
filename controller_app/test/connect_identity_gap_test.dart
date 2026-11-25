@@ -74,8 +74,8 @@ Future<void> expectGapBeforeChange(WidgetTester tester, {required Size screen, r
   expect(tester.takeException(), isNull);
 }
 
-/// At 320x640 the manual address row (connect_screen.dart:348) and the app bar
-/// (connect_screen.dart:102) overflow too. They are not this job's, so this drains
+/// At 320x640 the manual address row (connect_manual_entry.dart) and the app bar
+/// (connect_screen.dart) overflow too. They are not this job's, so this drains
 /// those exceptions and checks the join line by its geometry: every part of the line
 /// sits inside its own box, so nothing spills past the panel.
 void expectJoinLineInsideItsBox(WidgetTester tester) {
