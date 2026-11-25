@@ -48,3 +48,8 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-24 22:40:42 combined check: skips protocol connection metrics kit look arena tools (no job's change reaches them)
 2026-11-24 22:44:08 committed n8b0: 421d3386 Extract host start into launchHosting for Home to call
 2026-11-24 22:44:10 committed n9sr: b4f70808 puzzle HUD: a night's round shows as "Round N of M" before the name
+2026-11-24 22:44:11 reviewed wave1-n9b1: 9 finding(s)
+2026-11-24 22:44:12 STOPPED: jobs that failed or passed their limit (parked, not committed): n8c (their logs: docs/briefs/m16/wave2-789/flash-<job>.log)
+HAND-FIX n8c: apply-job.sh applied 3 files: controller_app/lib/src/home/coach_marks.dart, controller_app/test/coach_marks_test.dart, docs/briefs/m16/wave2-789/n8c-report.md
+HAND-FIX-EVENT n8c: 0 lines changed, replaced ladder level ?
+HAND-FIX-EVENT n8c: 0 lines changed (applied as is; sonnet 66 turns over cap 50), replaced ladder level 2
