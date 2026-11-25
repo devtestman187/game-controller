@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:connection/connection.dart';
@@ -7,9 +8,11 @@ import 'package:controller/src/home/phone_home_screen.dart';
 import 'package:controller/src/host/host_overrides.dart';
 import 'package:controller/src/host/hosting.dart';
 import 'package:controller/src/host/phone_host.dart';
+import 'package:controller/src/providers.dart';
 import 'package:controller/src/ui/connect_screen.dart';
 import 'package:controller/src/ui/controller_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart' as party;
 import 'package:party_host/testing.dart' as party_test;
@@ -67,7 +70,7 @@ void main() {
     expect(find.byType(ConnectScreen), findsOneWidget);
   });
 
-  testWidgets('Try without a TV on Connect closes Home too and shows the pad with the demo link', (tester) async {
+  testWidgets('Try without a screen on Connect closes Home too and shows the pad with the demo link', (tester) async {
     await pumpApp(tester, saved: saved('sunny'), toConnect: false);
     await reachConnect(tester);
     await tester.tap(find.byKey(const Key('tryWithoutTv')));
@@ -165,14 +168,76 @@ void main() {
     await tester.runAsync(() async {
       host = hostContainer(tester).read(hostingProvider.notifier).start(playsHere: false);
     });
-    expect(host.live, isTrue, reason: 'this phone is hosting');
+    try {
+      expect(host.live, isTrue, reason: 'this phone is hosting');
 
-    app.client.emit(const ClientSnapshot(status: ClientStatus.connecting));
-    await settle(tester);
-    app.client.emit(const ClientSnapshot(status: ClientStatus.failed, problem: ClientProblem.unreachable));
-    await settle(tester);
-    expect(homes(), findsNothing, reason: 'a hosting phone never gets Home');
+      app.client.emit(const ClientSnapshot(status: ClientStatus.connecting));
+      await settle(tester);
+      app.client.emit(const ClientSnapshot(status: ClientStatus.failed, problem: ClientProblem.unreachable));
+      await settle(tester);
+      expect(homes(), findsNothing, reason: 'a hosting phone never gets Home');
+    } finally {
+      await tester.runAsync(host.dispose);
+    }
+  });
 
-    await tester.runAsync(host.dispose);
+  testWidgets('the demo starts under the launch prompt: Home stays until the answer, then closes once', (tester) async {
+    await pumpApp(
+      tester,
+      saved: saved('sunny'),
+      toConnect: false,
+      extra: [launchConsentAskProvider.overrideWithValue(true)],
+    );
+    expect(find.byKey(const Key('consentDialog')), findsOneWidget, reason: 'Home asks on its first frame');
+
+    ProviderScope.containerOf(tester.element(homes())).read(demoProvider.notifier).start();
+    await settle(tester);
+    expect(homes(), findsOneWidget, reason: 'the prompt is still up, so Home waits for its answer');
+    expect(find.byKey(const Key('consentDialog')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('consentNo')));
+    await settle(tester);
+    expect(homes(), findsNothing, reason: 'Home closes once after the answer');
+    expect(find.byType(ControllerScreen), findsOneWidget, reason: 'the demo pad is shown');
+    expect(find.byKey(const Key('demoReadout')), findsOneWidget);
+  });
+
+  testWidgets('the demo starts while this phone hosts live: Home stays open', (tester) async {
+    final dir = Directory.systemTemp.createTempSync('thumb-party-launch-');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    await pumpApp(
+      tester,
+      paired: true,
+      saved: saved('sunny'),
+      extra: [
+        ...phoneHostOverrides(directories: TempHostDirectories(dir)),
+        party.advertiserProvider.overrideWithValue(party_test.FakeAdvertiser()),
+        party.soundPlayerProvider.overrideWithValue(party_test.FakeSoundPlayer()),
+        party.screenAwakeProvider.overrideWithValue(party_test.FakeScreenAwake()),
+      ],
+    );
+    late PhoneHost host;
+    await tester.runAsync(() async {
+      host = hostContainer(tester).read(hostingProvider.notifier).start(playsHere: false);
+    });
+    try {
+      expect(host.live, isTrue, reason: 'this phone is hosting');
+
+      // Home opened over the pad while the phone hosts: its launch prompt is not up.
+      unawaited(
+        Navigator.of(tester.element(find.byType(ControllerScreen, skipOffstage: false).first))
+            .push(MaterialPageRoute<void>(builder: (_) => const PhoneHomeScreen(fromLaunch: false))),
+      );
+      await settle(tester);
+      expect(homes(), findsOneWidget);
+
+      final container = ProviderScope.containerOf(tester.element(homes()));
+      container.read(demoProvider.notifier).start();
+      await settle(tester);
+      expect(container.read(demoProvider), isTrue, reason: 'the demo is running');
+      expect(homes(), findsOneWidget, reason: 'a live host keeps Home open when the demo starts');
+    } finally {
+      await tester.runAsync(host.dispose);
+    }
   });
 }
