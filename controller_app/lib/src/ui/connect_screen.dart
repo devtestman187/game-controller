@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:party_host/party_host.dart' show HostKind, PhoneText, ToyCard, ToyLookScope, ToySizes, askConsents;
 
 import '../discovery.dart';
+import '../home/launch_consent.dart';
 import '../host/hosting.dart';
 import '../providers.dart';
 import 'bar_connection.dart';
@@ -59,11 +60,7 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (!ref.read(launchConsentAskProvider) || ref.read(launchConsentAskedProvider)) return;
-      // A phone that hosts has its game running under this screen: that game's
-      // own first frame asks instead (B-023), never a prompt over it.
-      if (ref.read(hostingProvider)?.live ?? false) return;
-      ref.read(launchConsentAskedProvider.notifier).mark();
+      if (!launchConsentDue(ref)) return;
       _promptUp = true;
       unawaited(askConsents(context, ref).whenComplete(_afterLaunchConsent));
     });
