@@ -108,3 +108,13 @@ wave1-789 run review: needs Claude's design. Open: six must findings (BISECT lin
 ## Delete
 
 - none
+
+## Driver verdicts (Nov 24, after fix round 1)
+- BISECT-TEMP and both `skip: true` in night_awards_flow_test: real, fixed in f1 (8c4dc310). The tie overflow was a test setup fault (fonts not loaded), no lib change; the tie tests now run, both looks and phone host.
+- connect_narrow_test blanket filter: real, partly fixed by hand (e46a3d8c): the filter now lets through only the one known case (568x320, TV look). The pad top bar overflow itself is deferred to code-health: the worker's FittedBox fix shrank 48 dp touch targets and hung the phone suite.
+- "Best" red: fixed in f4. Race frame tested, `isHurrying` rename: f4.
+- Slider tests: ignore, contains, endsWith removed (f3 by hand, f5); TV look added for the volume test (f5).
+- Volume test passes on the old code: deferred and accepted (Slider's default formatter already gives the percentage on 0-100; the test pins the callback). Flutter default not read in source, from memory.
+- Value objects for round/rounds and GameScreenShell parameters, names table in arena_map_names.dart: deferred to code-health, owner/Opus design.
+- n9c-report driver note, n9d3-report wording ("no view holds the map"), decisions.md entry: deferred to code-health (docs only).
+- Churn "discarded files": PNGs and generated plugin files are not ours; nothing lost.
