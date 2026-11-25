@@ -271,3 +271,8 @@ RESULT: DONE: 13 jobs, 22 min
 2026-11-25 16:45:24 phase: apply (check took 221s)
 2026-11-25 16:45:26 committed c4: 8a8138ca test: pin that the mirror and place() ignore right-hand controls (B-044)
 2026-11-25 16:45:26 phase: review (apply took 2s)
+2026-11-25 16:47:14 reviewed wave7: 7 finding(s)
+METRICS c4 worker=claude model=claude-haiku-5-5 turns=16 in=24 out=10831 cache=296649 min=1.2 wall=1.7 result=0
+METRICS wave7-review worker=claude model=claude-haiku-5-5 turns=24 in=26 out=17274 cache=444968 min=1.4 wall=- result=0
+2026-11-25 16:47:23 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/m165/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 14 jobs, 9 min
