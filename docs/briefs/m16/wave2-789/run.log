@@ -23,3 +23,15 @@ HAND-FIX-EVENT n9b1: 0 lines changed (applied as is; worker over cap by 5 turns,
 2026-11-24 22:27:16 RUN_MAX_MIN=113 min (computed backstop of the jobs still to do)
 2026-11-24 22:28:27 reviewed wave1: 6 finding(s)
 RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): n9b1 (their logs: docs/briefs/m16/wave2-789/flash-<job>.log)
+2026-11-24 22:29:57 RUN_MAX_MIN=113 min (computed backstop of the jobs still to do)
+2026-11-24 22:29:58 start at 0c93fbcf on HEAD
+2026-11-24 22:29:58 worker: claude
+2026-11-24 22:29:58 removed the last stop's STOP.md
+2026-11-24 22:30:10 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-24 22:30:26 skip n8a (already done)
+2026-11-24 22:30:26 WARN: n9b1 was committed by hand (e62fa06f); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-24 22:31:41 tests-first: controller_app/test/touch_targets_test.dart passes on the old code, exempt by its brief
+2026-11-24 22:31:42 hand-fixed n9b1: tests-first proof and worker review done (marked in done.txt)
+2026-11-24 22:31:42 skip n9b1 (already done)
+2026-11-24 22:31:43 skip n9e (already done)
+2026-11-24 22:31:43 wave 1 review: wave1-review-report.md does not cover n9b1, so its review is wave1-n9b1
