@@ -1,3 +1,5 @@
+class NewWidget {}
+
 void main() {
-  final w = NewWidget();
+  NewWidget();
 }
