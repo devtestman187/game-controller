@@ -106,7 +106,8 @@ extension _PhoneHudPaint on MatchPainter {
     // Measured on the sides' names, the widest the short form gets ("Right 3/6"
     // is longer than "Them 3/6"), so the area is the same either way.
     final placement =
-        mirror?.hud ?? PuzzleCamera.hudPlace(layout, camera, size, scores, padRects: padRects, split: s.split);
+        mirror?.hud ??
+        PuzzleCamera.hudPlace(layout, camera, size, scores, padRects: padRects, split: s.split, hudRects: hudRects);
     final rect = placement.rect;
     final board = camera.side == null ? s.boards.first : _boardOf(s, camera.side!);
     final unit = PuzzleCamera.hudUnit(size);

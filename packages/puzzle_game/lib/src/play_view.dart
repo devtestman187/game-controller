@@ -38,6 +38,7 @@ class PuzzlePlayView extends StatefulWidget {
     this.camera = const PuzzleCamera.whole(),
     this.wholeIfNoMirror = false,
     this.padRects = const [],
+    this.hudRects = const [],
     this.pxPerMm = phonePxPerMm,
     this.paused = false,
     this.onFinished,
@@ -82,6 +83,10 @@ class PuzzlePlayView extends StatefulWidget {
   /// read (m12-opponent-mirror rules 7 and 8). A host that draws no pad — the
   /// TV, "Show on this device" — passes none.
   final List<Rect> padRects;
+
+  /// The controls the HUD keeps clear of, which the board and the mirror may go
+  /// under (B-044).
+  final List<Rect> hudRects;
   final double pxPerMm;
 
   /// Nothing moves and the clock stops (the pause menu is open).
@@ -210,6 +215,7 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
     camera: widget.camera,
     wholeIfNoMirror: widget.wholeIfNoMirror,
     padRects: widget.padRects,
+    hudRects: widget.hudRects,
     pxPerMm: widget.pxPerMm,
     paused: widget.paused,
     characters: widget.characters,

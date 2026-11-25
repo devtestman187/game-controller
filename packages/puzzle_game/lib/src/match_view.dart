@@ -29,6 +29,7 @@ class MatchView extends StatefulWidget {
     this.camera = const PuzzleCamera.whole(),
     this.wholeIfNoMirror = false,
     this.padRects = const [],
+    this.hudRects = const [],
     this.pxPerMm = phonePxPerMm,
     this.paused = false,
     this.characters = const {},
@@ -64,6 +65,10 @@ class MatchView extends StatefulWidget {
   /// knowing it (rule 6). Empty where nothing is drawn over the game (the TV,
   /// a tablet, "Show on this device").
   final List<Rect> padRects;
+
+  /// The controls the HUD keeps clear of, which the board and the mirror may go
+  /// under (B-044).
+  final List<Rect> hudRects;
 
   /// This phone's px per millimetre, which the mirror keeps its marks above
   /// (m12-opponent-mirror rule 7): the app's own reading, as [padRects] is its
@@ -190,6 +195,7 @@ class _MatchViewState extends State<MatchView> {
               target: widget.target,
               camera: camera,
               padRects: widget.padRects,
+              hudRects: widget.hudRects,
               pxPerMm: widget.pxPerMm,
               characters: widget.characters,
               fillsBackground: fills,

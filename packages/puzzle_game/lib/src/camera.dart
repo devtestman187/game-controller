@@ -292,6 +292,8 @@ final class PuzzleCamera {
   /// With a [mirror] to its left the area starts at the mirror's right edge
   /// and draws the short form (rule 5). [padRects] are the controls the app
   /// draws under the game: the area keeps clear of them like the mirror does.
+  /// [hudRects] are the controls the HUD keeps clear of, which the board and
+  /// the mirror may go under (B-044); not used yet, so the placement ignores them.
   /// [split] says whether the match has two sides, which decides the world the
   /// area goes under and the one the camera draws.
   static ({Rect rect, HudForm form}) hudPlace(
@@ -302,6 +304,7 @@ final class PuzzleCamera {
     Rect? mirror,
     List<Rect> padRects = const [],
     bool split = false,
+    List<Rect> hudRects = const [],
   }) {
     final unit = hudUnit(box);
     final world = place(layout, camera, box, PuzzleSide.left, split: split, padRects: padRects);

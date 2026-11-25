@@ -20,6 +20,7 @@ class MatchPainter extends CustomPainter {
     this.target = LayoutTarget.screen,
     this.camera = const PuzzleCamera.whole(),
     this.padRects = const [],
+    this.hudRects = const [],
     this.pxPerMm = phonePxPerMm,
     this.characters = const {},
     this.fillsBackground = true,
@@ -64,6 +65,10 @@ class MatchPainter extends CustomPainter {
   /// Where the app draws this phone's pad, in the box's px: the mirror keeps
   /// clear of it (m12-opponent-mirror rule 3, code-health N4).
   final List<Rect> padRects;
+
+  /// The controls the HUD keeps clear of, which the board and the mirror may go
+  /// under (B-044).
+  final List<Rect> hudRects;
 
   /// This phone's px per millimetre, which the mirror keeps its marks above
   /// (rule 7): the app's own reading, so a screen of another density measures
@@ -231,5 +236,6 @@ class MatchPainter extends CustomPainter {
       old.camera != camera ||
       old.pxPerMm != pxPerMm ||
       !listEquals(old.padRects, padRects) ||
+      !listEquals(old.hudRects, hudRects) ||
       !mapEquals(old.characters, characters);
 }
