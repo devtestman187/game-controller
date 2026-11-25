@@ -5,25 +5,32 @@ import '../controls.dart';
 import 'controller_menus.dart';
 import 'lobby_music.dart';
 
-/// The frame every game stage sits in (M14 design section 6): the held round
-/// sky, the still sky under it, the back guard, the controls claim, the key
-/// focus of the screen and the safe area. The stage's own body goes in [child].
-class GameScreenShell extends StatelessWidget {
-  const GameScreenShell({
-    super.key,
-    required this.canPop,
-    required this.onPopInvoked,
-    required this.controls,
-    required this.focusNode,
-    required this.onKeyEvent,
-    required this.child,
-  });
+/// What the shell does when the route is asked to pop (the Back guard).
+class ShellBack {
+  const ShellBack({required this.canPop, required this.onPopInvoked});
 
   /// Whether the route may pop now. The results hold it, so Back goes to the game picker.
   final bool canPop;
 
   /// Called when the route asks to pop; [didPop] is true when it popped.
   final void Function(bool didPop) onPopInvoked;
+}
+
+/// The frame every game stage sits in (M14 design section 6): the held round
+/// sky, the still sky under it, the back guard, the controls claim, the key
+/// focus of the screen and the safe area. The stage's own body goes in [child].
+class GameScreenShell extends StatelessWidget {
+  const GameScreenShell({
+    super.key,
+    required this.back,
+    required this.controls,
+    required this.focusNode,
+    required this.onKeyEvent,
+    required this.child,
+  });
+
+  /// The Back guard of the route.
+  final ShellBack back;
 
   /// The controls this stage claims from the phones.
   final Controls controls;
@@ -42,8 +49,8 @@ class GameScreenShell extends StatelessWidget {
     return RoundHold(
       child: ToyStillSky(
         child: PopScope(
-          canPop: canPop,
-          onPopInvokedWithResult: (didPop, _) => onPopInvoked(didPop),
+          canPop: back.canPop,
+          onPopInvokedWithResult: (didPop, _) => back.onPopInvoked(didPop),
           child: ControlsClaim(
             controls: controls,
             child: Focus(

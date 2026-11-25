@@ -300,8 +300,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     return GameScreenShell(
       // Back on the results goes to the game picker, never one route short
       // of it where the next A starts a game (m12 bug 1107e).
-      canPop: _stage != _Stage.results,
-      onPopInvoked: _leave,
+      back: ShellBack(canPop: _stage != _Stage.results, onPopInvoked: _leave),
       // The results and the waiting card are menus like any other: a
       // phone's directions move the focus over their buttons and its A
       // presses the focused one (M14 bugs B-013). The card reads only a
