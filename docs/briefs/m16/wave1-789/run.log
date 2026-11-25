@@ -115,3 +115,8 @@ METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=16 in=22 out=156
 METRICS wave3-review worker=claude model=claude-haiku-5-5 turns=22 in=24 out=11515 cache=313982 min=1.0 wall=- result=0
 2026-11-24 19:06:01 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/wave1-789/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 6 jobs, 23 min
+2026-11-24 19:07:53 RUN_MAX_MIN=175 min (computed backstop of the jobs still to do)
+2026-11-24 19:07:54 start at 7bddfcf4 on m16
+2026-11-24 19:07:54 worker: claude
+2026-11-24 19:08:02 STOPPED: brief gate: brief-check failed: FAIL changes f4: ArenaHud is used in packages/test_game/lib/src/arena_view_widgets.dart, which no job of wave 5 or earlier allows
+RESULT: STOPPED: brief gate: brief-check failed: FAIL changes f4: ArenaHud is used in packages/test_game/lib/src/arena_view_widgets.dart, which no job of wave 5 or earlier allows
