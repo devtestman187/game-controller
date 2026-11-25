@@ -2,3 +2,5 @@
 n8a n9b1 n9e
 # wave 2: host-start extract, marks widget, Shape Race round (disjoint)
 n8b0 n8c n9sr
+# wave 3: Home widget, chip 48 dp plus 48 dp test fixes, party_host 48 dp measuring (disjoint)
+n8b1 n9b2 n9b3
