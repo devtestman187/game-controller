@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:game_kit/game_kit.dart';
 import 'package:test_game/test_game.dart';
-import 'package:toy_look/toy_look.dart';
 
 import '../controls.dart';
 import '../local_player_source.dart';
@@ -20,9 +19,9 @@ import '../text/night_text.dart';
 import 'arena_map_choice.dart';
 import 'arena_results.dart';
 import 'arena_waiting_card.dart';
-import 'controller_menus.dart';
 import 'game_debug_overlay.dart';
 import 'game_field.dart';
+import 'game_screen_shell.dart';
 import 'lobby_music.dart';
 import 'night_reveal_screen.dart';
 import 'night_scoreboard_screen.dart';
@@ -298,34 +297,19 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   @override
   Widget build(BuildContext context) {
     final night = ref.watch(partyNightProvider);
-    // The sky behind every stage stands still (design section 6): a drifting
-    // background under a card only costs a phone its battery.
-    return RoundHold(
-      child: ToyStillSky(
-        child: PopScope(
-          // Back on the results goes to the game picker, never one route short
-          // of it where the next A starts a game (m12 bug 1107e).
-          canPop: _stage != _Stage.results,
-          onPopInvokedWithResult: (didPop, _) => _leave(didPop),
-          child: ControlsClaim(
-            // The results and the waiting card are menus like any other: a
-            // phone's directions move the focus over their buttons and its A
-            // presses the focused one (M14 bugs B-013). The card reads only a
-            // local player's pad itself, which the menus leave alone.
-            controls: _stage == _Stage.playing ? const Controls.game() : const Controls.menus(),
-            child: Focus(
-              focusNode: _screenFocus,
-              autofocus: true,
-              // Not a stop for the arrows: a tap on a card's button moves the
-              // focus here, off the buttons, and A then pressed nothing
-              // (m10.2 device test).
-              skipTraversal: true,
-              onKeyEvent: _onKey,
-              child: Scaffold(body: SafeArea(child: _stageBody(night))),
-            ),
-          ),
-        ),
-      ),
+    return GameScreenShell(
+      // Back on the results goes to the game picker, never one route short
+      // of it where the next A starts a game (m12 bug 1107e).
+      canPop: _stage != _Stage.results,
+      onPopInvoked: _leave,
+      // The results and the waiting card are menus like any other: a
+      // phone's directions move the focus over their buttons and its A
+      // presses the focused one (M14 bugs B-013). The card reads only a
+      // local player's pad itself, which the menus leave alone.
+      controls: _stage == _Stage.playing ? const Controls.game() : const Controls.menus(),
+      focusNode: _screenFocus,
+      onKeyEvent: _onKey,
+      child: _stageBody(night),
     );
   }
 
