@@ -99,3 +99,5 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-24 18:56:52 tests-first ok: packages/test_game/test/arena_hud_map_test.dart fails on the old code
 2026-11-24 18:57:01 combined check: skips protocol connection metrics look tools (no job's change reaches them)
 2026-11-24 19:00:26 committed n9d3: 22aa639c test_game: the Arena HUD names the map in the round (n9d3)
+2026-11-24 19:00:28 reviewed wave2-n7a: 6 finding(s)
+2026-11-24 19:01:46 reviewed wave3: 3 finding(s)
