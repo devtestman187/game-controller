@@ -53,3 +53,5 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 HAND-FIX n8c: apply-job.sh applied 3 files: controller_app/lib/src/home/coach_marks.dart, controller_app/test/coach_marks_test.dart, docs/briefs/m16/wave2-789/n8c-report.md
 HAND-FIX-EVENT n8c: 0 lines changed, replaced ladder level ?
 HAND-FIX-EVENT n8c: 0 lines changed (applied as is; sonnet 66 turns over cap 50), replaced ladder level 2
+2026-11-24 22:46:21 reviewed wave2: 10 finding(s)
+RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): n8c (their logs: docs/briefs/m16/wave2-789/flash-<job>.log)
