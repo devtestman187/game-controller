@@ -27,11 +27,12 @@ void main() {
       expect(size.width, greaterThanOrEqualTo(minTargetDp), reason: 'chip width $size');
       expect(size.height, greaterThanOrEqualTo(minTargetDp), reason: 'chip height $size');
       final label = find.descendant(of: find.byKey(const Key('connectionChip')), matching: find.byType(Text));
-      final paragraph = tester.renderObject<RenderParagraph>(label);
-      expect(paragraph.didExceedMaxLines, isFalse, reason: 'the chip label "${paragraph.text.toPlainText()}" is cut');
-      // B-044 control: at 667x375 in the TV look the label "Android TV" is cut (chip Rect.fromLTRB(12.0, 4.0, 146.9,
-      // 52.0), 134.9x48). Skipped as a whole case, since flutter_test's skip takes only a bool here.
-    }, skip: tv);
+      // The dot alone (the room is under the threshold) has no label to cut: its tooltip carries the label.
+      if (label.evaluate().isNotEmpty) {
+        final paragraph = tester.renderObject<RenderParagraph>(label);
+        expect(paragraph.didExceedMaxLines, isFalse, reason: 'the chip label "${paragraph.text.toPlainText()}" is cut');
+      }
+    });
   }
 
   for (final entry in targetScreens.entries) {

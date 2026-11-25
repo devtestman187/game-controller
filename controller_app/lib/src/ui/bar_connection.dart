@@ -22,6 +22,11 @@ const chipFlex = 3;
 /// ping's slot. The 667x375 menu bar is 201 dp; the TV look's is 87 dp.
 const pingBesideMinBarDp = 280.0;
 
+/// The chip's room, in logical pixels, below which it shows the dot alone and keeps the label in its tooltip. The
+/// label "Android TV" is cut at 149.9 dp in the menu look and at 134.9 dp in the TV look (B-044); the menu look's whole
+/// name needs about 195 dp (see [pingBesideMinBarDp]), so 170 dp sits between the two.
+const iconOnlyChipBelowDp = 170.0;
+
 /// The bar's left side in controller mode: your player number, the connection
 /// and its ping, or the game's status panel (P6, C24).
 class BarConnection extends ConsumerWidget {
@@ -74,32 +79,49 @@ class BarConnection extends ConsumerWidget {
     );
   }
 
-  /// The connection chip: at least 48 dp wide, showing the host alone when
-  /// [hostOnly] (the ping has no room beside it).
+  /// The connection chip: at least 48 dp square, showing the host alone when
+  /// [hostOnly] (the ping has no room beside it), and the dot alone when its room is under [iconOnlyChipBelowDp].
   Widget _chip(BuildContext context, WidgetRef ref, ClientSnapshot client, TextStyle label, {required bool hostOnly}) {
+    final demo = ref.watch(demoProvider);
     return Flexible(
       flex: chipFlex,
-      // A touch target is at least 48 dp wide, even when the row is full.
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: minTouchTargetDp),
-        child: ActionChip(
-          key: const Key('connectionChip'),
-          avatar: const ConnectionDot(),
-          labelStyle: label,
-          // No side padding beyond the label's own, so the host's name fits whole in the 667x375 bar.
-          padding: EdgeInsets.zero,
-          label: Text(
-            client.isConnected
-                ? (hostOnly ? client.hostLabel : PhoneText.linkWithPing(client.hostLabel, client.rttMs))
-                : ref.watch(demoProvider)
-                ? PhoneText.demoLink
-                : PhoneText.tapToConnect(statusLabel(client)),
-            overflow: TextOverflow.ellipsis,
-          ),
-          onPressed: () => openConnect(context),
-        ),
+      child: LayoutBuilder(
+        builder: (context, room) {
+          final iconOnly = room.maxWidth < iconOnlyChipBelowDp;
+          final chip = ActionChip(
+            key: const Key('connectionChip'),
+            avatar: const ConnectionDot(),
+            labelStyle: label,
+            // No side padding beyond the label's own, so the host's name fits whole in the 667x375 bar.
+            padding: EdgeInsets.zero,
+            // The dot alone has no gap for a label it does not show.
+            labelPadding: iconOnly ? EdgeInsets.zero : null,
+            label: iconOnly
+                ? const SizedBox.shrink()
+                : Text(_chipText(client, demo, hostOnly: hostOnly), overflow: TextOverflow.ellipsis),
+            onPressed: () => openConnect(context),
+          );
+          // A touch target is at least 48 dp square, even when the row is full.
+          return ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: minTouchTargetDp, minHeight: minTouchTargetDp),
+            child: iconOnly
+                ? Tooltip(
+                    message: _chipText(client, demo, hostOnly: hostOnly),
+                    child: chip,
+                  )
+                : chip,
+          );
+        },
       ),
     );
+  }
+
+  /// What the chip says: the link's label, with the ping unless [hostOnly]; the demo or the prompt when not linked.
+  static String _chipText(ClientSnapshot client, bool demo, {required bool hostOnly}) {
+    if (client.isConnected) {
+      return hostOnly ? client.hostLabel : PhoneText.linkWithPing(client.hostLabel, client.rttMs);
+    }
+    return demo ? PhoneText.demoLink : PhoneText.tapToConnect(statusLabel(client));
   }
 }
 

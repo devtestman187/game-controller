@@ -10,14 +10,9 @@ import 'touch_targets_test.dart' show minTargetDp;
 /// landscape phone the owner measured the chip's label at (667x375).
 const _chipScreens = {'568x320': Size(568, 320), '667x375': Size(667, 375)};
 
-/// The cases the chip fails at today, measured on the base: skipped so the check stays green, each with its measure.
-const _skipped = {
-  '568x320 in the menu look':
-      'B-044 control: chip Rect.fromLTRB(12.0, 4.0, 161.9, 52.0) 149.9x48, label "Android TV" cut',
-  '568x320 in the TV look': 'B-044 control: chip 35.9x48 (below 48 dp wide)',
-  '667x375 in the TV look':
-      'B-044 control: chip Rect.fromLTRB(12.0, 4.0, 146.9, 52.0) 134.9x48, label "Android TV" cut',
-};
+/// The cases the chip still fails, measured on the base: skipped so the check stays green, each with its measure. The
+/// 568x320 TV chip's room is 35.9 dp, less than the dot-only chip's 48 dp, so the row cannot fit it (not changed here).
+const _skipped = {'568x320 in the TV look': 'B-044 control: chip 35.9x48 (below 48 dp wide)'};
 
 void main() {
   for (final entry in _chipScreens.entries) {
@@ -48,13 +43,40 @@ void main() {
         expect(rect.height, greaterThanOrEqualTo(minTargetDp), reason: 'chip height ${rect.size} at $where');
 
         final label = find.descendant(of: chip, matching: find.byType(Text));
-        final paragraph = tester.renderObject<RenderParagraph>(label);
-        expect(
-          paragraph.didExceedMaxLines,
-          isFalse,
-          reason: 'the chip label "${paragraph.text.toPlainText()}" is cut at $where (chip $rect)',
-        );
+        if (label.evaluate().isEmpty) {
+          // The dot alone: the label is in the chip's tooltip, so no text is cut.
+          final tooltip = find.ancestor(of: chip, matching: find.byType(Tooltip));
+          expect(tooltip, findsOneWidget, reason: 'the dot-only chip has no tooltip with its label at $where');
+          expect(tester.widget<Tooltip>(tooltip).message, isNotEmpty, reason: 'empty tooltip at $where');
+        } else {
+          final paragraph = tester.renderObject<RenderParagraph>(label);
+          expect(
+            paragraph.didExceedMaxLines,
+            isFalse,
+            reason: 'the chip label "${paragraph.text.toPlainText()}" is cut at $where (chip $rect)',
+          );
+        }
       }, skip: _skipped.containsKey(where));
     }
   }
+
+  testWidgets('the dot-only chip at 568x320 in the menu look has the label the full chip shows at 700x400', (
+    tester,
+  ) async {
+    final narrow = await pumpApp(tester, paired: true, screen: const Size(568, 320));
+    narrow.client.emit(connected);
+    await settle(tester);
+    final tooltip = tester.widget<Tooltip>(
+      find.ancestor(of: find.byKey(const Key('connectionChip')), matching: find.byType(Tooltip)),
+    );
+    expect(find.descendant(of: find.byKey(const Key('connectionChip')), matching: find.byType(Text)), findsNothing);
+
+    final wide = await pumpApp(tester, paired: true, screen: const Size(700, 400));
+    wide.client.emit(connected);
+    await settle(tester);
+    final full = tester.widget<Text>(
+      find.descendant(of: find.byKey(const Key('connectionChip')), matching: find.byType(Text)),
+    );
+    expect(tooltip.message, full.data);
+  });
 }

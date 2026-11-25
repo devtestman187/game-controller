@@ -81,6 +81,7 @@ void main() {
             expect(unlisted, isEmpty, reason: 'touch targets below 48 dp that knownBelow48 does not list');
           },
           // B-044 control: on the pad at 568x320 in the TV look the connectionChip ActionChip is 35.9x48, below 48 dp.
+          // Its room is less than the dot-only chip's 48 dp, so the row cannot fit it: it stays skipped (not changed here).
           skip: screen == TargetScreen.pad && tv && entry.key == '568x320',
         );
       }
