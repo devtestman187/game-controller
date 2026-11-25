@@ -64,3 +64,12 @@ RESULT: STOPPED: tests-first: packages/party_host/test/volume_semantics_test.dar
 2026-11-24 18:26:26 hand-fixed n9c: tests-first proof and worker review done (marked in done.txt)
 2026-11-24 18:26:26 skip n9c (already done)
 2026-11-24 18:26:27 skip n9d1 (already done)
+2026-11-24 18:26:44 start n7a
+2026-11-24 18:27:10 start n9d2
+2026-11-24 18:30:15 n9d2 finished: result 4 (23 turns, 2 min)
+2026-11-24 18:30:17 n9d2: dropped generated churn outside its list: site/shots/dpad.png site/shots/join.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-24 18:36:03 n7a finished: result 4 (51 turns, 9 min)
+2026-11-24 18:36:03 job n7a used 51 turns, over its cap of 50 (parked, siblings continue)
+2026-11-24 18:36:18 tests-first ok: packages/test_game/test/arena_hud_round_test.dart fails on the old code
+2026-11-24 18:36:28 combined check: skips protocol connection metrics look tools (no job's change reaches them)
+2026-11-24 18:39:58 committed n9d2: d796f71f arena: HUD shows Round N of M and warns the clock in its last 15 s
