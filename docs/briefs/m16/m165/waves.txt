@@ -8,3 +8,5 @@ c0b
 b1s b1h
 # wave B4: B-042 proof numbers
 b3
+# wave C1: B-042 re-measure, top bar free width, chip fix
+c1 c2 c3
