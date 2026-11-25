@@ -27,3 +27,6 @@
 - should: HomeText.next/done unused - fixed (deleted, nothing used them).
 - should: Controls.menus and GameShownNotifier.set dartdoc - fixed.
 - decision: coverage baseline 92.8 (owner's floor; measured 92.88-92.90, so truncation) stays as the floor. decisions.md:14 row rewrite (minSdk 31): kept, correct fact.
+
+# f1 (d1 redone)
+- f1 stopped (overflow row outside allow). HAND-FIX-EVENT f1: Haiku found the Row (settings_profile_section.dart characterPreview) but the file was outside allow; the driver replaced the Row by a Wrap (note text start-aligned, one line when it fits), applied the d1 test cleanups from the worker's tree. controller_app full suite 822 pass; touch-target test now green at 320x640 TV.

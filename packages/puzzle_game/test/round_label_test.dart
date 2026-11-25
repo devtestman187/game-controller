@@ -51,20 +51,16 @@ Future<(int, Uint8List)> draw(WidgetTester tester, PuzzlePainter painter, Size b
   return (width, bytes);
 }
 
-/// Where [bytes] differ from [base], a picture [width] px wide: how many px
-/// differ, the top row of them and the rightmost column.
-({int count, int top, int right}) differs(Uint8List bytes, Uint8List base, int width) {
-  var count = 0, top = -1, right = -1;
+/// Where [bytes] differ from [base], a picture [width] px wide: how many px differ and the rightmost column of them.
+({int count, int right}) differs(Uint8List bytes, Uint8List base, int width) {
+  var count = 0, right = -1;
   for (var i = 0; i < bytes.length; i += 4) {
     if (bytes[i] == base[i] && bytes[i + 1] == base[i + 1] && bytes[i + 2] == base[i + 2]) continue;
-    final pixel = i ~/ 4;
-    final y = pixel ~/ width;
-    final x = pixel % width;
+    final x = (i ~/ 4) % width;
     count++;
-    if (top < 0) top = y;
     if (x > right) right = x;
   }
-  return (count: count, top: top, right: right);
+  return (count: count, right: right);
 }
 
 void main() {

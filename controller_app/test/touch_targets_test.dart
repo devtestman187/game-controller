@@ -1,3 +1,4 @@
+import 'package:controller/src/ui/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart' as party;
@@ -59,6 +60,8 @@ void main() {
             await settle(tester);
           }
           if (screen == TargetScreen.settings) {
+            // Connect's list may hide its Settings button below the fold on a short screen: scroll it into view first.
+            await tester.ensureVisible(find.text('Settings'));
             await tester.tap(find.text('Settings'));
             await settle(tester);
           }
@@ -95,10 +98,12 @@ const scrollStepDp = 200.0;
 /// The most drags that walk the Settings list to its end.
 const maxScrollSteps = 60;
 
-/// [measureTargets] over the whole of the first scrollable on screen, top to end.
+/// [measureTargets] over the whole of the Settings list, top to end. Scoped to [SettingsScreen] so Connect's own
+/// scrollable underneath the Settings route is not the one walked.
 Future<Map<String, Size>> measureScrolling(WidgetTester tester, String screen) async {
   final found = measureTargets(tester, screen);
-  final scrollable = find.byType(Scrollable).first;
+  expect(find.byType(SettingsScreen), findsOneWidget, reason: 'Settings is open');
+  final scrollable = find.descendant(of: find.byType(SettingsScreen), matching: find.byType(Scrollable)).first;
   final position = tester.state<ScrollableState>(scrollable).position;
   for (var step = 0; step < maxScrollSteps && position.pixels < position.maxScrollExtent; step++) {
     await tester.drag(scrollable, const Offset(0, -scrollStepDp));

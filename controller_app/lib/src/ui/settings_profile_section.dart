@@ -240,7 +240,11 @@ class _CharacterPreview extends StatelessWidget {
       key: const Key('characterPreview'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
+        // A Wrap, not a Row: in the TV look's bigger type the figures and the note do not fit one line at 320 dp.
+        Wrap(
+          spacing: ToySizes.space16,
+          runSpacing: ToySizes.space8,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             _PreviewFigure(
               number: character.colourSlot,
@@ -248,22 +252,13 @@ class _CharacterPreview extends StatelessWidget {
               toy: toy,
               caption: PhoneText.worker,
             ),
-            const SizedBox(width: ToySizes.space16),
             _PreviewFigure(
               number: character.colourSlot,
               diameter: _marbleDiameter,
               toy: toy,
               caption: PhoneText.marble,
             ),
-            const SizedBox(width: ToySizes.space16),
-            Expanded(
-              child: Text(
-                PhoneText.showsNextTime,
-                key: const Key('showsNextTime'),
-                style: caption,
-                textAlign: TextAlign.end,
-              ),
-            ),
+            Text(PhoneText.showsNextTime, key: const Key('showsNextTime'), style: caption),
           ],
         ),
       ],
