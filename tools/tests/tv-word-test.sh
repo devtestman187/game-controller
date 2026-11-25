@@ -47,7 +47,6 @@ verdict() {
 }
 
 screen=controller_app/lib/screen.dart
-phone=packages/party_host/lib/src/text/phone_text.dart
 
 verdict "a bare TV in a label is a hit and is named" 1 \
   "controller_app/lib/screen.dart:1: title: 'Connect to a TV'," "$screen" "  title: 'Connect to a TV',"
@@ -62,9 +61,7 @@ verdict "an allowed name does not hide a bare TV in the same line" 1 \
 verdict "a // comment is skipped" 0 "" "$screen" "  // the TV keeps its own game"
 verdict "a /// doc comment is skipped" 0 "" "$screen" "/// Sent to the TV and shown in Diagnostics."
 verdict "an indented // comment with a CR line end is skipped" 0 "" "$screen" "    // Back to the TV client"$'\r'
-verdict "the allowed switch key 'tv' => kindTv passes" 0 "" "$phone" "    'tv' => kindTv,"
-verdict "the allowed identifier static const tv = 'tv' passes" 0 "" \
-  "packages/party_host/lib/src/host_identity.dart" "  static const tv = 'tv';"
+mkdir -p "$tmp/empty"
 out="$(bash "$check" "$tmp/empty" 2>&1)"
 rc=$?
 expect "a root with no controller_app/lib is exit 2" 2 "$rc"

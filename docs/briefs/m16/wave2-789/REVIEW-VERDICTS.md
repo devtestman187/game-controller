@@ -61,3 +61,16 @@
 - tools/churn.sh:58 churn_revert reverts generated tv_test_app files that were dirty before the job - must(tooling) - OWNER/tooling note in REPORT.md (the files are tracked generated churn, nothing of ours is lost; owner decides whether churn_revert skips files dirty at job start); no fix job
 - launch_home_test.dart:176 host not disposed when an expect fails - should - f6 item 4
 - controls.dart dartdoc, haptics_test name - minor - docs/code-health.md
+## wave 10 and wave 11
+- client_messages.dart:90 and smoke.sh pin - should - fixed by hand (3 strings + smoke.sh:329)
+- launch_home_test.dart:184 name "once" - could - code-health
+- tv-word-check.sh:58 dead allowed-list branch - must - fixed by hand: list and branch removed, its two cases removed, empty-root case creates the folder (21/21 cases)
+- n8g-report.md:24 churn claim, comment wording - trivial - comment fixed; churn: tooling note
+## run review (REVIEW.md, cut at the first end of the run; items fixed since by f1-f7)
+- phone_home_screen.dart:164 tips saved with no anchor laid out - closed by f2 (_anchorsReady gate, defensive; HomeView always builds its buttons)
+- phone_home_screen.dart:119 SystemNavigator in the widget - closed by f2 (appExitProvider)
+- phone_home_marks_test.dart:76-91 positive controls, :134-143 tap expectation, :182 reason - closed by f3
+- over-120-column lines - closed (dart format run on controller_app, 0 changed at the f2 commit)
+- coach_marks.dart:137-140 re-read has no effect when the host does not rebuild the overlay; test (e) not in repo - minor: stays; Home's anchors do not move after layout in landscape; recorded in docs/code-health.md
+- coach_marks_test tap-after-Skip, search-timer dispose test, live-hosting guard tests - closed by f3/f2/f5
+- round label on split/phone screens; ShowTipsRow card/column; 48 px frame controls; reconnecting counts as idle; search timer after a dropped link - OWNER QUESTIONS (see REPORT.md)
