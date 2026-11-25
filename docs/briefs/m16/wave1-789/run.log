@@ -120,3 +120,27 @@ RESULT: DONE: 6 jobs, 23 min
 2026-11-24 19:07:54 worker: claude
 2026-11-24 19:08:02 STOPPED: brief gate: brief-check failed: FAIL changes f4: ArenaHud is used in packages/test_game/lib/src/arena_view_widgets.dart, which no job of wave 5 or earlier allows
 RESULT: STOPPED: brief gate: brief-check failed: FAIL changes f4: ArenaHud is used in packages/test_game/lib/src/arena_view_widgets.dart, which no job of wave 5 or earlier allows
+2026-11-24 19:08:31 RUN_MAX_MIN=175 min (computed backstop of the jobs still to do)
+2026-11-24 19:08:32 start at 0a5e9d52 on m16
+2026-11-24 19:08:32 worker: claude
+2026-11-24 19:08:32 removed the last stop's STOP.md
+2026-11-24 19:08:46 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-24 19:09:01 skip n9a (already done)
+2026-11-24 19:09:02 skip n9c (already done)
+2026-11-24 19:09:02 skip n9d1 (already done)
+2026-11-24 19:09:18 skip n7a (already done)
+2026-11-24 19:09:18 skip n9d2 (already done)
+2026-11-24 19:09:34 skip n9d3 (already done)
+2026-11-24 19:09:50 start f1
+2026-11-24 19:10:16 start f2
+2026-11-24 19:10:42 start f3
+2026-11-24 19:15:22 f1 finished: result 4 (35 turns, 5 min)
+2026-11-24 19:15:23 f1: dropped generated churn outside its list: tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-24 19:18:18 f3 finished: result 4 (46 turns, 5 min)
+2026-11-24 19:18:18 job f3 used 46 turns, over its cap of 45 (parked, siblings continue)
+2026-11-24 19:56:32 f2 finished: result 4 (1 turns, 0 min)
+2026-11-24 19:56:33 f2: dropped generated churn outside its list: tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-24 19:56:47 combined check: skips protocol connection metrics kit look arena puzzle tools (no job's change reaches them)
+2026-11-24 20:07:26 checks failed; fetching packages and trying once more
+2026-11-24 20:17:59 STOPPED: checks failed twice on the combined tree after f1 f2
+RESULT: STOPPED: checks failed twice on the combined tree after f1 f2
