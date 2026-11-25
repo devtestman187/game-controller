@@ -115,3 +115,7 @@ HAND-FIX-EVENT n9b2: 25 lines moved, replaced ladder level 2 (no model repair)
 2026-11-24 23:38:26 combined check: skips protocol connection metrics kit look arena puzzle host tv tools (no job's change reaches them)
 2026-11-24 23:39:58 committed n8d2: aa820953 settings: a Show tips switch saves the coach-marks choice
 2026-11-24 23:40:00 committed f1: f784fe27 coach_marks: re-read the anchor on layout changes; add 6 tests
+2026-11-24 23:40:01 STOPPED: jobs that failed or passed their limit (parked, not committed): n8b2 (their logs: docs/briefs/m16/wave2-789/flash-<job>.log)
+HAND-FIX n8b2: apply-job.sh applied 4 files: controller_app/lib/src/home/launch_consent.dart, controller_app/lib/src/home/phone_home_screen.dart, controller_app/test/phone_home_screen_test.dart, docs/briefs/m16/wave2-789/n8b2-report.md
+HAND-FIX-EVENT n8b2: 0 lines changed, replaced ladder level ?
+HAND-FIX-EVENT n8b2: 0 lines changed (applied as is; sonnet 75 turns over cap 70, checks passed in the worker), replaced ladder level 2
