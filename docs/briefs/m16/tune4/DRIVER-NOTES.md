@@ -1,0 +1,5 @@
+- 10:36 K2 test on a throwaway sleep: all three taskkill forms kill the process; a `bash -c` child orphaned by its forked parent is not reached by /T, so tree_kill walks ps -ef first and kills every member by its own winpid. next: K4.
+- 10:50 K4 check.sh guard (CHECK_MAX_MIN, EXIT/INT/TERM trap, serial suites waited on) + proc-guard-test 6 cases. next: T1.
+- 11:00 T1 stale-waiter cause: wait-run.sh run_ended returns the PAUSED stop of the previous run while the new start at line is not written; --since fixes it; test 6b. Auto-resume split out. next: runner changes.
+- 11:20 T2 hung guard, T3 over-cap applied and pins WARN, T5 REVIEW stub, M1, M2, K3, K5, K1 done with tests; run-stops-test 20 cases pass. next: full check.sh, report.
+- note: my own `python -` call hung on stdin for ~5 min (lesson P-tune4-1).
