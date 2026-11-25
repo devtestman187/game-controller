@@ -173,3 +173,14 @@ HAND-FIX f2: worker fix rejected (shrank touch targets, phone suite hung), test 
 2026-11-24 20:29:11 combined check: skips protocol connection metrics look tools (no job's change reaches them)
 2026-11-24 20:33:03 committed f4: e268b7bb M16 f4: Arena HUD warns on the clock only; race frame tested
 2026-11-24 20:33:04 committed f5: 35117ab3 Test: volume sliders read their own semantics value, both looks
+2026-11-24 20:33:06 reviewed wave4: 7 finding(s)
+2026-11-24 20:34:53 reviewed wave5: 6 finding(s)
+METRICS f1 worker=claude model=claude-haiku-5-5 turns=35 in=52 out=28870 cache=1178791 min=4.9 wall=5.5 result=4
+METRICS f2 worker=claude model=claude-haiku-5-5 turns=1 in=4 out=87 cache=81757 min=0.0 wall=46.3 result=4
+METRICS f3 worker=claude model=claude-haiku-5-5 turns=46 in=90 out=25370 cache=1629032 min=5.2 wall=7.6 result=4
+METRICS f4 worker=claude model=claude-haiku-5-5 turns=17 in=22 out=9598 cache=247866 min=1.4 wall=1.9 result=4
+METRICS f5 worker=claude model=claude-haiku-5-5 turns=40 in=54 out=28826 cache=942085 min=6.6 wall=7.2 result=4
+METRICS wave4-review worker=claude model=claude-haiku-5-5 turns=16 in=28 out=20126 cache=427666 min=1.6 wall=- result=0
+METRICS wave5-review worker=claude model=claude-haiku-5-5 turns=20 in=18 out=18068 cache=256751 min=1.4 wall=- result=0
+2026-11-24 20:35:02 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/wave1-789/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 11 jobs, 15 min
