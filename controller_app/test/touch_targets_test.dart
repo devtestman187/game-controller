@@ -41,46 +41,48 @@ void main() {
   for (final screen in TargetScreen.values) {
     for (final entry in targetScreens.entries) {
       for (final tv in [false, true]) {
-        // Known, not this job's: at 568x320 in the TV look the top bar overflows 12 px
-        // (controller_top_bar.dart:89), on the pad and also under Connect and Settings, so that size/look is left out.
-        if (tv && entry.key == '568x320') continue;
-        testWidgets('every touch target on ${screen.label} at ${entry.key} in the ${tv ? 'TV' : 'menu'} look is '
-            'at least 48 dp or listed in knownBelow48', (tester) async {
-          final app = await pumpApp(
-            tester,
-            // The portrait pad has no Settings button, so Settings opens from Connect's Settings button.
-            paired: screen == TargetScreen.pad,
-            screen: entry.value,
-            extra: [if (tv) party.toyTvProvider.overrideWithValue(true)],
-          );
-          if (screen != TargetScreen.pad) await reachConnect(tester);
-          if (screen == TargetScreen.pad) {
-            // Connected, so the bar shows the mode control a linked pad has.
-            app.client.emit(connected);
-            await settle(tester);
-          }
-          if (screen == TargetScreen.settings) {
-            // Connect's list may hide its Settings button below the fold on a short screen: scroll it into view first.
-            await tester.ensureVisible(find.text('Settings'));
-            await tester.tap(find.text('Settings'));
-            await settle(tester);
-          }
-          final found = screen == TargetScreen.settings
-              ? await measureScrolling(tester, screen.label)
-              : measureTargets(tester, screen.label);
-          // The pad in portrait shows no control (the phone asks to be turned), so only it may find none.
-          final portraitPad = screen == TargetScreen.pad && entry.value.height > entry.value.width;
-          if (!portraitPad) expect(found, isNotEmpty, reason: 'no touch target found on ${screen.label}');
-          final below = {
-            for (final e in found.entries)
-              if (_below(e.value)) e.key: e.value,
-          };
-          final unlisted = [
-            for (final e in below.entries)
-              if (!knownBelow48.containsKey(e.key)) '${e.key}: ${e.value} (${entry.key}, ${tv ? 'TV' : 'menu'})',
-          ];
-          expect(unlisted, isEmpty, reason: 'touch targets below 48 dp that knownBelow48 does not list');
-        });
+        testWidgets(
+          'every touch target on ${screen.label} at ${entry.key} in the ${tv ? 'TV' : 'menu'} look is '
+          'at least 48 dp or listed in knownBelow48',
+          (tester) async {
+            final app = await pumpApp(
+              tester,
+              // The portrait pad has no Settings button, so Settings opens from Connect's Settings button.
+              paired: screen == TargetScreen.pad,
+              screen: entry.value,
+              extra: [if (tv) party.toyTvProvider.overrideWithValue(true)],
+            );
+            if (screen != TargetScreen.pad) await reachConnect(tester);
+            if (screen == TargetScreen.pad) {
+              // Connected, so the bar shows the mode control a linked pad has.
+              app.client.emit(connected);
+              await settle(tester);
+            }
+            if (screen == TargetScreen.settings) {
+              // Connect's list may hide its Settings button below the fold on a short screen: scroll it into view first.
+              await tester.ensureVisible(find.text('Settings'));
+              await tester.tap(find.text('Settings'));
+              await settle(tester);
+            }
+            final found = screen == TargetScreen.settings
+                ? await measureScrolling(tester, screen.label)
+                : measureTargets(tester, screen.label);
+            // The pad in portrait shows no control (the phone asks to be turned), so only it may find none.
+            final portraitPad = screen == TargetScreen.pad && entry.value.height > entry.value.width;
+            if (!portraitPad) expect(found, isNotEmpty, reason: 'no touch target found on ${screen.label}');
+            final below = {
+              for (final e in found.entries)
+                if (_below(e.value)) e.key: e.value,
+            };
+            final unlisted = [
+              for (final e in below.entries)
+                if (!knownBelow48.containsKey(e.key)) '${e.key}: ${e.value} (${entry.key}, ${tv ? 'TV' : 'menu'})',
+            ];
+            expect(unlisted, isEmpty, reason: 'touch targets below 48 dp that knownBelow48 does not list');
+          },
+          // B-044 control: on the pad at 568x320 in the TV look the connectionChip ActionChip is 35.9x48, below 48 dp.
+          skip: screen == TargetScreen.pad && tv && entry.key == '568x320',
+        );
       }
     }
   }

@@ -53,12 +53,7 @@ Future<void> expectManualRowFits(
   addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
   final overflows = <String>[];
   final previous = FlutterError.onError;
-  // Known, not this job's: the pad's top bar overflows 12 px at 568x320 in the TV look (a TV-look
-  // sizing on a phone-wide screen; code-health.md). Only that one case is let through.
-  final knownTopBarOverflow = tv && screen.width == 568;
-  FlutterError.onError = (details) {
-    if (!knownTopBarOverflow) overflows.add(details.exceptionAsString());
-  };
+  FlutterError.onError = (details) => overflows.add(details.exceptionAsString());
   addTearDown(() => FlutterError.onError = previous);
   await pumpApp(tester, screen: screen, extra: [if (tv) party.toyTvProvider.overrideWithValue(true)]);
   await reachConnect(tester);
