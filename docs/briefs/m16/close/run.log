@@ -42,3 +42,8 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-25 06:26:39 committed c5: 71020aee Extract launch consent ask-once guard into launchConsentDue
 2026-11-25 06:26:39 finding: c4's report has no Summary block in its first 40 lines
 2026-11-25 06:26:41 committed c4: 5fb9df93 c4: report the 568x320 TV-look top bar overflow as an owner question
+2026-11-25 06:26:42 reviewed wave1-c2: 3 finding(s)
+2026-11-25 06:26:42 STOPPED: PAUSED after wave 2 (RUN_PAUSE_AFTER_WAVE=1): its review is committed; verdict it, add fix jobs to the next wave of waves.txt, commit, restart
+2026-11-25 06:27:53 RUN_MAX_MIN=88 min (computed backstop of the jobs still to do)
+2026-11-25 06:28:39 reviewed wave2: 4 finding(s)
+RESULT: STOPPED: PAUSED after wave 2 (RUN_PAUSE_AFTER_WAVE=1): its review is committed; verdict it, add fix jobs to the next wave of waves.txt, commit, restart
