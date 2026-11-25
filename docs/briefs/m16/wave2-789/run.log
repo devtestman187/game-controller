@@ -185,3 +185,31 @@ METRICS wave4-review worker=claude model=claude-haiku-5-5 turns=20 in=26 out=330
 METRICS wave5-review worker=claude model=claude-haiku-5-5 turns=26 in=38 out=24633 cache=798459 min=2.1 wall=- result=0
 2026-11-25 00:11:16 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/wave2-789/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 15 jobs, 20 min
+2026-11-25 00:12:56 RUN_MAX_MIN=132 min (computed backstop of the jobs still to do)
+2026-11-25 00:12:56 start at 3c07ea1c on HEAD
+2026-11-25 00:12:56 worker: claude
+2026-11-25 00:13:10 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-25 00:13:26 skip n8a (already done)
+2026-11-25 00:13:26 skip n9b1 (already done)
+2026-11-25 00:13:26 skip n9e (already done)
+2026-11-25 00:13:42 skip n8b0 (already done)
+2026-11-25 00:13:42 skip n8c (already done)
+2026-11-25 00:13:43 skip n9sr (already done)
+2026-11-25 00:13:58 skip n8b1 (already done)
+2026-11-25 00:13:59 skip n9b2 (already done)
+2026-11-25 00:13:59 skip n9b3 (already done)
+2026-11-25 00:14:15 skip f1 (already done)
+2026-11-25 00:14:15 skip n8b2 (already done)
+2026-11-25 00:14:15 skip n8d2 (already done)
+2026-11-25 00:14:31 skip n8d1 (already done)
+2026-11-25 00:14:31 skip n8b3a (already done)
+2026-11-25 00:14:32 skip n8e0 (already done)
+2026-11-25 00:14:48 start f2
+2026-11-25 00:15:14 start f3
+2026-11-25 00:15:40 start n8b3
+2026-11-25 00:19:18 f3 finished: result 4 (23 turns, 3 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 34/494200/30800/15362
+2026-11-25 00:19:20 f3: dropped generated churn outside its list: tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-25 00:24:23 f2 finished: result 4 (69 turns, 9 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 106/4007081/116139/67764
+2026-11-25 00:24:23 job f2 used 69 turns, over its cap of 60 (parked, siblings continue)
+2026-11-25 00:48:13 STOPPED: stop file
+RESULT: STOPPED: stop file
