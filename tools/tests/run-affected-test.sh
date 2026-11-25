@@ -184,6 +184,7 @@ turn_out=$(
   FLASH_USAGE_LOG="$tc/usage.tsv"
   note() { echo "NOTE: $*"; }
   . "$src/tools/run-wave.sh"
+  cap_verify() { return 0; } # the runner's own check of an over-cap job (run-stops-test.sh covers it)
   eval "$(sed -n '/^usage() {/,/^}/p' "$src/tools/run-jobs.sh")"
   turn_cap j1 0
   echo "RETURN: $?"

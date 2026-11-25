@@ -149,6 +149,14 @@ if [ "$first" = 1 ] && grep -q "PAUSED after wave 1" "$repo/$batch/run.log" && d
   ! grep -q "PAUSED after wave 2" "$repo/$batch/run.log" && logged "committed w2j" && [ "$rc" = 0 ]; then r=0; else r=1; fi
 report "a restart after a pause runs the next wave and does not pause again (first exit $first, second $rc)" "$r"
 
+# 5b. A session that resumed (usage row: 1 turn, 2 s) for a job that ran 6+ minutes (seconds here): a WARN line names it.
+fixture resumed
+brief rj "stub-sleep: 6"
+waves rj; row rj 1 2
+run_jobs
+if [ "$rc" = 0 ] && logged "WARN: rj logged 1 turns, 0 min but ran " && logged "last resume only"; then r=0; else r=1; fi
+report "a usage row that covers the last resume only gets a WARN with the job's wall time" "$r"
+
 # 6. wait-run.sh: the STOPPED line before the last `start at` is old; a run that has started and not ended is running (4).
 wd="$tmp/wait/docs/briefs/w"; mkdir -p "$wd" "$tmp/wait/state"
 cat > "$wd/run.log" <<'EOL'

@@ -96,11 +96,25 @@ turn_cap() { # turn_cap <job> <rc>: the job's turns, from the usage row `usage` 
   return 1
 }
 
+usage_wall() { # usage_wall <job> <index into started>: a usage row of "1 turns, 0 min" for a job that ran many minutes
+  # is a session that resumed after a timed-out command: claude's result JSON counts the last resume only (n9b2, n8b3 of
+  # wave2-789: 1 logged turn, 25-28 min real). The row cannot be repaired, so the log says so instead of misleading.
+  local u m wall
+  u=$(usage "$B/$1.md")
+  [ -n "$u" ] || return 0
+  m=${u##*, }; m=${m% min}
+  wall=$((($(date +%s) - ${since[$2]}) / ${RUN_LIMIT_UNIT_S:-60}))
+  [ "$wall" -ge 5 ] && [ $((m * 2)) -lt "$wall" ] &&
+    note "WARN: $1 logged $u but ran $wall min wall: a resumed session's usage row covers its last resume only, its real turns are unknown"
+  return 0
+}
+
 finished_job() { # finished_job <index>: wait its exit, log it, cap it, then sort it into ok or parked
   local i=$1 j rc
   j=${started[$i]}
   wait "${pids[$i]}"; rc=$?
   note "$j finished: result $rc ($(usage "$B/$j.md")) $(job_line "$j")"
+  usage_wall "$j" "$i"
   # Result 4 with only generated churn outside the list comes first: the churn is dropped and the job's own files are
   # applied, so the cap below judges a result 0 (n9b1, n8c, n8b2, f4 were parked as "over cap" with churn as the only fault).
   if [ $rc -eq 4 ] && apply_safe "$j" "$LOGS/flash-$j.log"; then

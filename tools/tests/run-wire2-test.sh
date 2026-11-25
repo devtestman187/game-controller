@@ -72,7 +72,7 @@ report "a stop waits for the running wave review and commits its report (exit 1)
 fixture stopreview
 more_briefs runjob failjob
 seed_report runjob
-STUB_REVIEW_SLEEP_S=6 STUB_FAIL_BRIEF=failjob.md STUB_STOP_ON_FAIL=1
+STUB_REVIEW_SLEEP_S=20 STUB_FAIL_BRIEF=failjob.md STUB_STOP_ON_FAIL=1 # long: a loaded -j 4 run must not finish the review first
 run_jobs
 if [ "$rc" = 1 ] && logged "STOPPED: stop file" &&
   ! git -C "$repo" cat-file -e "HEAD:$batch/wave1-review-report.md" 2>/dev/null &&
