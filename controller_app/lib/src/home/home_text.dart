@@ -30,12 +30,6 @@ abstract final class HomeText {
   /// The coach marks' button that ends the tour at any step.
   static const skip = 'Skip';
 
-  /// The coach marks' button that moves on to the next stop.
-  static const next = 'Next';
-
-  /// The coach marks' button on the last stop, which ends the tour.
-  static const done = 'Got it';
-
   /// The coach mark for the join role's card.
   static const tipJoin = "Join a friend's game";
 

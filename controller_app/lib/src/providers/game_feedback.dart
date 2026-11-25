@@ -46,6 +46,7 @@ class GameShownNotifier extends Notifier<bool> {
   @override
   bool build() => false;
 
+  /// Sets whether this phone draws the game it is hosting.
   void set(bool shown) => state = shown;
 }
 

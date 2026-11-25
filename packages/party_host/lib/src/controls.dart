@@ -13,6 +13,7 @@ final class Controls {
   /// A game is reading the controllers.
   const Controls.game() : menus = false, only = null, layout = null, otherLayout = null;
 
+  /// True when the controllers work the host app's menus, false when a game reads them.
   final bool menus;
 
   /// The player numbers the menus are for; null means every player.

@@ -877,7 +877,7 @@ bundle (9) and the already-built 2–5 keep their place. "(item N)" is the revie
   is the same colour on both devices.
 - [ ] Every touch target is at least 48 dp, the connect pill's label does not truncate at 667×375,
   and the slider a11y values match their labels.
-- [ ] Full `tools/check.sh` green, coverage not below 92.9%, and no `lib/` file over 380 lines.
+- [ ] Full `tools/check.sh` green, coverage not below 92.8%, and no `lib/` file over 400 lines.
 
 **Prepares for M17 Thumby** (hooks M16 must provide; see PROPOSAL.md "Thumby integration (M17)")
 

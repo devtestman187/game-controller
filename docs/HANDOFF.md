@@ -133,7 +133,7 @@ Restore a churned file with `git checkout -- <that exact path>`. Never use `git 
 3. **A fix is done only with evidence**: the test output and the full `tools/check.sh`. Never report "fixed" because the code looks right.
 4. **Full `tools/check.sh` green on the final tip** before any commit series is called done. Per-package runs are fine while working; the whole run is the gate. If it fails, fix the cause; do not rerun until lucky, skip a suite or edit a test to pass. A flaky test is a bug (usually real time or an unawaited async side effect): fix it properly with fake clocks or by awaiting the side effect, and note it.
 5. **Coverage must not drop** below 92.8%. Run `bash tools/coverage.sh` after a change that adds code and compare. New code ships with tests.
-6. **Zero analyzer issues**, formatting clean, no `lib/` file over 380 lines.
+6. **Zero analyzer issues**, formatting clean, no `lib/` file over 400 lines.
 7. **No real time in tests.** Use `fake_async` and injected `nowMs`. Real sockets only in `connection` tests, on localhost. Await async side effects (party_host tests have a `settleUploads` helper). Widget tests run at more than one size (phone, tablet, TV) when layout matters.
 8. **Unmeasured cause means "Fixed, unverified".** If you could not reproduce the problem or measure the cause (anything that depends on a real device: audio, touch, frame rate, a real network), the status is "Fixed, unverified: needs device check", never plain "Fixed". Say exactly what the owner should do to check.
 9. **Every review finding is closed:** fixed, or written into `docs/code-health.md` (by area, with risk and benefit), or noted in the tracker for the owner. Nothing is silently dropped.

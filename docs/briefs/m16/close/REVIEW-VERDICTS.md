@@ -19,3 +19,11 @@
 - c5 should: self-check A1 names no test - should - fixed (mapped to tests).
 - c4 could x2: barPadding expression, Summary block - trivial - fixed.
 - Decision: launchConsentDue name kept (brief's name; side effect noted in dartdoc is a could). c3 covers palettes only: accepted.
+
+# Wave 3 review (d2, d3; d1 parked)
+- d1 parked: scoping the touch-target scroll to Settings exposed a real 43 px Settings overflow at 320x640 TV (must) - redone with the lib fix as f1 (d1-parked.patch).
+- d3 must: PRD-v2.md:880 not applied - fixed by hand (92.8%, 400 lines).
+- d3 should: HANDOFF.md:136 380 -> 400 - fixed.
+- should: HomeText.next/done unused - fixed (deleted, nothing used them).
+- should: Controls.menus and GameShownNotifier.set dartdoc - fixed.
+- decision: coverage baseline 92.8 (owner's floor; measured 92.88-92.90, so truncation) stays as the floor. decisions.md:14 row rewrite (minSdk 31): kept, correct fact.
