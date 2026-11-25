@@ -149,7 +149,7 @@ final class ClientMessages {
       _host.log('The screen uses protocol v${e.actual}, this phone uses v${e.expected}');
       _host.giveUp(
         ClientProblem.versionMismatch,
-        'TV protocol v${e.actual}, phone v${e.expected}',
+        'Screen protocol v${e.actual}, phone v${e.expected}',
         closeCode: CloseCodes.versionMismatch,
       );
     } on ProtocolFormatException catch (e) {
@@ -176,7 +176,7 @@ final class ClientMessages {
       _host.snapshot.copyWith(target: target, hostName: welcome.hostName, hostCapabilities: welcome.capabilities),
     );
     _host.log(
-      'Welcome from ${welcome.hostName} (TV app ${welcome.appVersion}'
+      'Welcome from ${welcome.hostName} (Thumb Party TV app ${welcome.appVersion}'
       '${welcome.capabilities.isEmpty ? '' : ', supports ${welcome.capabilities.join(', ')}'})',
     );
 
@@ -215,7 +215,7 @@ final class ClientMessages {
     }
     switch (result.failure!) {
       case PairFailure.unknownToken:
-        _host.log('The TV no longer knows this phone, the code is needed again');
+        _host.log('The screen no longer knows this phone, the code is needed again');
         _host.saveToken(hostId, null);
         _host.everPaired = false;
         _host.setSnapshot(snap.copyWith(status: ClientStatus.waitingForCode, problem: ClientProblem.pairingForgotten));
@@ -224,7 +224,7 @@ final class ClientMessages {
         _host.dropChannel(); // The host closes it anyway. A new code reconnects.
         _host.setSnapshot(snap.copyWith(status: ClientStatus.waitingForCode, problem: ClientProblem.wrongCode));
       case PairFailure.tooManyAttempts:
-        _host.log('Too many wrong codes, the TV shows a new one');
+        _host.log('Too many wrong codes, the screen shows a new one');
         _host.dropChannel();
         _host.setSnapshot(snap.copyWith(status: ClientStatus.waitingForCode, problem: ClientProblem.tooManyAttempts));
     }
