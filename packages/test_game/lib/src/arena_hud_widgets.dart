@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:toy_look/toy_look.dart';
 
 import 'arena.dart';
+import 'arena_board_options.dart';
 import 'arena_character_painter.dart';
 import 'arena_coin_icon_widgets.dart';
 import 'arena_map_names.dart';
@@ -42,16 +43,13 @@ class ArenaHud extends StatelessWidget {
     required this.snapshot,
     required this.roster,
     this.characters = const {},
-    this.ownId,
     this.oneLine = false,
-    this.round,
-    this.rounds,
+    this.options = const ArenaBoardOptions(),
   });
 
-  /// The round's number from 1 and how many the match runs (M16 A2): the bar
-  /// reads "Round N of M" when both are set, and "Round N" when either is not.
-  final int? round;
-  final int? rounds;
+  /// The round's number, its count and the phone's own player, from the board
+  /// (M16 A2, M14 bugs2 7): see [ArenaBoardOptions].
+  final ArenaBoardOptions options;
 
   /// The box height, in px, below which the bar folds to one line: landscape
   /// phones are 375–393 high and the TV and tablets 540 and up, so a box
@@ -93,10 +91,6 @@ class ArenaHud extends StatelessWidget {
   /// wears its colour, and a player missing here keeps its number's colour.
   final ArenaCharacters characters;
 
-  /// The player of the phone this bar is drawn on, whose name it marks "(you)";
-  /// null where every player is alike, as on a TV (M14 bugs2 7).
-  final String? ownId;
-
   /// Everything in one Wrap rather than the round above each player.
   final bool oneLine;
 
@@ -136,7 +130,7 @@ class ArenaHud extends StatelessWidget {
   /// The round's run, then a run per player. In a Bumper Round a name may take
   /// no more than [_bumperNameShare] of the bar, so every count fits a phone.
   List<Widget> _items(List<MapEntry<String, ({int number, String name})>> byNumber, bool bumper, double width) => [
-    _RoundRow(snapshot: snapshot, roster: roster, oneLine: oneLine, round: round, rounds: rounds),
+    _RoundRow(snapshot: snapshot, roster: roster, oneLine: oneLine, options: options),
     for (final MapEntry(key: id, value: player) in byNumber)
       if (snapshot.player(id) case final p?)
         _PlayerRow(
@@ -145,7 +139,7 @@ class ArenaHud extends StatelessWidget {
           character: arenaCharacterFor(roster, id, characters: characters),
           view: p,
           layout: (
-            own: id == ownId,
+            own: id == options.ownId,
             oneLine: oneLine,
             bumper: bumper,
             nameMaxWidth: bumper ? width * _bumperNameShare : null,
@@ -159,19 +153,12 @@ class ArenaHud extends StatelessWidget {
 /// its own — the Bumper Round — shows the time left on it (M14 b2); the race
 /// shows the time it has run.
 class _RoundRow extends StatelessWidget {
-  const _RoundRow({
-    required this.snapshot,
-    required this.roster,
-    required this.oneLine,
-    required this.round,
-    required this.rounds,
-  });
+  const _RoundRow({required this.snapshot, required this.roster, required this.oneLine, required this.options});
 
   final ArenaSnapshot snapshot;
   final ArenaRoster roster;
   final bool oneLine;
-  final int? round;
-  final int? rounds;
+  final ArenaBoardOptions options;
 
   /// The clock's text: the time left where the round has a limit, else the
   /// time run, both to a tenth of a second.
@@ -182,8 +169,8 @@ class _RoundRow extends StatelessWidget {
 
   /// The round's label: "Round N of M" when the match names both, else "Round N".
   String get _roundLabel {
-    final round = this.round;
-    final rounds = this.rounds;
+    final round = options.round;
+    final rounds = options.rounds;
     return round != null && rounds != null ? 'Round $round of $rounds' : 'Round ${snapshot.round}';
   }
 

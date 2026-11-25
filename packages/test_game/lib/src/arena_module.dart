@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:game_kit/game_kit.dart';
 
+import 'arena_board_options.dart';
 import 'arena_roster.dart';
 import 'arena_snapshot.dart';
 import 'arena_view_widgets.dart';
@@ -52,7 +53,7 @@ final class ArenaViewer implements GameViewer {
       snapshot: snapshot,
       roster: arenaRosterFor(snapshot, view.roster),
       characters: view.characters,
-      ownId: view.playerId,
+      options: ArenaBoardOptions(ownId: view.playerId),
     );
   }
 }

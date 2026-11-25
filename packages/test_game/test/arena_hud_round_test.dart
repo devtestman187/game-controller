@@ -45,7 +45,11 @@ Future<void> pumpHud(
     MaterialApp(
       home: withLook(
         Scaffold(
-          body: ArenaHud(snapshot: snapshot, roster: two, round: round, rounds: rounds),
+          body: ArenaHud(
+            snapshot: snapshot,
+            roster: two,
+            options: ArenaBoardOptions(round: round, rounds: rounds),
+          ),
         ),
         look: look,
       ),

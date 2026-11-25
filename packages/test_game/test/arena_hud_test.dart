@@ -44,7 +44,11 @@ Future<void> pumpBoard(
     MaterialApp(
       home: withLook(
         Scaffold(
-          body: ArenaBoard(snapshot: snapshot, roster: roster, ownId: ownId),
+          body: ArenaBoard(
+            snapshot: snapshot,
+            roster: roster,
+            options: ArenaBoardOptions(ownId: ownId),
+          ),
         ),
         look: look ?? sunny,
       ),

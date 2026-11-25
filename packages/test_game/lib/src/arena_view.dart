@@ -4,6 +4,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:game_kit/game_kit.dart';
 
 import 'arena.dart';
+import 'arena_board_options.dart';
 import 'arena_events.dart';
 import 'arena_robo.dart';
 import 'arena_roster.dart';
@@ -152,8 +153,6 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
     roster: arenaRosterFor(_snapshot, arenaRosterOf(widget.host.players)),
     characters: arenaCharactersOf(widget.host.players),
     onResize: _session.resize,
-    showHud: widget.showHud,
-    round: widget.round,
-    rounds: widget.rounds,
+    options: ArenaBoardOptions(showHud: widget.showHud, round: widget.round, rounds: widget.rounds),
   );
 }

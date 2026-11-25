@@ -5,6 +5,7 @@
 library;
 
 export 'src/arena.dart';
+export 'src/arena_board_options.dart';
 export 'src/arena_character_painter.dart';
 export 'src/arena_coin.dart';
 export 'src/arena_coin_icon_widgets.dart';

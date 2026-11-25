@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:toy_look/toy_look.dart';
 
 import 'arena.dart';
+import 'arena_board_options.dart';
 import 'arena_character_painter.dart';
 import 'arena_hud_widgets.dart';
 import 'arena_moments.dart';
@@ -25,38 +26,25 @@ class ArenaBoard extends StatelessWidget {
     required this.snapshot,
     required this.roster,
     this.characters = const {},
-    this.ownId,
+    this.options = const ArenaBoardOptions(),
     this.onResize,
-    this.showHud = true,
-    this.round,
-    this.rounds,
   });
 
   final ArenaSnapshot snapshot;
   final ArenaRoster roster;
-
-  /// The round's number and how many the match runs (M16 A2), for the bar's
-  /// "Round N of M"; null when the host names no rounds.
-  final int? round;
-  final int? rounds;
 
   /// The character each player chose (M16 identity), beside [roster]: the bar
   /// and the marbles wear it, and a player missing here keeps its number's
   /// default.
   final ArenaCharacters characters;
 
-  /// The player of the phone this board is drawn on, marked "(you)" in the bar;
-  /// null on a TV or the host's own screen, where every player is alike (M14
-  /// bugs2 7).
-  final String? ownId;
+  /// The bar's round, its count, the phone's own player and whether the bar is
+  /// drawn: see [ArenaBoardOptions].
+  final ArenaBoardOptions options;
 
   /// Called with the field's size every time it is drawn, so the host's rules
   /// can move in it. A viewer has no rules and passes none.
   final ValueChanged<Size>? onResize;
-
-  /// Whether the round strip is drawn. When it is not, its space stays (M16
-  /// bugs3 B-036), so the field keeps the size it has.
-  final bool showHud;
 
   @override
   Widget build(BuildContext context) => ToyLookScope(
@@ -66,7 +54,7 @@ class ArenaBoard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Visibility(
-            visible: showHud,
+            visible: options.showHud,
             maintainSize: true,
             maintainState: true,
             maintainAnimation: true,
@@ -74,10 +62,8 @@ class ArenaBoard extends StatelessWidget {
               snapshot: snapshot,
               roster: roster,
               characters: characters,
-              ownId: ownId,
               oneLine: constraints.maxHeight < ArenaHud.oneLineBelow,
-              round: round,
-              rounds: rounds,
+              options: options,
             ),
           ),
           Expanded(
