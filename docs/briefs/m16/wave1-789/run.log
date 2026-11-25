@@ -93,3 +93,9 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-24 18:51:03 combined check: skips protocol connection metrics kit look arena puzzle tools (no job's change reaches them)
 2026-11-24 18:53:36 committed n7a: 90b0713f test(party_host): the awards flow from start card to final scores (n7a)
 2026-11-24 18:53:36 wave 2 review: wave2-review-report.md does not cover n7a, so its review is wave2-n7a
+2026-11-24 18:53:53 start n9d3
+2026-11-24 18:56:37 n9d3 finished: result 4 (25 turns, 2 min)
+2026-11-24 18:56:38 n9d3: dropped generated churn outside its list: tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-24 18:56:52 tests-first ok: packages/test_game/test/arena_hud_map_test.dart fails on the old code
+2026-11-24 18:57:01 combined check: skips protocol connection metrics look tools (no job's change reaches them)
+2026-11-24 19:00:26 committed n9d3: 22aa639c test_game: the Arena HUD names the map in the round (n9d3)
