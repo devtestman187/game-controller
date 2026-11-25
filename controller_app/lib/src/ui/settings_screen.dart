@@ -38,6 +38,7 @@ import '../providers.dart';
 import '../sticks.dart';
 import '../tilt.dart';
 import 'settings_nickname_row.dart';
+import 'settings_tips_row.dart';
 
 part 'settings_profile_section.dart';
 part 'settings_sections.dart';
@@ -91,6 +92,8 @@ class SettingsScreen extends ConsumerWidget {
         _GameSection(),
         SizedBox(height: ToySizes.space12),
         _StatsSection(),
+        SizedBox(height: ToySizes.space12),
+        ShowTipsRow(),
         SizedBox(height: ToySizes.space12),
         _AboutSection(),
       ],
