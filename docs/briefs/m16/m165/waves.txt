@@ -6,3 +6,5 @@ c0a b2s b2h
 c0b
 # wave B3: head-to-head 2 (B-044), two arms
 b1s b1h
+# wave B4: B-042 proof numbers
+b3

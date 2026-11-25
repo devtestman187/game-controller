@@ -2,3 +2,5 @@ a1s /e/AI/game-controller-m16-jobs/flash-20261125-132746-1866 rc=0
 a1h /e/AI/game-controller-m16-jobs/flash-20261125-132811-2123 rc=4
 b2s /e/AI/game-controller-m16-jobs/flash-20261125-140240-3594 rc=0
 b2h /e/AI/game-controller-m16-jobs/flash-20261125-140407-4760 rc=0
+b1s /e/AI/game-controller-m16-jobs/flash-20261125-144325-2945 rc=0
+b1h /e/AI/game-controller-m16-jobs/flash-20261125-144351-3227 rc=0

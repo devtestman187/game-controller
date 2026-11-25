@@ -1,0 +1,444 @@
+diff --git a/controller_app/lib/src/host/host_overrides.dart b/controller_app/lib/src/host/host_overrides.dart
+index 0a4cf885..00e6e32d 100644
+--- a/controller_app/lib/src/host/host_overrides.dart
++++ b/controller_app/lib/src/host/host_overrides.dart
+@@ -80,7 +80,7 @@ List<Override> phoneHostOverrides({required party.HostDirectories directories})
+     return (
+       pxPerMm: mm,
+       rects: (Size box) => _hostPadRects(box, mode: mode, mm: mm, sticks: sticks),
+-      hudRects: (Size box) => const <Rect>[],
++      hudRects: (Size box) => _hostHudRects(box, mode: mode, mm: mm, sticks: sticks),
+     );
+   }),
+ ];
+@@ -96,3 +96,11 @@ List<Rect> _hostPadRects(Size box, {required PadMode mode, required double mm, r
+   for (final rect in leftPadRects(Size(box.width, box.height + topBarHeightPx), mode: mode, mm: mm, sticks: sticks))
+     rect.shift(const Offset(0, -topBarHeightPx)),
+ ];
++
++/// The right hand's controls in the box of a host screen, moved back up into
++/// the room as [_hostPadRects] does for the left hand's: the clock area the
++/// host's game draws keeps clear of them (B-044).
++List<Rect> _hostHudRects(Size box, {required PadMode mode, required double mm, required StickSettings sticks}) => [
++  for (final rect in rightPadRects(Size(box.width, box.height + topBarHeightPx), mode: mode, mm: mm, sticks: sticks))
++    rect.shift(const Offset(0, -topBarHeightPx)),
++];
+diff --git a/controller_app/lib/src/ui/joined_view.dart b/controller_app/lib/src/ui/joined_view.dart
+index 9c48f66b..fe94ca24 100644
+--- a/controller_app/lib/src/ui/joined_view.dart
++++ b/controller_app/lib/src/ui/joined_view.dart
+@@ -46,6 +46,38 @@ List<Rect> leftPadRects(
+   }
+ }
+ 
++/// Where the game's readouts must keep clear, in a screen of [box]: the right
++/// hand's controls as [mode] draws them, in the screen's px, passed through
++/// [FrameView.hudRects] (B-044). Only the clock area keeps clear of them: the
++/// board and the mirror may go under, so these never join [leftPadRects].
++///
++/// A, B, X and Y and Start (Pause) are drawn in every mode; stick mode adds
++/// the right stick, or its zone while a floating stick may be anywhere.
++List<Rect> rightPadRects(
++  Size box, {
++  required PadMode mode,
++  required double mm,
++  StickSettings sticks = const StickSettings(),
++}) {
++  // The pad is laid out in the body, below the bar the game shows through.
++  final body = Size(box.width, box.height - topBarHeightPx);
++  if (body.width <= 0 || body.height <= 0) return const [];
++  const bar = Offset(0, topBarHeightPx);
++  switch (mode) {
++    case PadMode.dpad:
++    case PadMode.gyro:
++      final layout = padLayout(body, mm: mm);
++      return [layout.faceButtons.shift(bar), layout.start.shift(bar)];
++    case PadMode.sticks:
++      final layout = stickLayout(body, mm: mm, buttonSize: sticks.buttonSize);
++      return [
++        layout.faceButtons.shift(bar),
++        (sticks.floating ? layout.rightZone : layout.rightStick).shift(bar),
++        layout.start.shift(bar),
++      ];
++  }
++}
++
+ /// The game the host shows this phone (m12 §5), drawn behind this phone's own
+ /// controls: the frames the client receives, and each frame's sounds played
+ /// by the party sound player. The waiting card sits over it while the host is
+@@ -139,6 +171,7 @@ class _JoinedViewState extends ConsumerState<JoinedView> {
+               // The screen's own density: the game keeps the other side's
+               // mirror's marks at a physical size by it (rule 7).
+               pxPerMm: mm,
++              hudRects: rightPadRects(window.biggest, mode: mode, mm: mm, sticks: sticks),
+               // The last frame drawn, so the results card can show the
+               // picture the round left (M14 r5 5).
+               onDrawn: (snapshot) => ref.read(viewDrawnProvider.notifier).drawn(snapshot),
+diff --git a/controller_app/test/right_pad_rects_test.dart b/controller_app/test/right_pad_rects_test.dart
+new file mode 100644
+index 00000000..2cc3aabd
+--- /dev/null
++++ b/controller_app/test/right_pad_rects_test.dart
+@@ -0,0 +1,66 @@
++import 'package:controller/src/gyro.dart';
++import 'package:controller/src/layout.dart';
++import 'package:controller/src/sticks.dart';
++import 'package:controller/src/ui/joined_view.dart';
++import 'package:controller/src/ui/top_bar_metrics.dart';
++import 'package:flutter/widgets.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:party_host/party_host.dart' as party;
++
++import 'support/host_app.dart';
++
++const _tabletPortrait = Size(1640, 2360);
++const _phoneLandscape = Size(852, 393);
++
++/// Every mode the pad draws, with the stick settings that change its right hand.
++const _setups = <(String, PadMode, StickSettings)>[
++  ('dpad', PadMode.dpad, StickSettings()),
++  ('fixed sticks', PadMode.sticks, StickSettings()),
++  ('floating sticks', PadMode.sticks, StickSettings(floating: true)),
++  ('gyro', PadMode.gyro, StickSettings()),
++];
++
++void main() {
++  group('rightPadRects: the right hand\'s controls, for the HUD only', () {
++    for (final box in [_tabletPortrait, _phoneLandscape]) {
++      for (final (name, mode, sticks) in _setups) {
++        test('$name at $box: rects inside the box, clear of the left hand, Start/Pause present', () {
++          const mm = 160 / 25.4;
++          final right = rightPadRects(box, mode: mode, mm: mm, sticks: sticks);
++          final left = leftPadRects(box, mode: mode, mm: mm, sticks: sticks);
++          expect(right, isNotEmpty);
++          final screen = Offset.zero & box;
++          for (final rect in right) {
++            expect(rect.isEmpty, isFalse);
++            expect(screen.contains(rect.topLeft) && screen.contains(rect.bottomRight), isTrue, reason: '$rect');
++            for (final other in left) {
++              expect(rect.overlaps(other), isFalse, reason: '$rect meets the left hand\'s $other');
++            }
++          }
++          final body = Size(box.width, box.height - topBarHeightPx);
++          // The default density and button size are the ones used here.
++          final start = mode == PadMode.sticks ? stickLayout(body).start : padLayout(body).start;
++          expect(right, contains(start.shift(const Offset(0, topBarHeightPx))));
++        });
++      }
++    }
++  });
++
++  testWidgets('the host\'s hudRects are the same rects moved up into the host\'s room by the bar', (tester) async {
++    await pumpHostApp(tester);
++    final host = await enterHostMode(tester);
++    final pad = hostContainer(tester).read(party.hostPadProvider);
++    const room = Size(852, 393 - topBarHeightPx);
++    final expected = [
++      for (final rect in rightPadRects(
++        Size(room.width, room.height + topBarHeightPx),
++        mode: PadMode.dpad,
++        mm: pad.pxPerMm,
++      ))
++        rect.shift(const Offset(0, -topBarHeightPx)),
++    ];
++    expect(expected, isNotEmpty);
++    expect(pad.hudRects(room), expected);
++    await tester.runAsync(host.dispose);
++  });
++}
+diff --git a/docs/briefs/m16/m165/b1s-report.md b/docs/briefs/m16/m165/b1s-report.md
+new file mode 100644
+index 00000000..89a6f85d
+--- /dev/null
++++ b/docs/briefs/m16/m165/b1s-report.md
+@@ -0,0 +1,46 @@
++## Summary
++
++B-044: the HUD keeps clear of the right-hand controls. The board and mirror fits are untouched (`place()` never sees hudRects).
++
++- `rightPadRects` (joined_view.dart): dpad/gyro = faceButtons + start; sticks = faceButtons + rightStick (rightZone when floating) + start; screen px with the bar shift. Passed as `FrameView.hudRects`.
++- `HostPad.hudRects` (host_overrides.dart): `_hostHudRects`, the same rects moved up by `topBarHeightPx`; "Show on this device" stays empty.
++- camera.dart: `hudPlace` rejects a beside-world form that meets a hudRect inflated by `mirrorGapPx`; `mirrorPlace` takes `hudRects` and passes them to both its `hudPlace` calls only; dartdoc says so. camera_fit.dart: `_hudUnder` takes hudRects, moves right of one it meets, and rejects overlap. match_view.dart passes `hudRects` to `mirrorPlace`.
++- Tests (new): controller_app/test/right_pad_rects_test.dart (8 mode/size cases + host hudRects); packages/puzzle_game/test/hud_place_right_controls_test.dart (3 tests).
++- Seen: tools/mine.sh ok (47 controller_app tests, 4 puzzle_game tests, analyze clean). The named existing tests pass: controller_app 14, puzzle_game 26.
++- Tests-first: I did not run the new tests against the old code. They would not compile or would fail there, because `rightPadRects` and the `hudRects` parameter of `mirrorPlace` did not exist.
++
++## Computed values
++No numeric expectations; checks are geometric (inside box, no overlap with left rects, clear of the inflated hudRect, equality with and without a far hudRect).
++
++## Decisions
++- The 1640x2360 hudPlace test builds the control rect from where the free HUD lands, because that spot depends on the layout; it needs no fixed pixel value.
++- The test that hudRects don't change the world is done through `mirrorPlace` (place() has no such parameter), with a far rect leaving rect, scale and hud unchanged.
++- `hudPlace` with a mirror (short form only) that meets a hudRect falls through to the corner, which stays as the last place.
++
++## Self-check
++1. Host setups: host hudRects test (phone host, dpad); show-on-device unchanged (empty, existing mirror_pad_test case).
++2. No new kept state.
++3. No pause/away/dropped-link state touched.
++4. Stayed inside allow:.
++5. No stop needed.
++6. Sizes: right_pad_rects_test at 1640x2360 and 852x393, every mode. The HUD stays a fraction of the box.
++
++## Hand-over
++Device check: whether the HUD sits well beside the A/B/X/Y ring on the iPad in portrait.
++
++## Commit message
++
++m165 b1s: HUD keeps clear of the right-hand controls (B-044)
++
++rightPadRects maps the X/Y/A ring, right stick and Start/Pause as rects.
++The joined view and the host's HostPad.hudRects pass them on. hudPlace,
++mirrorPlace and _hudUnder keep the clock area clear of them with
++mirrorGapPx of air. place(), the board fit and the mirror fit are unchanged.
++
++## Status row
++
++m165 b1s: HUD clears the right-hand controls (rightPadRects, hudRects in hudPlace/_hudUnder/mirrorPlace); open: device check on the iPad in portrait.
++
++## Delete
++
++- none
+diff --git a/docs/briefs/m16/m165/run.log b/docs/briefs/m16/m165/run.log
+index 41bb0487..36d2f1f6 100644
+--- a/docs/briefs/m16/m165/run.log
++++ b/docs/briefs/m16/m165/run.log
+@@ -123,3 +123,21 @@ METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=21 in=26 out=205
+ METRICS wave3-review worker=claude model=claude-haiku-5-5 turns=26 in=28 out=18171 cache=556023 min=1.5 wall=- result=0
+ 2026-11-25 14:40:37 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/m165/REVIEW.md, verifies its findings and writes one fix brief
+ RESULT: DONE: 7 jobs, 16 min
++2026-11-25 14:41:52 RUN_MAX_MIN=300 min (computed backstop of the jobs still to do)
++2026-11-25 14:41:52 start at 8a5f6337 on m16
++2026-11-25 14:41:52 worker: claude
++2026-11-25 14:41:53 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
++2026-11-25 14:42:13 phase: preflight
++2026-11-25 14:42:20 preflight ok: the worker ran flutter --version and tools/check.sh --list
++2026-11-25 14:42:35 phase: worker (preflight took 22s)
++2026-11-25 14:42:36 skip a1s (kept: apply: no arm already ran)
++2026-11-25 14:42:36 skip a1h (kept: apply: no arm already ran)
++2026-11-25 14:42:36 skip a2 (already done)
++2026-11-25 14:42:51 phase: worker (worker took 16s)
++2026-11-25 14:42:52 skip c0a (already done)
++2026-11-25 14:42:52 skip b2s (kept: apply: no arm already ran)
++2026-11-25 14:42:52 skip b2h (kept: apply: no arm already ran)
++2026-11-25 14:43:08 phase: worker (worker took 16s)
++2026-11-25 14:43:08 skip c0b (already done)
++2026-11-25 14:43:23 phase: worker (worker took 16s)
++2026-11-25 14:43:24 start b1s
+diff --git a/packages/puzzle_game/lib/src/camera.dart b/packages/puzzle_game/lib/src/camera.dart
+index 27b9ee32..1b24e6f8 100644
+--- a/packages/puzzle_game/lib/src/camera.dart
++++ b/packages/puzzle_game/lib/src/camera.dart
+@@ -224,7 +224,9 @@ final class PuzzleCamera {
+   /// board's drawn size — and keeps it only if its smallest piece still draws
+   /// at [mirrorMinPieceMm], which [pxPerMm] turns into px. [puzzle] is their
+   /// picture; [text] the HUD the phone draws without a mirror; [padRects] the
+-  /// controls the app draws under the game, passed through the view.
++  /// controls the app draws under the game, passed through the view;
++  /// [hudRects] the right hand's, which only the HUD keeps clear of (B-044):
++  /// they go to [hudPlace] and never to [place] or the mirror's own fit.
+   static MirrorPlacement? mirrorPlace(
+     Puzzle puzzle,
+     SplitLayout layout,
+@@ -234,6 +236,7 @@ final class PuzzleCamera {
+     required ({String score, List<String> short}) text,
+     double pxPerMm = phonePxPerMm,
+     List<Rect> padRects = const [],
++    List<Rect> hudRects = const [],
+   }) {
+     if (!split || camera.side == null || layout.target != LayoutTarget.phones) return null;
+     final world = place(layout, camera, box, camera.side!);
+@@ -252,7 +255,7 @@ final class PuzzleCamera {
+     // What the mirror must not meet: their board and tray row, this phone's own
+     // pad (rules 3 and 8), and the clock area.
+     final boardAndTray = [onScreen(board), onScreen(layout.left.tray), ...padRects];
+-    final hud = hudPlace(layout, camera, box, text, padRects: padRects, split: split);
++    final hud = hudPlace(layout, camera, box, text, padRects: padRects, split: split, hudRects: hudRects);
+     // The corner, with the clock area to its right in its short form, clear of
+     // the world: its left edge is where the mirror's right must stop.
+     final unit = hudUnit(box);
+@@ -267,7 +270,7 @@ final class PuzzleCamera {
+     final corner = _fitting(box, board.size, at, maxScale, floor, [...boardAndTray, besideHud]);
+     if (corner != null) {
+       final rect = Rect.fromLTWH(at.dx, at.dy, board.width * corner, board.height * corner);
+-      return (rect: rect, scale: corner, hud: hudPlace(layout, camera, box, text, mirror: rect));
++      return (rect: rect, scale: corner, hud: hudPlace(layout, camera, box, text, mirror: rect, hudRects: hudRects));
+     }
+     // The gap, under the clock area, right of the controls that reach into the
+     // band the mirror can take there.
+@@ -292,8 +295,11 @@ final class PuzzleCamera {
+   /// With a [mirror] to its left the area starts at the mirror's right edge
+   /// and draws the short form (rule 5). [padRects] are the controls the app
+   /// draws under the game: the area keeps clear of them like the mirror does.
+-  /// [hudRects] are the controls the HUD keeps clear of, which the board and
+-  /// the mirror may go under (B-044); not used yet, so the placement ignores them.
++  /// [hudRects] are the right hand's controls the HUD keeps clear of, with
++  /// [mirrorGapPx] of air, in every form and under the world (B-044): a form
++  /// that meets one is rejected like one that does not fit, and the corner
++  /// stays the last place. The board and the mirror may go under them, so they
++  /// reach this placement only, never [place].
+   /// [split] says whether the match has two sides, which decides the world the
+   /// area goes under and the one the camera draws.
+   static ({Rect rect, HudForm form}) hudPlace(
+@@ -318,18 +324,26 @@ final class PuzzleCamera {
+       final size = _hudSize(form, text);
+       final width = unit * size.width;
+       if (spare < width) continue;
+-      return (rect: Rect.fromLTWH(left, top, width, unit * size.height), form: form);
++      final rect = Rect.fromLTWH(left, top, width, unit * size.height);
++      if (hudRects.any((control) => control.inflate(mirrorGapPx).overlaps(rect))) continue;
++      return (rect: rect, form: form);
+     }
+     if (mirror == null) {
+       // Under the world is the last place before the corner: the world drawn
+       // last, a side camera's only world or the lower one of a whole match.
+       final side = camera.side ?? (split ? PuzzleSide.right : PuzzleSide.left);
+       final under = place(layout, camera, box, side, split: split, padRects: padRects);
+-      final fits = _hudUnder(box, text, (
+-        left: under.origin.dx,
+-        top: under.origin.dy + layout.left.size.height * under.scale + hudWorldGapPx,
+-        room: layout.left.size.width * under.scale,
+-      ), padRects);
++      final fits = _hudUnder(
++        box,
++        text,
++        (
++          left: under.origin.dx,
++          top: under.origin.dy + layout.left.size.height * under.scale + hudWorldGapPx,
++          room: layout.left.size.width * under.scale,
++        ),
++        padRects,
++        hudRects,
++      );
+       if (fits != null) return fits;
+     }
+     final board = Rect.fromLTWH(
+diff --git a/packages/puzzle_game/lib/src/camera_fit.dart b/packages/puzzle_game/lib/src/camera_fit.dart
+index 2e3d4fac..b5317c61 100644
+--- a/packages/puzzle_game/lib/src/camera_fit.dart
++++ b/packages/puzzle_game/lib/src/camera_fit.dart
+@@ -19,26 +19,29 @@ double? _fitting(Size box, Size board, Offset at, double maxScale, double floor,
+ /// The clock area under the world in [box] at [under], in the first of
+ /// [HudForm]'s forms that fits its width, or null where none does (device
+ /// test 3). It starts right of a pad whose band it meets, and keeps
+-/// [PuzzleCamera.mirrorGapPx] of air from every one of [padRects].
++/// [PuzzleCamera.mirrorGapPx] of air from every one of [padRects] and
++/// [hudRects], moving right of a [hudRects] entry it meets as for a pad.
+ ({Rect rect, HudForm form})? _hudUnder(
+   Size box,
+   ({String score, List<String> short}) text,
+   ({double left, double top, double room}) under,
+   List<Rect> padRects,
++  List<Rect> hudRects,
+ ) {
++  final controls = [...padRects, ...hudRects];
+   final unit = PuzzleCamera.hudUnit(box);
+   for (final form in const [HudForm.oneLine, HudForm.twoLines, HudForm.short]) {
+     final size = PuzzleCamera._hudSize(form, text);
+     final width = unit * size.width;
+     var left = under.left;
+-    for (final pad in padRects) {
++    for (final pad in controls) {
+       final air = pad.inflate(PuzzleCamera.mirrorGapPx);
+       final inBand = air.top < under.top + unit * size.height && air.bottom > under.top;
+       if (inBand && air.right > left && air.left < left + width) left = air.right;
+     }
+     final rect = Rect.fromLTWH(left, under.top, width, unit * size.height);
+     final inside = rect.left >= 0 && rect.top >= 0 && rect.right <= box.width && rect.bottom <= box.height;
+-    final clear = padRects.every((pad) => !pad.inflate(PuzzleCamera.mirrorGapPx).overlaps(rect));
++    final clear = controls.every((pad) => !pad.inflate(PuzzleCamera.mirrorGapPx).overlaps(rect));
+     if (!inside || !clear || rect.right > under.left + under.room + PuzzleCamera._floorSlack) continue;
+     return (rect: rect, form: form);
+   }
+diff --git a/packages/puzzle_game/lib/src/match_view.dart b/packages/puzzle_game/lib/src/match_view.dart
+index 0c9e9bcc..f444474e 100644
+--- a/packages/puzzle_game/lib/src/match_view.dart
++++ b/packages/puzzle_game/lib/src/match_view.dart
+@@ -161,6 +161,7 @@ class _MatchViewState extends State<MatchView> {
+       text: (score: text.score, short: text.short),
+       pxPerMm: widget.pxPerMm,
+       padRects: widget.padRects,
++      hudRects: widget.hudRects,
+     );
+     return mirror == null ? const PuzzleCamera.whole() : camera;
+   }
+diff --git a/packages/puzzle_game/test/hud_place_right_controls_test.dart b/packages/puzzle_game/test/hud_place_right_controls_test.dart
+new file mode 100644
+index 00000000..6d9b5ba4
+--- /dev/null
++++ b/packages/puzzle_game/test/hud_place_right_controls_test.dart
+@@ -0,0 +1,75 @@
++import 'dart:math';
++import 'dart:ui';
++
++import 'package:flutter_test/flutter_test.dart';
++import 'package:puzzle_game/puzzle_game.dart';
++
++import 'support/match_helpers.dart';
++
++/// The owner's iPad in portrait (B-044, Nov 25).
++const tablet = Size(1640, 2360);
++const whole = PuzzleCamera.whole();
++
++({String score, List<String> short}) hudText(Puzzle puzzle) {
++  final match = PuzzleMatch(
++    puzzle,
++    teams: const {'p1': PuzzleSide.left},
++    random: Random(1),
++    target: LayoutTarget.phones,
++  );
++  final hud = phoneHud(match.snapshot(), null);
++  return (score: hud.score, short: hud.short);
++}
++
++void main() {
++  final puzzle = load('house');
++  final layout = SplitLayout.of(puzzle, 1, target: LayoutTarget.phones);
++  final text = hudText(puzzle);
++
++  test('a hudRect over the spot the HUD would take moves it clear of the rect and its air', () {
++    final free = PuzzleCamera.hudPlace(layout, whole, tablet, text);
++    // The right-hand controls cover the HUD's own spot, and more to its right.
++    final control = Rect.fromLTRB(
++      free.rect.left + 10,
++      free.rect.top - 20,
++      free.rect.right + 400,
++      free.rect.bottom + 20,
++    );
++    final placed = PuzzleCamera.hudPlace(layout, whole, tablet, text, hudRects: [control]);
++    expect(placed.rect, isNot(free.rect));
++    expect(
++      control.inflate(PuzzleCamera.mirrorGapPx).overlaps(placed.rect),
++      isFalse,
++      reason: '${placed.rect} (${placed.form}) meets $control',
++    );
++  });
++
++  test('a hudRect away from the HUD leaves it where it was', () {
++    final old = PuzzleCamera.hudPlace(layout, whole, tablet, text);
++    final far = Rect.fromLTWH(0, tablet.height - 20, 10, 10);
++    final same = PuzzleCamera.hudPlace(layout, whole, tablet, text, hudRects: [far]);
++    expect(same.rect, old.rect);
++    expect(same.form, old.form);
++  });
++
++  test('mirrorPlace takes hudRects for its HUD only: one far from everything changes nothing', () {
++    const side = PuzzleCamera.side(PuzzleSide.left);
++    final raceText = (score: 'You 0/9 · Right 0/9', short: ['You 0/9', 'Right 0/9']);
++    final free = PuzzleCamera.mirrorPlace(puzzle, layout, side, tablet, split: true, text: raceText);
++    // A rect in the box's bottom right corner, where neither the HUD nor the
++    // mirror goes.
++    final far = Rect.fromLTWH(tablet.width - 20, tablet.height - 20, 10, 10);
++    final withFar = PuzzleCamera.mirrorPlace(
++      puzzle,
++      layout,
++      side,
++      tablet,
++      split: true,
++      text: raceText,
++      hudRects: [far],
++    );
++    expect(withFar?.rect, free?.rect);
++    expect(withFar?.scale, free?.scale);
++    expect(withFar?.hud.rect, free?.hud.rect);
++  });
++}
