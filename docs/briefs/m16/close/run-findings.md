@@ -1,1 +1,2 @@
 - t1's report has no Summary block in its first 40 lines
+- c4's report has no Summary block in its first 40 lines

@@ -30,3 +30,15 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-25 05:56:52 hand-fixed c2: tests-first proof and worker review done (marked in done.txt)
 2026-11-25 05:56:52 skip c2 (already done)
 2026-11-25 05:56:52 wave 1 review: wave1-review-report.md does not cover c2, so its review is wave1-c2
+2026-11-25 05:57:09 start c3
+2026-11-25 05:57:35 start c4
+2026-11-25 05:58:42 start c5
+2026-11-25 06:00:42 c3 finished: result 0 (14 turns, 3 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 18/163529/12704/6300
+2026-11-25 06:03:59 c5 finished: result 0 (16 turns, 3 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 22/222026/16769/7316
+2026-11-25 06:22:40 c4 finished: result 0 (5 turns, 0 min) model claude-sonnet-5-5, ladder 1, tokens in/read/write/out 10/150044/4087/3110
+2026-11-25 06:22:40 WARN: c4 logged 5 turns, 0 min but ran 25 min wall: a resumed session's usage row covers its last resume only, its real turns are unknown
+2026-11-25 06:22:56 combined check: the tools suite is skipped (no job changed a file under tools/)
+2026-11-25 06:26:37 committed c3: 66a25175 Pin the volume slider's spoken-value formatter in the test
+2026-11-25 06:26:39 committed c5: 71020aee Extract launch consent ask-once guard into launchConsentDue
+2026-11-25 06:26:39 finding: c4's report has no Summary block in its first 40 lines
+2026-11-25 06:26:41 committed c4: 5fb9df93 c4: report the 568x320 TV-look top bar overflow as an owner question
