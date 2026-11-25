@@ -252,3 +252,5 @@ HAND-FIX-EVENT f2: 0 lines changed (applied partial: anchors test file dropped, 
 2026-11-25 01:22:20 checks failed; fetching packages and trying once more
 2026-11-25 01:23:39 STOPPED: checks failed twice on the combined tree after n8b3
 RESULT: STOPPED: checks failed twice on the combined tree after n8b3
+HAND-FIX n8b3: committed by hand after two sonnet runs (99 turns; second run 1 logged turn, ~28 min); pump_app toConnect default added by hand (12 lines); 5 tests still fail (f4)
+HAND-FIX-EVENT n8b3: 14 lines changed, replaced ladder level 3

@@ -10,3 +10,11 @@ f1 n8b2 n8d2
 n8d1 n8b3a n8e0
 # wave 6: Home exit adapter and marks gate, test fixes, launch routing (disjoint)
 f2 f3 n8b3
+# wave 7: Home-first repins and the demo close, settings_text sweep, host_text sweep (disjoint)
+f4 n8e2 n8e3
+# wave 8: phone_text sweep, local network sweep, connection package sweep (disjoint)
+n8e1 n8e4 n8e6
+# wave 9: controller_parts/diagnostics sweep, pause Resume label for resumers only (disjoint)
+n8e5 n9e3
+# wave 10: TV word guard (all sweeps done)
+n8g
