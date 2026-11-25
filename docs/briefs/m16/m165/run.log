@@ -113,3 +113,13 @@ RESULT: STOPPED: PAUSED after wave 2 (RUN_PAUSE_AFTER_WAVE=1): its review is com
 2026-11-25 14:38:39 finding: c0b's report has no Summary block in its first 40 lines
 2026-11-25 14:38:40 committed c0b: 7a56815f m165 c0b: carry hudRects from the app to puzzle_game
 2026-11-25 14:38:40 phase: review (apply took 1s)
+2026-11-25 14:40:32 reviewed wave3: 6 finding(s)
+METRICS b2h worker=claude model=claude-haiku-5-5 turns=37 in=46 out=28568 cache=984619 min=7.0 wall=9.7 result=0
+METRICS b2s worker=claude model=claude-sonnet-5-5 turns=24 in=22 out=8222 cache=287130 min=4.0 wall=7.2 result=0
+METRICS c0a worker=claude model=claude-haiku-5-5 turns=35 in=52 out=16695 cache=923785 min=3.0 wall=5.7 result=0
+METRICS c0b worker=claude model=claude-sonnet-5-5 turns=56 in=30 out=14494 cache=540495 min=4.2 wall=8.8 result=0
+METRICS wave1-review worker=claude model=claude-haiku-5-5 turns=24 in=32 out=15084 cache=595497 min=1.4 wall=- result=0
+METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=21 in=26 out=20550 cache=419662 min=1.6 wall=- result=0
+METRICS wave3-review worker=claude model=claude-haiku-5-5 turns=26 in=28 out=18171 cache=556023 min=1.5 wall=- result=0
+2026-11-25 14:40:37 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/m165/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 7 jobs, 16 min
