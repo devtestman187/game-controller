@@ -10,3 +10,5 @@ b1s b1h
 b3
 # wave C1: B-042 re-measure, top bar free width, chip fix
 c1 c2 c3
+# wave C2: B-044 place() test (H2H-3 not run: c1 gate failed)
+c4

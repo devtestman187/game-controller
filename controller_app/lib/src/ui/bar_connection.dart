@@ -101,7 +101,7 @@ class BarConnection extends ConsumerWidget {
                 : Text(_chipText(client, demo, hostOnly: hostOnly), overflow: TextOverflow.ellipsis),
             onPressed: () => openConnect(context),
           );
-          // A touch target is at least 48 dp square, even when the row is full.
+          // A touch target is at least 48 dp square where the row has the room; at 568x320 in the TV look it has 35.9 dp (c3 Open).
           return ConstrainedBox(
             constraints: const BoxConstraints(minWidth: minTouchTargetDp, minHeight: minTouchTargetDp),
             child: iconOnly

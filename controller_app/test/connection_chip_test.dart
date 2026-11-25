@@ -28,7 +28,10 @@ void main() {
       expect(size.height, greaterThanOrEqualTo(minTargetDp), reason: 'chip height $size');
       final label = find.descendant(of: find.byKey(const Key('connectionChip')), matching: find.byType(Text));
       // The dot alone (the room is under the threshold) has no label to cut: its tooltip carries the label.
-      if (label.evaluate().isNotEmpty) {
+      if (label.evaluate().isEmpty) {
+        final tooltip = find.ancestor(of: find.byKey(const Key('connectionChip')), matching: find.byType(Tooltip));
+        expect(tooltip, findsOneWidget, reason: 'the dot-only chip has no tooltip');
+      } else {
         final paragraph = tester.renderObject<RenderParagraph>(label);
         expect(paragraph.didExceedMaxLines, isFalse, reason: 'the chip label "${paragraph.text.toPlainText()}" is cut');
       }

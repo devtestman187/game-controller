@@ -7,3 +7,4 @@
 - 14:50 H2H control judged: P=b2h(haiku) Q=b2s(sonnet): both green, 0 must each; tie -> Haiku. Applied b2h; chip unreadable: 568 TV 35.9dp wide; 568 menu and 667 TV label cut.
 - 15:05 H2H-2: M=b1s 1 must (weak leak test), N=b1h 1 must (no place() test); tie -> Haiku. b1h applied f7799813. b3 brief written.
 - 15:50 wait-run case in run-stops-test was time-bombed (fixed Nov 24 22:20 start, expected-min 600): fixed to relative stamps. batch-close rerun.
+- 16:14 wave C1 briefs c1 c2 c3 committed e0ff1aea; runner started (since 1795644855). release notes draft committed. next: wait; c1 gate -> H2H-3 briefs c5s c5h + c4 in wave C2
