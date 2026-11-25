@@ -6,3 +6,4 @@
 - 14:20 H2H-1 judged: X=a1s (sonnet) 0 must, Y=a1h (haiku) 2 must (taps onPressed directly; no compact-bar test); both checks green (a1h worker result 4: stray mine.out etc. outside allow). Winner a1s applied 40a6232f via h2h.sh; loser patch saved. Wave B re-planned: contract chain c0a (haiku) c0b (sonnet) first because hudRects must go through ViewContext/HostPad; b2 control arms in B1; b1 arms then b3 later.
 - 14:50 H2H control judged: P=b2h(haiku) Q=b2s(sonnet): both green, 0 must each; tie -> Haiku. Applied b2h; chip unreadable: 568 TV 35.9dp wide; 568 menu and 667 TV label cut.
 - 15:05 H2H-2: M=b1s 1 must (weak leak test), N=b1h 1 must (no place() test); tie -> Haiku. b1h applied f7799813. b3 brief written.
+- 15:50 wait-run case in run-stops-test was time-bombed (fixed Nov 24 22:20 start, expected-min 600): fixed to relative stamps. batch-close rerun.

@@ -81,3 +81,10 @@ Open questions inside b3: may the strip use the top bar's band (height measured 
 1. An `apply: no` arm shares allow: with its twin by design; brief-check now exempts such pairs (evidence: H2H-1 14 FAILs before the exemption).
 2. A wave review/pause stop leaves a runner still flushing its review for a minute: a restart in that window starts nothing and logs no `start at` (evidence: 14:19 restart, waiter exit 5).
 3. A contract that adds a field to a record typedef (ViewContext, HostPad) breaks every literal in tests: list them in allow: before sizing the job (c0b: 9 test files).
+
+## Close
+- Full check (batch-close --run-check, run.log): All checks passed (449s, 10 cached). It failed once before on a time-bombed wait-run case in run-stops-test.sh (fixed dates, now relative stamps; committed).
+- agent-cost since 13:10: fable $0.32, haiku $0.41, opus $0.50, sonnet $6.54, total $7.77 (includes the blind reviewers and waiters).
+- Calls: driver about 115 tool calls; waiters: 5 thumb-wait agents (10, 8, 4, 8, 6 tool uses); 3 blind Sonnet reviewers (2-6 calls each).
+- proc-sweep --since <batch start>: `proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)`
+- no background command of mine is still running
