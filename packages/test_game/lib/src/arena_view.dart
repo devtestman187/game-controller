@@ -153,5 +153,7 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
     characters: arenaCharactersOf(widget.host.players),
     onResize: _session.resize,
     showHud: widget.showHud,
+    round: widget.round,
+    rounds: widget.rounds,
   );
 }

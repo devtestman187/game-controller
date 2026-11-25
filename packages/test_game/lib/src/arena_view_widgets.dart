@@ -28,10 +28,17 @@ class ArenaBoard extends StatelessWidget {
     this.ownId,
     this.onResize,
     this.showHud = true,
+    this.round,
+    this.rounds,
   });
 
   final ArenaSnapshot snapshot;
   final ArenaRoster roster;
+
+  /// The round's number and how many the match runs (M16 A2), for the bar's
+  /// "Round N of M"; null when the host names no rounds.
+  final int? round;
+  final int? rounds;
 
   /// The character each player chose (M16 identity), beside [roster]: the bar
   /// and the marbles wear it, and a player missing here keeps its number's
@@ -69,6 +76,8 @@ class ArenaBoard extends StatelessWidget {
               characters: characters,
               ownId: ownId,
               oneLine: constraints.maxHeight < ArenaHud.oneLineBelow,
+              round: round,
+              rounds: rounds,
             ),
           ),
           Expanded(

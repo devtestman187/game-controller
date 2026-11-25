@@ -43,7 +43,14 @@ class ArenaHud extends StatelessWidget {
     this.characters = const {},
     this.ownId,
     this.oneLine = false,
+    this.round,
+    this.rounds,
   });
+
+  /// The round's number from 1 and how many the match runs (M16 A2): the bar
+  /// reads "Round N of M" when both are set, and "Round N" when either is not.
+  final int? round;
+  final int? rounds;
 
   /// The box height, in px, below which the bar folds to one line: landscape
   /// phones are 375–393 high and the TV and tablets 540 and up, so a box
@@ -60,6 +67,10 @@ class ArenaHud extends StatelessWidget {
   static const _itemGap = 24.0;
   static const _oneLineItemGap = 12.0;
   static const _runGap = 4.0;
+
+  /// The clock turns the look's bad colour once this many ms are left in a
+  /// Bumper Round (owner decision, Nov 24: the last 15 s read as a warning).
+  static const _hurryLeftMs = 15000;
 
   /// A player's counters: the gap between them in px, the gap above its row,
   /// and its colour dot's size and gap from the name. The coin's picture is a
@@ -124,7 +135,7 @@ class ArenaHud extends StatelessWidget {
   /// The round's run, then a run per player. In a Bumper Round a name may take
   /// no more than [_bumperNameShare] of the bar, so every count fits a phone.
   List<Widget> _items(List<MapEntry<String, ({int number, String name})>> byNumber, bool bumper, double width) => [
-    _RoundRow(snapshot: snapshot, roster: roster, oneLine: oneLine),
+    _RoundRow(snapshot: snapshot, roster: roster, oneLine: oneLine, round: round, rounds: rounds),
     for (final MapEntry(key: id, value: player) in byNumber)
       if (snapshot.player(id) case final p?)
         _PlayerRow(
@@ -147,11 +158,19 @@ class ArenaHud extends StatelessWidget {
 /// its own — the Bumper Round — shows the time left on it (M14 b2); the race
 /// shows the time it has run.
 class _RoundRow extends StatelessWidget {
-  const _RoundRow({required this.snapshot, required this.roster, required this.oneLine});
+  const _RoundRow({
+    required this.snapshot,
+    required this.roster,
+    required this.oneLine,
+    required this.round,
+    required this.rounds,
+  });
 
   final ArenaSnapshot snapshot;
   final ArenaRoster roster;
   final bool oneLine;
+  final int? round;
+  final int? rounds;
 
   /// The clock's text: the time left where the round has a limit, else the
   /// time run, both to a tenth of a second.
@@ -160,12 +179,29 @@ class _RoundRow extends StatelessWidget {
     null => '${snapshot.roundTimeS.toStringAsFixed(1)} s',
   };
 
+  /// The round's label: "Round N of M" when the match names both, else "Round N".
+  String get _roundLabel {
+    final round = this.round;
+    final rounds = this.rounds;
+    return round != null && rounds != null ? 'Round $round of $rounds' : 'Round ${snapshot.round}';
+  }
+
+  /// Whether the clock is in its last stretch: a Bumper Round with time left
+  /// and no more than [ArenaHud._hurryLeftMs] of it.
+  bool get _hurrying {
+    final leftMs = snapshot.timeLeftMs;
+    return leftMs != null && leftMs > 0 && leftMs <= ArenaHud._hurryLeftMs;
+  }
+
   @override
   Widget build(BuildContext context) {
     final look = ToyLookScope.of(context);
     final text = Theme.of(context).textTheme;
     final style = (oneLine ? text.bodySmall : text.titleMedium)?.copyWith(color: look.colors.ink);
-    final tabular = style?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
+    final tabular = style?.copyWith(
+      fontFeatures: const [FontFeature.tabularFigures()],
+      color: _hurrying ? look.colors.bad : look.colors.ink,
+    );
     final best = snapshot.bestTimeS;
     final bestId = snapshot.bestId;
     final bestBy = roster.length > 1 && bestId != null ? roster[bestId]?.number : null;
@@ -174,7 +210,7 @@ class _RoundRow extends StatelessWidget {
       runSpacing: oneLine ? 0 : ArenaHud._runGap,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        Text('Round ${snapshot.round}', style: style),
+        Text(_roundLabel, style: style),
         Text(_clock, key: const Key('roundTime'), style: tabular),
         Text(
           'Best ${best == null ? '–' : '${best.toStringAsFixed(1)} s${bestBy == null ? '' : ' (P$bestBy)'}'}',
