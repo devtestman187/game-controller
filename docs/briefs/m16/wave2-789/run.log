@@ -86,3 +86,6 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-24 23:20:07 STOPPED: tools/review.sh found a FAIL after n8b1 n9b3 n9b2 (see .dart_tool/run-jobs/docs_briefs_m16_wave2-789/run-review.log); nothing of this wave is committed
 2026-11-24 23:20:08 reviewed wave2-n8c: 11 finding(s)
 RESULT: STOPPED: tools/review.sh found a FAIL after n8b1 n9b3 n9b2 (see .dart_tool/run-jobs/docs_briefs_m16_wave2-789/run-review.log); nothing of this wave is committed
+HAND-FIX n8b1 n9b2: runner review.sh FAIL (func over 60 lines: home_view.dart build 69, bar_connection.dart build 69); split by hand (extract _layout, _chip), analyze, review.sh 0 FAIL, 87 tests pass
+HAND-FIX-EVENT n8b1: 12 lines moved, replaced ladder level 2 (no model repair)
+HAND-FIX-EVENT n9b2: 25 lines moved, replaced ladder level 2 (no model repair)

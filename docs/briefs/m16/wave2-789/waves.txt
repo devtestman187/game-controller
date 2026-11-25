@@ -4,3 +4,5 @@ n8a n9b1 n9e
 n8b0 n8c n9sr
 # wave 3: Home widget, chip 48 dp plus 48 dp test fixes, party_host 48 dp measuring (disjoint)
 n8b1 n9b2 n9b3
+# wave 4: coach marks review fixes, HomeScreen wiring, Show tips switch (disjoint)
+f1 n8b2 n8d2
