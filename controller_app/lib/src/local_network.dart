@@ -41,7 +41,7 @@ LocalNetworkStatus localNetworkStatus({
   if (discovery.everFound || everConnected) {
     return const LocalNetworkStatus(
       LocalNetworkAccess.allowed,
-      'A TV was found or connected, so local network access is on.',
+      'A screen was found or connected, so local network access is on.',
     );
   }
   final target = client.target;
@@ -56,13 +56,13 @@ LocalNetworkStatus localNetworkStatus({
   if (discovery.running && started != null && (now ?? DateTime.now()).difference(started).inSeconds >= 10) {
     return const LocalNetworkStatus(
       LocalNetworkAccess.unknown,
-      'No TV found yet. If you tapped "Don\'t Allow" when iOS asked, turn it on in $_settingsPath. '
-      'Otherwise check that the TV app is open and on the same Wi-Fi.',
+      'No screen found yet. If you tapped "Don\'t Allow" when iOS asked, turn it on in $_settingsPath. '
+      'Otherwise check that the Thumb Party TV app is open and on the same Wi-Fi.',
     );
   }
   return const LocalNetworkStatus(
     LocalNetworkAccess.unknown,
-    'iOS doesn\'t tell apps. This shows "Allowed" as soon as a TV is found.',
+    'iOS doesn\'t tell apps. This shows "Allowed" as soon as a screen is found.',
   );
 }
 

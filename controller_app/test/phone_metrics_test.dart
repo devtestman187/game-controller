@@ -263,7 +263,7 @@ void main() {
       await tester.pump();
       a.client.ask(const RatingAskMessage(id: 'r1', game: 'arena'));
       await app.settle(tester);
-      expect(log.lines.map((l) => l.message), contains('The TV asks how the controls felt (arena)'));
+      expect(log.lines.map((l) => l.message), contains('The screen asks how the controls felt (arena)'));
     });
 
     testWidgets('the rating prompt can be skipped, and skips itself after a while', (tester) async {

@@ -87,7 +87,7 @@ class RatingPromptNotifier extends Notifier<RatingAskMessage?> {
   RatingAskMessage? build() {
     final client = ref.watch(clientProvider);
     final sub = client.ratingAsks.listen((ask) {
-      ref.read(logProvider).add('rating', 'The TV asks how the controls felt (${ask.game})');
+      ref.read(logProvider).add('rating', 'The screen asks how the controls felt (${ask.game})');
       state = ask;
     });
     ref.onDispose(sub.cancel);

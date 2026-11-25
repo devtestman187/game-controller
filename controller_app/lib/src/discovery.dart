@@ -168,7 +168,7 @@ class BonsoirHostDiscovery implements HostDiscovery {
       case BonsoirDiscoveryServiceUpdatedEvent(:final service):
         _update(service);
       case BonsoirDiscoveryServiceResolveFailedEvent():
-        _log('A TV was found but its address could not be resolved');
+        _log('A screen was found but its address could not be resolved');
       case BonsoirDiscoveryServiceLostEvent(:final service):
         if (_hosts.remove(service.name) != null) {
           _log('Lost "${service.name}"');
