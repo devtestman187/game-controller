@@ -127,7 +127,7 @@ package              | lines hit | lines found | %
 ---------------------|-----------|-------------|------
 controller_app       |      3707 |        3993 | 92.8
 ...
-TOTAL                |     19797 |       21311 | 92.9
+TOTAL                |     19797 |       21311 | 92.8
 ```
 
 - **Options:** package names (`controller_app`, `puzzle_game`) restrict the run to those; `--no-gen` skips step 1 and uses the committed import tests as they are.

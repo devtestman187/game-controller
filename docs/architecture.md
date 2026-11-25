@@ -15,7 +15,7 @@ Since M12 a phone or tablet can host too: `controller_app` runs `party_host`, an
 ## Repo layout
 | Path | What | Platforms |
 | --- | --- | --- |
-| `controller_app/` | Phone and tablet controller; since M12 it also hosts, with the `party_host` screens behind its own controls | Android (minSdk 36), iOS 26+ |
+| `controller_app/` | Phone and tablet controller; since M12 it also hosts, with the `party_host` screens behind its own controls | Android (minSdk 31), iOS 26+ |
 | `tv_test_app/` | TV test bench: the shell around `party_host` (home screen, test tools) and the TV-only parts | Android TV (minSdk 31), Windows desktop |
 | `packages/protocol/` | Message definitions and codec, capabilities and roles. No Flutter dependency | anywhere Dart runs |
 | `packages/connection/` | The transports (WebSocket, in-process), the host server, the phone client (pairing, heartbeats, reconnect), `GameHost`, the viewer's timing and stats, and the simulated controller (`bin/sim_controller.dart`). Pure Dart (`dart:io`) | anywhere `dart:io` runs |

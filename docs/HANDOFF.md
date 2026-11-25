@@ -64,7 +64,7 @@ tools/check.sh           # must be all PASS on a fresh clone
 
 - `tools/check.sh` runs format, analyze (`--fatal-infos`, whole workspace) and every test suite, one PASS/FAIL line each, logs in a temp folder. `tools/check.sh --list` shows the checks; `tools/check.sh phone host` runs some. Exit 0 means everything passed.
 - One package by hand: `cd packages/party_host && flutter test` (pure Dart packages: `dart test`). One file: `flutter test test/some_test.dart`. One test: add `--plain-name "text"`.
-- `bash tools/coverage.sh` measures line coverage with every `lib/` file counted (summary in `coverage/summary.txt`). Current total: **92.9%** (19,778 of 21,295 lines, assets uncounted, measured Nov 16). Do not let it drop.
+- `bash tools/coverage.sh` measures line coverage with every `lib/` file counted (summary in `coverage/summary.txt`). Current total: **92.8%** (19,778 of 21,295 lines, assets uncounted, measured Nov 16). Do not let it drop.
 - `bash tools/review.sh` is a mechanical self-review of your diff (section 4).
 - Sound, touch feel and real-device speed cannot be proved by unit tests; they need a device check by the owner.
 
@@ -132,7 +132,7 @@ Restore a churned file with `git checkout -- <that exact path>`. Never use `git 
    Never use a bare `git stash` for this. If the fix is already committed, restore the old file with `git show <commit>^:path > path`, run the test, then `git checkout -- path`. Mention the failing run in the commit message or your report. A pure regression guard for behaviour that already worked ("normal use still works") may pass on the old code; say so explicitly (as bugs16 did for the normal down/move/up stick test).
 3. **A fix is done only with evidence**: the test output and the full `tools/check.sh`. Never report "fixed" because the code looks right.
 4. **Full `tools/check.sh` green on the final tip** before any commit series is called done. Per-package runs are fine while working; the whole run is the gate. If it fails, fix the cause; do not rerun until lucky, skip a suite or edit a test to pass. A flaky test is a bug (usually real time or an unawaited async side effect): fix it properly with fake clocks or by awaiting the side effect, and note it.
-5. **Coverage must not drop** below 92.9%. Run `bash tools/coverage.sh` after a change that adds code and compare. New code ships with tests.
+5. **Coverage must not drop** below 92.8%. Run `bash tools/coverage.sh` after a change that adds code and compare. New code ships with tests.
 6. **Zero analyzer issues**, formatting clean, no `lib/` file over 380 lines.
 7. **No real time in tests.** Use `fake_async` and injected `nowMs`. Real sockets only in `connection` tests, on localhost. Await async side effects (party_host tests have a `settleUploads` helper). Widget tests run at more than one size (phone, tablet, TV) when layout matters.
 8. **Unmeasured cause means "Fixed, unverified".** If you could not reproduce the problem or measure the cause (anything that depends on a real device: audio, touch, frame rate, a real network), the status is "Fixed, unverified: needs device check", never plain "Fixed". Say exactly what the owner should do to check.
