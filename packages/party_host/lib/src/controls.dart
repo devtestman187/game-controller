@@ -14,8 +14,14 @@ final class Controls {
   const Controls.game() : menus = false, only = null, layout = null, otherLayout = null;
 
   final bool menus;
+
+  /// The player numbers the menus are for; null means every player.
   final Set<String>? only;
+
+  /// The menu buttons shown to the players in [only]; null keeps the usual ones.
   final GameLayoutMessage? layout;
+
+  /// The menu buttons shown to everyone else; null falls back to [layout].
   final GameLayoutMessage? otherLayout;
 }
 

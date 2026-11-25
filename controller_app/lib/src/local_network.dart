@@ -4,6 +4,10 @@ import 'package:connection/connection.dart';
 
 import 'discovery.dart';
 
+/// What the app believes about iOS's local network permission. [notNeeded]: this
+/// is Android, which doesn't ask; [allowed]: a screen was found or connected;
+/// [probablyDenied]: a connect to a local address failed with "No route to host";
+/// [unknown]: nothing conclusive yet, including a search that found no screen.
 enum LocalNetworkAccess { notNeeded, allowed, probablyDenied, unknown }
 
 /// iOS's local network permission, as far as the app can tell. iOS has no

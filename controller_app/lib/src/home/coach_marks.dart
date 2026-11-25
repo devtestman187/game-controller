@@ -31,7 +31,8 @@ const coachArrowHeightDp = ToySizes.space12;
 
 /// One stop of the coach marks: the button to point at and what to tell about it.
 class CoachStep {
-  /// One stop: the widget to point at and the hint to show about it.
+  /// One stop of the tour: a widget and a hint, nothing else, so any screen can
+  /// build a tour from its own widgets. A stop whose anchor isn't laid out yet is skipped.
   const CoachStep({required this.anchor, required this.text});
 
   /// Marks the widget the step points at; a step whose anchor has no render

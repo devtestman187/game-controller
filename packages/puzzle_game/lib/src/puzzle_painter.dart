@@ -12,6 +12,8 @@ const _heldShadowShare = 2.0;
 /// The bar under the board: how thick it is, in world units.
 const _barHeight = 0.8;
 
+/// Draws one puzzle board: its pieces, the bar under it, and the piece moments
+/// (lifts, drops) measured against the view's clock, in the look the caller chose.
 class PuzzlePainter extends CustomPainter {
   PuzzlePainter(
     this.puzzle,

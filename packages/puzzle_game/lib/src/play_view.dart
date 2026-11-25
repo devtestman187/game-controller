@@ -125,6 +125,8 @@ class PuzzlePlayView extends StatefulWidget {
   State<PuzzlePlayView> createState() => PuzzlePlayViewState();
 }
 
+/// The live state of a puzzle being played: its session and the ticker that
+/// drives the animations, both created once and disposed with the view.
 class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProviderStateMixin {
   late final PuzzleSession _session;
   late final Ticker _ticker = createTicker(_tick);

@@ -8,6 +8,8 @@ import '../providers.dart';
 /// connected.
 final gameLayoutProvider = NotifierProvider<GameLayoutNotifier, GameLayoutMessage>(GameLayoutNotifier.new);
 
+/// Keeps [gameLayoutProvider] in step with the layouts the TV sends, starting
+/// from the last one the client holds so a late listener sees the current look.
 class GameLayoutNotifier extends Notifier<GameLayoutMessage> {
   @override
   GameLayoutMessage build() {
@@ -21,6 +23,7 @@ class GameLayoutNotifier extends Notifier<GameLayoutMessage> {
 /// The game's status panel for this phone (PRD v2 P6), hidden when empty.
 final gameStatusProvider = NotifierProvider<GameStatusNotifier, StatusMessage>(GameStatusNotifier.new);
 
+/// Keeps [gameStatusProvider] in step with the status messages the TV sends.
 class GameStatusNotifier extends Notifier<StatusMessage> {
   @override
   StatusMessage build() {
@@ -37,6 +40,8 @@ class GameStatusNotifier extends Notifier<StatusMessage> {
 /// [showsGameProvider] is the two together.
 final gameShownProvider = NotifierProvider<GameShownNotifier, bool>(GameShownNotifier.new);
 
+/// The flag behind [gameShownProvider]: set by the host route while this phone
+/// hosts a game on its own screen.
 class GameShownNotifier extends Notifier<bool> {
   @override
   bool build() => false;
@@ -82,6 +87,7 @@ class TvHapticsNotifier extends Notifier<TvHaptics> {
 /// answered or skipped. The controller screen shows it.
 final ratingPromptProvider = NotifierProvider<RatingPromptNotifier, RatingAskMessage?>(RatingPromptNotifier.new);
 
+/// Holds [ratingPromptProvider]: the TV's ask, cleared when it is answered or skipped.
 class RatingPromptNotifier extends Notifier<RatingAskMessage?> {
   @override
   RatingAskMessage? build() {

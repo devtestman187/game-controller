@@ -36,6 +36,9 @@ String? hostKindFrom(String? txt) => switch (txt) {
   _ => null,
 };
 
+/// What discovery knows right now: whether it's searching, the hosts it has
+/// found, and the last error. [everFound] stays true once any host was found,
+/// so a search that lost its hosts can be told from one that never found any.
 final class DiscoveryState {
   const DiscoveryState({
     this.running = false,
