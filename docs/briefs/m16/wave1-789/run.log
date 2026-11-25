@@ -17,3 +17,18 @@
 2026-11-24 17:54:49 checks failed; fetching packages and trying once more
 2026-11-24 17:56:14 STOPPED: checks failed twice on the combined tree after n9d1 n9a
 RESULT: STOPPED: checks failed twice on the combined tree after n9d1 n9a
+2026-11-24 17:56:55 RUN_MAX_MIN=219 min (computed backstop of the jobs still to do)
+2026-11-24 17:56:55 start at da2771a9 on m16
+2026-11-24 17:56:55 worker: claude
+2026-11-24 17:56:55 removed the last stop's STOP.md
+2026-11-24 17:57:09 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-24 17:57:24 resume n9a (applied by hand, not committed yet)
+2026-11-24 17:57:25 start n9c
+2026-11-24 17:57:25 resume n9d1 (applied by hand, not committed yet)
+2026-11-24 18:11:21 n9c finished: result 4 (61 turns, 11 min)
+2026-11-24 18:11:21 job n9c used 61 turns, over its cap of 60 (parked, siblings continue)
+2026-11-24 18:12:39 tests-first ok: controller_app/test/connect_narrow_test.dart fails on the old code
+2026-11-24 18:12:51 combined check: skips protocol connection metrics kit look arena puzzle tools (no job's change reaches them)
+2026-11-24 18:14:24 checks failed; fetching packages and trying once more
+2026-11-24 18:15:59 STOPPED: checks failed twice on the combined tree after n9a n9d1
+RESULT: STOPPED: checks failed twice on the combined tree after n9a n9d1
