@@ -4,6 +4,7 @@ import 'package:toy_look/toy_look.dart';
 import 'arena.dart';
 import 'arena_character_painter.dart';
 import 'arena_coin_icon_widgets.dart';
+import 'arena_map_names.dart';
 import 'arena_mode.dart';
 import 'arena_robo.dart';
 import 'arena_roster.dart';
@@ -205,11 +206,13 @@ class _RoundRow extends StatelessWidget {
     final best = snapshot.bestTimeS;
     final bestId = snapshot.bestId;
     final bestBy = roster.length > 1 && bestId != null ? roster[bestId]?.number : null;
+    final mapName = arenaMapNames[snapshot.mapId];
     return Wrap(
       spacing: oneLine ? ArenaHud._oneLineItemGap : ArenaHud._itemGap,
       runSpacing: oneLine ? 0 : ArenaHud._runGap,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
+        if (mapName != null) Text(mapName, key: const Key('mapName'), style: style),
         Text(_roundLabel, style: style),
         Text(_clock, key: const Key('roundTime'), style: tabular),
         Text(
