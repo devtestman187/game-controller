@@ -227,3 +227,5 @@ touches the TV d-pad focus ring: check 1920x1080.
 ## Coverage (Nov 25, close batch): TOTAL 93.0% (21419/23034), floor 92.8% met.
 
 **Resume here (close done, Nov 25):** batch docs/briefs/m16/close finished (report REPORT.md): coverage 93.0%, full check green, milestone-end review 0 must; open owner question c4 (pad top bar 12 px at 568x320 TV). Tip 2dbd56c1. Nothing pushed.
+
+**Released (Nov 25): m16.4 (0.16.4, build 1664)** tag on 3f32a354 (release.sh; GitHub Release run 45627438563 success, Android and Windows; iOS Codemagic TestFlight success, internal only, not promoted). Fixed, unverified, needs device check: phone result card fit on a real small phone; night_end on a real two-phone night (phone host and TV host); early End night; winner banner clear of the top bar; Shape Race top bar clears pieces on a phone and a tablet; lobby row alignment; join line gap before Change; sliders read by a real screen reader; Connect row on a 320 px phone; app shows 0.16.4 on TestFlight, Play and TV. Known, not release-blocking: pad top bar 12 px overflow at 568x320 in the TV look.
