@@ -76,7 +76,7 @@ void main() {
       await openHome(tester);
       await tester.tap(find.text(HomeText.joinGame));
       await settle(tester);
-      expect(find.text('Connect to a TV'), findsOneWidget);
+      expect(find.text('Connect to a screen'), findsOneWidget);
     });
 
     testWidgets('Play here hosts on this phone, with its own player and no sheet', (tester) async {

@@ -23,7 +23,7 @@ void main() {
     expect(app.prefs.getBool('statsConsent'), isTrue, reason: 'the answer is recorded, not dropped');
     // The connection's pop, skipped while the prompt was up, is made up now:
     // the adult paired to play, not to look at Connect (the run's review).
-    expect(find.text('Connect to a TV'), findsNothing, reason: 'the wait is made up after the answer');
+    expect(find.text('Connect to a screen'), findsNothing, reason: 'the wait is made up after the answer');
     expect(find.byKey(const Key('dpad')), findsOneWidget, reason: 'the controls show');
   });
 }

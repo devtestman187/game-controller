@@ -57,7 +57,7 @@ void main() {
   testWidgets('the Connect screen fits', (tester) async {
     await eachLook(tester, 'Connect screen', (size, palette) async {
       await pump(tester, size, palette);
-      expect(find.text('Connect to a TV'), findsOneWidget);
+      expect(find.text('Connect to a screen'), findsOneWidget);
     });
   });
 

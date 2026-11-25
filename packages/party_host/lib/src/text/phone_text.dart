@@ -16,14 +16,14 @@ import 'host_text.dart';
 /// texts, as the string table's own rule says.
 abstract final class PhoneText {
   // The Connect screen.
-  static const connectTitle = 'Connect to a TV';
+  static const connectTitle = 'Connect to a screen';
   static const gamesOnWifi = 'Games on this Wi-Fi';
   static const searchAgain = 'Search again';
   static const diagnostics = 'Diagnostics';
   static const kindPc = 'PC';
   static const kindPhone = 'Phone';
   static const kindTablet = 'Tablet';
-  static const kindTv = 'TV';
+  static const kindTv = 'Screen';
 
   /// A host's second line's word for its kind, or nothing for a host that
   /// didn't say (m12 §0.6).
@@ -34,15 +34,16 @@ abstract final class PhoneText {
     'tv' => kindTv,
     _ => '',
   };
-  static const searching = 'Searching… Open the Thumb Party TV app on the TV or PC, on the same Wi-Fi as this phone.';
+  static const searching =
+      'Searching… Open the Thumb Party TV app on the screen or PC, on the same Wi-Fi as this phone.';
   static String discoveryFailed(Object error) =>
-      'Discovery isn\'t working ($error). Type the address shown on the TV below.';
+      'Discovery isn\'t working ($error). Type the address shown on the screen below.';
   static const addressLabel = 'Or type the address';
   static const addressHint = '192.168.1.50:45780';
   static const connect = 'Connect';
   static const hostAGame = 'Host a game';
   static const settings = 'Settings';
-  static const tryWithoutTv = 'Try without a TV';
+  static const tryWithoutTv = 'Try without a screen';
 
   /// The saved character on the join screen (M16 identity): "You: the Blue
   /// Crown", the character the next hello asks the host for, in words.
@@ -60,7 +61,7 @@ abstract final class PhoneText {
 
   // The connection panel.
   static const notConnected = 'Not connected';
-  static const pickATv = 'Pick a TV on the left, or type its address.';
+  static const pickATv = 'Pick a screen on the left, or type its address.';
   static const connected = 'Connected';
   static const connecting = 'Connecting…';
   static const enterCode = 'Enter code';
@@ -99,15 +100,15 @@ abstract final class PhoneText {
     return switch (s.problem) {
       null => null,
       ClientProblem.unreachable =>
-        'Couldn\'t reach $host. Check that the TV app is open and that the phone is on the same Wi-Fi.',
-      ClientProblem.wrongCode => 'Wrong code. Check the code on the TV and try again.',
-      ClientProblem.tooManyAttempts => 'Too many wrong codes. The TV now shows a new code.',
+        'Couldn\'t reach $host. Check that the Thumb Party TV app is open and that the phone is on the same Wi-Fi.',
+      ClientProblem.wrongCode => 'Wrong code. Check the code on the screen and try again.',
+      ClientProblem.tooManyAttempts => 'Too many wrong codes. The screen now shows a new code.',
       ClientProblem.pairingForgotten =>
-        'The TV doesn\'t remember this phone (it may have restarted). Enter the code again.',
+        'The screen doesn\'t remember this phone (it may have restarted). Enter the code again.',
       ClientProblem.versionMismatch =>
-        'The TV app and this app use different protocol versions. Install matching builds.',
-      ClientProblem.replaced => 'This phone connected to the TV again on another connection.',
-      ClientProblem.protocolError => 'The TV rejected a message${s.detail == null ? '' : ' (${s.detail})'}.',
+        'The Thumb Party TV app and this app use different protocol versions. Install matching builds.',
+      ClientProblem.replaced => 'This phone connected to the screen again on another connection.',
+      ClientProblem.protocolError => 'The screen rejected a message${s.detail == null ? '' : ' (${s.detail})'}.',
       ClientProblem.pairingTimeout => 'The code wasn\'t entered in time.',
       ClientProblem.connectionLost => 'The connection to $host was lost.',
     };
@@ -116,7 +117,7 @@ abstract final class PhoneText {
   // The top bar and the host chip.
   static const connection = 'Connection';
   static const padMode = 'Pad mode';
-  static const demoLink = 'Demo, no TV · tap to connect';
+  static const demoLink = 'Demo, no screen · tap to connect';
 
   /// A player's number as the bar's badge says it: "P2".
   static String playerShort(int number) => 'P$number';
@@ -138,7 +139,7 @@ abstract final class PhoneText {
   static const newCode = 'New code';
   static const stopHosting = 'Stop hosting';
   static const noWifi = 'Turn on Wi-Fi so other phones can join';
-  static String youArePlayer(int number) => 'You are player $number on the TV';
+  static String youArePlayer(int number) => 'You are player $number on the screen';
 
   // The pad's modes.
   static const dpad = 'D-pad';

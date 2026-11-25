@@ -202,7 +202,7 @@ void main() {
       await tester.tap(find.byTooltip('Connection'));
       await settle(tester);
       expect(find.byType(ConnectScreen), findsOneWidget);
-      expect(find.text('Connect to a TV'), findsOneWidget);
+      expect(find.text('Connect to a screen'), findsOneWidget);
     });
 
     testWidgets('the one mode icon opens the three modes, and picking one switches the pad', (tester) async {

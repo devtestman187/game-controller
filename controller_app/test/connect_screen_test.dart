@@ -29,7 +29,7 @@ void main() {
   group('connecting', () {
     testWidgets('opens the Connect screen when there is no saved TV', (tester) async {
       final app = await pumpApp(tester);
-      expect(find.text('Connect to a TV'), findsOneWidget);
+      expect(find.text('Connect to a screen'), findsOneWidget);
       expect(find.textContaining('Searching'), findsOneWidget);
 
       app.discovery.emit(DiscoveryState(running: true, everFound: true, hosts: [DiscoveredHost(address: tv)]));
@@ -74,7 +74,7 @@ void main() {
       final app = await pumpApp(tester);
       app.client.emit(connected);
       await settle(tester);
-      expect(find.text('Connect to a TV'), findsNothing);
+      expect(find.text('Connect to a screen'), findsNothing);
       expect(find.text('Android TV · 9 ms'), findsOneWidget);
       expect(find.text('30 s: min 5 · avg 22 · max 130 ms'), findsOneWidget);
 
@@ -112,7 +112,7 @@ void main() {
     testWidgets('reconnects to the last TV on launch and stays on the controller', (tester) async {
       final app = await pumpApp(tester, paired: true);
       expect(app.client.calls, ['connect 192.168.1.50:45780']);
-      expect(find.text('Connect to a TV'), findsNothing);
+      expect(find.text('Connect to a screen'), findsNothing);
       expect(find.byKey(const Key('dpad')), findsOneWidget);
     });
 
@@ -136,7 +136,7 @@ void main() {
       );
       await tester.pump();
       expect(app.client.calls, ['connect 192.168.1.99:45780']);
-      expect(find.text('Connect to a TV'), findsNothing);
+      expect(find.text('Connect to a screen'), findsNothing);
     });
 
     testWidgets('reconnects at once to the remembered host when discovery already holds it', (tester) async {
@@ -161,7 +161,7 @@ void main() {
       );
       // No change event ever comes: the host was found before launch.
       expect(app.client.calls, ['connect 192.168.1.99:45780']);
-      expect(find.text('Connect to a TV'), findsNothing);
+      expect(find.text('Connect to a screen'), findsNothing);
     });
 
     testWidgets('opens Home when the remembered host is gone and another host is live', (tester) async {
@@ -177,7 +177,7 @@ void main() {
       await tester.pump();
       expect(find.text(HomeText.joinGame), findsOneWidget);
       await reachConnect(tester);
-      expect(find.text('Connect to a TV'), findsOneWidget);
+      expect(find.text('Connect to a screen'), findsOneWidget);
       expect(app.client.calls, isEmpty);
     });
   });
@@ -220,7 +220,7 @@ void main() {
       expect(find.byIcon(Icons.tv), findsNWidgets(2));
       expect(find.text('Phone · 192.168.1.51:$defaultPort'), findsOneWidget);
       expect(find.text('Tablet · 192.168.1.52:$defaultPort'), findsOneWidget);
-      expect(find.text('TV · 192.168.1.53:$defaultPort'), findsOneWidget);
+      expect(find.text('Screen · 192.168.1.53:$defaultPort'), findsOneWidget);
       expect(find.text('PC · 192.168.1.54:$defaultPort'), findsOneWidget);
       expect(find.text('192.168.1.55:$defaultPort'), findsOneWidget, reason: 'a host that said no kind gets no word');
     });

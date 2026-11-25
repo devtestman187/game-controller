@@ -60,13 +60,13 @@ void main() {
     // only now. Back from Connect lands on Home; Join a Game opens Connect
     // again, and the launch's questions were put already.
     await reachConnect(tester);
-    expect(find.text('Connect to a TV'), findsOneWidget);
+    expect(find.text('Connect to a screen'), findsOneWidget);
     expect(find.byKey(const Key('consentDialog')), findsNothing);
     await tester.pageBack();
     await settle(tester);
     expect(find.text(HomeText.joinGame), findsOneWidget);
     await reachConnect(tester);
-    expect(find.text('Connect to a TV'), findsOneWidget);
+    expect(find.text('Connect to a screen'), findsOneWidget);
     expect(find.byKey(const Key('consentDialog')), findsNothing);
   });
 
@@ -75,7 +75,7 @@ void main() {
     // from the test's mock preferences (design sentry-consent.md).
     await pumpApp(tester);
     await reachConnect(tester);
-    expect(find.text('Connect to a TV'), findsOneWidget);
+    expect(find.text('Connect to a screen'), findsOneWidget);
     expect(find.byKey(const Key('consentDialog')), findsNothing);
   });
 }

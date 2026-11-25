@@ -6,13 +6,13 @@ import 'support/pump_app.dart';
 
 void main() {
   group('store builds (M8)', () {
-    testWidgets('"Try without a TV" shows the controls working with no host', (tester) async {
+    testWidgets('"Try without a screen" shows the controls working with no host', (tester) async {
       final app = await pumpApp(tester);
-      expect(find.text('Connect to a TV'), findsOneWidget);
+      expect(find.text('Connect to a screen'), findsOneWidget);
       await tester.tap(find.byKey(const Key('tryWithoutTv')));
       await settle(tester);
-      expect(find.text('Connect to a TV'), findsNothing);
-      expect(find.textContaining('Demo, no TV'), findsOneWidget);
+      expect(find.text('Connect to a screen'), findsNothing);
+      expect(find.textContaining('Demo, no screen'), findsOneWidget);
       expect(find.text('Demo: a TV would get nothing pressed'), findsOneWidget);
 
       final a = await tester.startGesture(at(tester, const Key('faceButtons'), const Offset(0.5, 0.81)));
