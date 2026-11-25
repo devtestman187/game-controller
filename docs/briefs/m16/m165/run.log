@@ -182,3 +182,8 @@ H2H b1h won over b1s: applied by tools/h2h.sh (loser patch: docs/briefs/m16/m165
 2026-11-25 15:10:05 phase: apply (check took 101s)
 2026-11-25 15:10:07 committed b3: 4a488f5e m165 b3: measure the mirror's top-right strip against the floor (B-042)
 2026-11-25 15:10:07 phase: review (apply took 2s)
+2026-11-25 15:11:55 reviewed wave5: 7 finding(s)
+METRICS b3 worker=claude model=claude-haiku-5-5 turns=30 in=44 out=27415 cache=895075 min=4.2 wall=4.8 result=0
+METRICS wave5-review worker=claude model=claude-haiku-5-5 turns=16 in=24 out=17994 cache=368686 min=1.5 wall=- result=0
+2026-11-25 15:12:02 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/m165/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 10 jobs, 12 min
