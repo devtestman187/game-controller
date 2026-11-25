@@ -52,3 +52,15 @@ RESULT: STOPPED: the base does not compile: FAIL  analyze     (exit 1, 10s)  log
 2026-11-24 18:24:03 finding: tests-first: packages/party_host/test/volume_semantics_test.dart passes on the old code, so it does not prove new behaviour
 2026-11-24 18:24:04 STOPPED: tests-first: packages/party_host/test/volume_semantics_test.dart pass on the old code (write them to fail first, or add 'tests-first: exempt <reason>' to the brief for a pure refactor); nothing of this wave is committed
 RESULT: STOPPED: tests-first: packages/party_host/test/volume_semantics_test.dart pass on the old code (write them to fail first, or add 'tests-first: exempt <reason>' to the brief for a pure refactor); nothing of this wave is committed
+2026-11-24 18:24:24 RUN_MAX_MIN=119 min (computed backstop of the jobs still to do)
+2026-11-24 18:24:24 start at baf6ce32 on m16
+2026-11-24 18:24:24 worker: claude
+2026-11-24 18:24:25 removed the last stop's STOP.md
+2026-11-24 18:24:36 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-24 18:24:51 skip n9a (already done)
+2026-11-24 18:24:52 WARN: n9c was committed by hand (95a64202); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-24 18:26:08 tests-first ok: controller_app/test/slider_semantics_test.dart fails on the old code
+2026-11-24 18:26:25 tests-first: packages/party_host/test/volume_semantics_test.dart passes on the old code, exempt by its brief
+2026-11-24 18:26:26 hand-fixed n9c: tests-first proof and worker review done (marked in done.txt)
+2026-11-24 18:26:26 skip n9c (already done)
+2026-11-24 18:26:27 skip n9d1 (already done)
