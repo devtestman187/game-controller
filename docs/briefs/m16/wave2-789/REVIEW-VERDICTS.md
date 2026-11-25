@@ -74,3 +74,9 @@
 - coach_marks.dart:137-140 re-read has no effect when the host does not rebuild the overlay; test (e) not in repo - minor: stays; Home's anchors do not move after layout in landscape; recorded in docs/code-health.md
 - coach_marks_test tap-after-Skip, search-timer dispose test, live-hosting guard tests - closed by f3/f2/f5
 - round label on split/phone screens; ShowTipsRow card/column; 48 px frame controls; reconnecting counts as idle; search timer after a dropped link - OWNER QUESTIONS (see REPORT.md)
+## close-out (driver, Nov 25; verdicts for the should/could items left without one)
+- touch_targets_test.dart:101 `find.byType(Scrollable).first` may pick Connect's widgets - should - code-health (the Settings measure passes; no wrong-target case seen; scope the finder to the Settings route when the file is next touched)
+- "ask once" consent guard in three copies (launch_consent.dart, controller_screen.dart, connect_screen.dart) - should - code-health (n8b3 removed the old two in a later wave; the leftover is recorded there)
+- phone_home_screen.dart:63 search timer runs when a host is found - could/should - code-health (harmless: it only sets a flag; dispose cancels it and f2/f5 tests prove that; restarting it with "Search again" is owner question 3 in REVIEW.md)
+- report wording in n8a:29, n9b1:25/:27, n8b2:13, n9sr:62/:77, n8c:21/:16 - should/could - code-health (reports are history; the corrections are in REPORT.md and these verdicts; no edit to worker reports)
+- could items (coach_marks.dart 357 lines and settings_screen.dart 373 lines over target, CoachStep dartdoc, LayoutBuilder shadowing, test names, `differs()` unused field, touch_targets_test.dart:44/:55, phone_home_marks_test.dart:163, board_hud/text_paint duplicate TextPainter, n8d2-report wording) - could - code-health
