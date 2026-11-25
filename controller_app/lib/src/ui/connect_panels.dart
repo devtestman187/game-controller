@@ -4,9 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:party_host/party_host.dart' show PhoneText, ToyButton, ToyLook, ToyLookScope, ToySizes;
 
-import '../host/host_screen.dart';
+import '../host/host_launch.dart';
 import '../host/host_start_sheet.dart';
-import '../host/hosting.dart';
 import '../providers.dart';
 import 'labels.dart';
 import 'settings_screen.dart';
@@ -106,22 +105,10 @@ class _NoTvActions extends ConsumerWidget {
           icon: Icons.wifi_tethering,
           label: PhoneText.hostAGame,
           onPressed: () async {
-            // Read before the dialog: after it, this widget may be gone.
-            final hosting = ref.read(hostingProvider.notifier);
             final choice = await showHostStartSheet(context);
+            // After the dialog this widget may be gone: check before launching.
             if (choice == null || !context.mounted) return;
-            // Phones that join see it only when this phone plays it itself:
-            // the host is told which before it starts (m12 bug 1108a rule D).
-            final host = hosting.start(playsHere: choice == HostChoice.onPhone);
-            // The route opens at once, and asks its own consent prompt on its
-            // first frame (B-023, host_screen.dart). Nothing here may wait on
-            // an answer: the start points this phone's client at its own
-            // player, and the panel is rebuilt away under the prompt.
-            await Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => HostScreen(host: host, choice: choice),
-              ),
-            );
+            await launchHosting(context, ref, choice);
           },
         ),
         ToyButton(
