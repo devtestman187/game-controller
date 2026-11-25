@@ -145,7 +145,7 @@ final class ClientConnection {
   bool replaceQuietChannel(DateTime now) {
     final quiet = now.difference(_lastHeardAt);
     if (quiet < heartbeatTimeout ~/ 2) return false;
-    _host.log('Back after ${(quiet.inMilliseconds / 1000).toStringAsFixed(1)} s without the TV, reconnecting now');
+    _host.log('Back after ${(quiet.inMilliseconds / 1000).toStringAsFixed(1)} s without the screen, reconnecting now');
     dropChannel(closeCode: CloseCodes.heartbeatTimeout);
     return true;
   }

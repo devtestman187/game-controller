@@ -87,7 +87,7 @@ final class ClientMessages {
       case PlayerMessage():
         if (!snapshot.isConnected) return;
         if (snapshot.player != message.number || snapshot.character != message.character) {
-          _host.log('The TV made this phone player ${message.number}');
+          _host.log('The screen made this phone player ${message.number}');
           _host.setSnapshot(snapshot.copyWith(player: message.number, character: message.character));
         }
       case RatingAskMessage():

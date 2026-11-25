@@ -190,7 +190,7 @@ final class HostConnection {
       return _codec.decode(data);
     } on ProtocolVersionMismatch catch (e) {
       _host.log('$who uses protocol v${e.actual}, this host uses v${e.expected}');
-      close(CloseCodes.versionMismatch, 'The TV app uses protocol v$protocolVersion');
+      close(CloseCodes.versionMismatch, 'The Thumb Party TV app uses protocol v$protocolVersion');
     } on ProtocolFormatException catch (e) {
       _host.log('Bad message from $who: ${e.message}');
       close(CloseCodes.protocolError, 'Bad message');
