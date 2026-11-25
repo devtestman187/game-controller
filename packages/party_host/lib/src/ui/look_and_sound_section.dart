@@ -161,6 +161,7 @@ class _VolumeRow extends StatelessWidget {
             max: SoundSettings.maxVolume.toDouble(),
             divisions: SoundSettings.maxVolume ~/ SoundSettings.stepPercent,
             onChanged: (value) => onChanged(value.round()),
+            semanticFormatterCallback: (value) => HostText.percent(value.round()),
           ),
         ),
       ],

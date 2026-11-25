@@ -119,6 +119,14 @@ Widget _slider(
   crossAxisAlignment: CrossAxisAlignment.start,
   children: [
     Text('$label: $shown', style: look.type.body),
-    Slider(key: Key(key), value: value, min: min, max: max, divisions: divisions, onChanged: onChanged),
+    Slider(
+      key: Key(key),
+      value: value,
+      min: min,
+      max: max,
+      divisions: divisions,
+      onChanged: onChanged,
+      semanticFormatterCallback: (_) => shown,
+    ),
   ],
 );

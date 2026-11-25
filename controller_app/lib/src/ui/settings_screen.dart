@@ -244,6 +244,7 @@ class _SliderRow extends StatelessWidget {
                   max: max,
                   divisions: divisions,
                   onChanged: onChanged,
+                  semanticFormatterCallback: (_) => valueText,
                 ),
               ),
               ?trailing,
