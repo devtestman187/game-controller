@@ -1,0 +1,2 @@
+- 05:22 briefs committed 20752c29 (t1 c1 c2 / c3 c4 c5 / d1 d2 d3), brief-check ok. starting runner with pause-after-wave. Decisions: arena_map_names table stays (no wire change allowed), phone_home search timer: no test shows an issue (one timer, cancelled in dispose): no change
+- 05:40 wave1: c1 t1 committed; c2 result 4 (worker wrote report to wrong path; class brief/environment); HAND-FIX c2 via apply-job, tests green. restart for wave 2

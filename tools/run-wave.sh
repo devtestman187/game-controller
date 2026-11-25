@@ -31,6 +31,7 @@ park_keeps() { # park_keeps <job> <path>: 0 when the path stays in the tree, bec
   local j=$1 a=$2 o
   grep -qxF -- "$a" "${CHURN_SNAPSHOT:-/dev/null}" 2> /dev/null && return 0
   for o in "${started[@]}"; do
+    case " ${parked[*]:-} " in *" $o "*) continue ;; esac # a parked sibling's files are not protected
     [ "$o" = "$j" ] && continue
     sed -n 's/^allow: *//p' "$B/$o.md" 2> /dev/null | tr -d '\r' | sed 's/ *· */\n/g; s:/$::' |
       grep -qxF -- "$a" && return 0

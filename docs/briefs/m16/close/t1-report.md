@@ -13,7 +13,7 @@
 ## Checks
 
 - Case 4b before the change: FAIL (run-stops-test: 1 of 9 failed). The failing assertions were the sibling's shared file in HEAD
-  and the pre-run edit; park_tree had removed or reverted both (not separately inspected).
+  and the pre-run edit (src/dirty.txt, now a non-churn file); park_tree had removed or reverted both. Reviewed Nov 25: the assertion names were not inspected against the old code.
 - `bash tools/tests/run-stops-test.sh` after the change: `RESULT: ok: 9 case(s) passed` (case 4b PASS).
 - `bash tools/tests/run-wave-test.sh`: `RESULT: ok: 4 case(s) passed`.
 - `tools/mine.sh`: `RESULT: ok: 0 file(s) formatted, 0 package(s) analyzed, 0 package(s) tested`. It covers no shell

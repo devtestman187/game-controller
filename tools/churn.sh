@@ -41,10 +41,10 @@ churn_path() { # <path>: is it one of the known generated paths?
   [[ "$1" =~ $CHURN_REGEX ]]
 }
 
-# A pre-job snapshot: the churn paths that are already dirty when a job (or a mine.sh run) starts may hold a
+# A pre-job snapshot: the paths that are already dirty when a job (or a mine.sh run) starts may hold a
 # person's edit, so churn_revert leaves them alone; it reverts only what was clean at the start. The snapshot is
 # a file of paths, one per line (CHURN_SNAPSHOT names it); no snapshot (or no such file) reverts every dirty churn path.
-churn_snapshot() { # churn_snapshot <file>: write the dirty churn paths now to <file> and use it from here on
+churn_snapshot() { # churn_snapshot <file>: write the dirty paths now to <file> and use it from here on
   local entries=() entry path i=0
   CHURN_SNAPSHOT=$1
   export CHURN_SNAPSHOT
@@ -55,7 +55,8 @@ churn_snapshot() { # churn_snapshot <file>: write the dirty churn paths now to <
     i=$((i + 1))
     path="${entry:3}"
     case "${entry:0:2}" in *R* | *C*) i=$((i + 1)) ;; esac
-    churn_path "$path" && printf '%s\n' "$path" >> "$CHURN_SNAPSHOT"
+    printf '%s
+' "$path" >> "$CHURN_SNAPSHOT" # every dirty path; churn_revert tests churn_path itself
   done
   return 0
 }

@@ -3,6 +3,7 @@
 /// many the match runs, and whether the bar is drawn. A value object so the
 /// bar and the board take one argument for these, not four.
 class ArenaBoardOptions {
+  /// All fields default to unset, and [showHud] to true: a board with no options is the plain one.
   const ArenaBoardOptions({this.ownId, this.round, this.rounds, this.showHud = true});
 
   /// The player of the phone this board is drawn on, marked "(you)" in the bar;
