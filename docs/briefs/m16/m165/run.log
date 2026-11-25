@@ -41,3 +41,10 @@ RESULT: STOPPED: tools/review.sh found a FAIL after a2 (see .dart_tool/run-jobs/
 2026-11-25 13:54:32 committed a2: 362a2454 Hide the pad under the result card; size the waiting line as a button
 2026-11-25 13:54:32 phase: review (apply took 2s)
 2026-11-25 13:54:32 wave review skipped: wave 1 is the whole run, the run review covers it
+2026-11-25 13:54:34 start the run's review
+METRICS a1h worker=claude model=claude-haiku-5-5 turns=119 in=140 out=67300 cache=6491619 min=14.4 wall=17.9 result=4
+METRICS a1s worker=claude model=claude-sonnet-5-5 turns=95 in=98 out=25155 cache=2757155 min=13.0 wall=16.3 result=0
+METRICS a2 worker=claude model=claude-haiku-5-5 turns=36 in=50 out=20499 cache=998833 min=5.8 wall=- result=0
+METRICS run-review worker=claude model=claude-haiku-5-5 turns=17 in=22 out=22108 cache=343189 min=1.9 wall=- result=0
+2026-11-25 13:56:48 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/m165/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 3 jobs, 6 min
