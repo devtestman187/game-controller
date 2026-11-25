@@ -4,3 +4,5 @@ a1s a1h a2
 c0a b2s b2h
 # wave B2: contract 2 (game_kit, party_host, host_overrides)
 c0b
+# wave B3: head-to-head 2 (B-044), two arms
+b1s b1h
