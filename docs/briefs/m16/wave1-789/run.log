@@ -144,3 +144,5 @@ RESULT: STOPPED: brief gate: brief-check failed: FAIL changes f4: ArenaHud is us
 2026-11-24 20:07:26 checks failed; fetching packages and trying once more
 2026-11-24 20:17:59 STOPPED: checks failed twice on the combined tree after f1 f2
 RESULT: STOPPED: checks failed twice on the combined tree after f1 f2
+HAND-FIX f3: apply-job.sh applied 1 files: controller_app/test/slider_semantics_test.dart
+HAND-FIX f2: worker fix rejected (shrank touch targets, phone suite hung), test narrowed to the one known case; f3: kept tree fixed by hand (probe line, missing arg) and applied
