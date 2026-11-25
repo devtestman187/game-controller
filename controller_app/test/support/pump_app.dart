@@ -65,6 +65,11 @@ Future<TestApp> pumpApp(
 
   /// What discovery already holds when the app starts (a TV found before launch).
   DiscoveryState? discovered,
+
+  /// Whether an unpaired launch goes on from Home to the Connect screen (through
+  /// [reachConnect]), as every test written before Home existed expects. The tests
+  /// about Home itself pass false.
+  bool toConnect = true,
 }) async {
   // A landscape phone (iPhone 15-ish) unless the test picks another screen.
   // [padding] is its safe area: a notch, the home indicator.
@@ -95,6 +100,7 @@ Future<TestApp> pumpApp(
     clock: clock,
   );
   await settle(tester);
+  if (!paired && toConnect) await reachConnect(tester);
   return app;
 }
 
@@ -156,10 +162,18 @@ Future<void> settle(WidgetTester tester) async {
 /// Gets a test from an unpaired launch to the Connect screen. The launch opens
 /// Home, and "Join a Game" there opens Connect (owner decision). A launch that
 /// already opens Connect has no such button on screen, so this does nothing and
-/// the test reads the same either way.
+/// the test reads the same either way. A fresh Home shows its coach marks, whose
+/// overlay would swallow the tap, so they are skipped first.
 Future<void> reachConnect(WidgetTester tester) async {
   final joinGame = find.text(HomeText.joinGame);
   if (joinGame.evaluate().isEmpty) return;
+  // The marks come a frame after Home's first (they wait for laid-out anchors).
+  await settle(tester);
+  final skip = find.text(HomeText.skip);
+  if (skip.evaluate().isNotEmpty) {
+    await tester.tap(skip);
+    await settle(tester);
+  }
   await tapVisible(tester, joinGame);
   await settle(tester);
 }

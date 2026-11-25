@@ -1,0 +1,118 @@
+import 'package:connection/connection.dart';
+import 'package:controller/src/discovery.dart';
+import 'package:controller/src/home/home_text.dart';
+import 'package:controller/src/home/phone_home_screen.dart';
+import 'package:controller/src/ui/connect_screen.dart';
+import 'package:controller/src/ui/controller_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'support/pump_app.dart';
+
+/// Records the exits Back asks for, in place of the platform's exit.
+class _FakeExit {
+  int calls = 0;
+
+  Future<void> call() async {
+    calls++;
+  }
+}
+
+/// Where a launch goes first (owner decisions Q4, Q7): the pad only when the last
+/// TV is found live, otherwise Home; and a connect that fails on the pad goes
+/// back to Home.
+void main() {
+  /// The saved settings of a user who has seen the coach marks, which would else
+  /// dim Home, and the look a run uses.
+  Map<String, Object> saved(String look) => {'showTips': false, 'look.choice': look};
+
+  /// What discovery holds when the app starts: [hostId] found live.
+  DiscoveryState liveHost(String hostId) => DiscoveryState(
+    running: true,
+    everFound: true,
+    hosts: [
+      DiscoveredHost(
+        address: HostAddress(addresses: const ['192.168.1.60'], port: 45780, hostId: hostId, name: 'Thumb Party TV'),
+      ),
+    ],
+  );
+
+  /// How many Homes are on screen, hidden ones under another route included.
+  Finder homes() => find.byType(PhoneHomeScreen, skipOffstage: false);
+
+  for (final look in ['sunny', 'night']) {
+    for (final screen in [const Size(852, 393), const Size(393, 852)]) {
+      final where = '$look look, ${screen.width.toInt()}x${screen.height.toInt()}';
+
+      testWidgets('an unpaired launch opens Home, not Connect ($where)', (tester) async {
+        await pumpApp(tester, saved: saved(look), screen: screen, toConnect: false);
+        expect(find.text(HomeText.joinGame), findsOneWidget);
+        expect(find.byType(ConnectScreen), findsNothing);
+      });
+    }
+  }
+
+  testWidgets('Join a Game on the launch Home opens Connect', (tester) async {
+    await pumpApp(tester, saved: saved('sunny'), toConnect: false);
+    await reachConnect(tester);
+    expect(find.byType(ConnectScreen), findsOneWidget);
+  });
+
+  testWidgets('Back on the launch Home exits and never returns to the pad', (tester) async {
+    final exit = _FakeExit();
+    await pumpApp(
+      tester,
+      saved: saved('sunny'),
+      toConnect: false,
+      extra: [appExitProvider.overrideWithValue(exit.call)],
+    );
+    await tester.binding.handlePopRoute();
+    await settle(tester);
+    expect(exit.calls, 1, reason: 'Back asks the app to exit once');
+    expect(find.byType(PhoneHomeScreen), findsOneWidget, reason: 'Home is not popped to the pad');
+  });
+
+  testWidgets('a paired launch with its host found live stays on the pad', (tester) async {
+    await pumpApp(tester, paired: true, saved: saved('sunny'), discovered: liveHost('tv-1'));
+    expect(find.byType(ControllerScreen), findsOneWidget);
+    expect(homes(), findsNothing);
+  });
+
+  testWidgets('a paired launch whose host is gone while others are live shows Home', (tester) async {
+    await pumpApp(tester, paired: true, saved: saved('sunny'), discovered: liveHost('other-tv'));
+    // The launch's discovery wait ends on a timer, a frame after the first.
+    await settle(tester);
+    expect(find.text(HomeText.joinGame), findsOneWidget);
+    expect(find.byType(ConnectScreen), findsNothing);
+  });
+
+  testWidgets('a connect that fails on the pad shows Home once, a second failure does not stack another', (
+    tester,
+  ) async {
+    final app = await pumpApp(tester, paired: true, saved: saved('sunny'), discovered: liveHost('tv-1'));
+    expect(homes(), findsNothing);
+
+    app.client.emit(const ClientSnapshot(status: ClientStatus.connecting));
+    await settle(tester);
+    app.client.emit(const ClientSnapshot(status: ClientStatus.failed, problem: ClientProblem.unreachable));
+    await settle(tester);
+    expect(homes(), findsOneWidget, reason: 'the failed attempt returns to Home');
+
+    app.client.emit(const ClientSnapshot(status: ClientStatus.connecting));
+    await settle(tester);
+    app.client.emit(const ClientSnapshot(status: ClientStatus.failed, problem: ClientProblem.unreachable));
+    await settle(tester);
+    expect(homes(), findsOneWidget, reason: 'Home is open already');
+  });
+
+  testWidgets('a link that dropped after connecting does not return to Home', (tester) async {
+    final app = await pumpApp(tester, paired: true, saved: saved('sunny'), discovered: liveHost('tv-1'));
+    app.client.emit(connected);
+    await settle(tester);
+    app.client.emit(const ClientSnapshot(status: ClientStatus.reconnecting));
+    await settle(tester);
+    app.client.emit(const ClientSnapshot(status: ClientStatus.failed, problem: ClientProblem.unreachable));
+    await settle(tester);
+    expect(homes(), findsNothing, reason: 'the waiting card handles a dropped link');
+  });
+}

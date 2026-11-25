@@ -29,6 +29,7 @@ void _expectDrifted(Offset before, Offset after) {
 void main() {
   testWidgets('the Connect screen\'s sky drifts', (tester) async {
     await pumpApp(tester, stillSky: false);
+    await reachConnect(tester);
     final connect = _sky(tester, find.byType(ConnectScreen)).value;
     await tester.pump(const Duration(seconds: 1));
     _expectDrifted(connect, _sky(tester, find.byType(ConnectScreen)).value);
@@ -60,6 +61,7 @@ void main() {
 
   testWidgets('a hosting phone\'s picker drifts', (tester) async {
     await pumpHostApp(tester, stillSky: false);
+    await reachConnect(tester);
     await enterHostMode(tester);
     // The picker is a menu, and no pad stands under it while no round is on
     // (M13 9 review): its sky drifts as the TV's do.

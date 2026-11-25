@@ -13,6 +13,7 @@ void main() {
 
   testWidgets('the level list\'s title bar starts at the frame\'s top, under the phone\'s bar', (tester) async {
     await pumpHostApp(tester);
+    await reachConnect(tester);
     final host = await enterHostMode(tester);
     await tester.tap(find.byKey(const Key('pickShapeRace')));
     await untilShown(tester, find.byType(party.ShapeRaceScreen), 'The Shape Race screen');
@@ -37,6 +38,7 @@ void main() {
 
   testWidgets('the bar\'s height reads 0 inside the frame and 52 outside it', (tester) async {
     await pumpHostApp(tester);
+    await reachConnect(tester);
     final host = await enterHostMode(tester);
     await tester.tap(find.byKey(const Key('pickShapeRace')));
     await untilShown(tester, find.byType(party.ShapeRaceScreen), 'The Shape Race screen');

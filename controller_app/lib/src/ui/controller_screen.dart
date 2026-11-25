@@ -8,6 +8,7 @@ import 'package:test_game/test_game.dart' show ArenaCoinIcon;
 
 import '../controls_settings.dart';
 import '../gyro.dart';
+import '../home/launch_route.dart';
 import '../host/hosting.dart';
 import '../layout.dart';
 import '../phone_metrics.dart';
@@ -15,7 +16,6 @@ import '../providers.dart';
 import 'abandoned_notice.dart';
 import 'bar_connection.dart';
 import 'bar_modes.dart';
-import 'connect_screen.dart';
 import 'controls_layer.dart';
 import 'diagnostics_screen.dart';
 import 'host_chip.dart';
@@ -78,17 +78,9 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
       unawaited(ref.read(gyroProvider.notifier).restoreMode());
       // The battery and CPU readout is the controller's; a host has its own.
       if (!hosting) ref.read(sessionMonitorProvider).start();
-      // Back to the last TV if still paired, otherwise straight to choosing
-      // one. The reconnect waits a moment for discovery and prefers a live
-      // address over the remembered one (M16 item 3). A hosting phone has no
-      // TV to find: its own player is already connecting.
-      final paired = !hosting && await ref.read(connectionActionsProvider).reconnectToLastHost();
-      if (!mounted) return;
-      if (!hosting && !paired) openConnect(context);
-      // A phone that stays here never opens the Connect screen, where a launch
-      // puts this phone's own two questions (design sentry-consent.md): this
-      // first frame asks them instead.
-      if (paired) _askLaunchConsent();
+      // Back to the last TV if it is found live, otherwise Home. A hosting
+      // phone has no TV to find: its own player is already connecting.
+      if (!hosting) await routeLaunch(context, ref);
     });
   }
 
@@ -98,17 +90,6 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
     final changed = _phaseChanged;
     if (changed != null) _phase?.removeListener(changed);
     super.dispose();
-  }
-
-  /// Puts this launch's own two questions (design sentry-consent.md) to the
-  /// adult, for a launch whose first screen is this one and not the Connect
-  /// screen. The launch's flag means the two screens never ask twice, and a
-  /// host route above asks its own (B-023), so nothing goes over a game.
-  void _askLaunchConsent() {
-    if (ref.read(hostingProvider)?.live ?? false) return;
-    if (!ref.read(launchConsentAskProvider) || ref.read(launchConsentAskedProvider)) return;
-    ref.read(launchConsentAskedProvider.notifier).mark();
-    unawaited(party.askConsents(context, ref));
   }
 
   /// The round started, stopped or started again (m12-host-touch rules 1, 2):
@@ -150,6 +131,8 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
   /// The TV's side while this phone is not hosting (m12 §5): a fresh search
   /// after a long reconnect, the TV's new address, and its rating prompt.
   void _followTheTv(BuildContext context) {
+    // A first connection that ends unconnected goes back to Home (Q7).
+    returnHomeOnFailedConnect(context, ref);
     // While reconnecting for a while, look for the TV again now and then: it
     // may have restarted on another port, or the network may have changed.
     ref.listen(clientStateProvider, (_, next) {

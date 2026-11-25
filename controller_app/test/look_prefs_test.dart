@@ -110,6 +110,7 @@ void main() {
 
   testWidgets('hosting, the real root reads and saves this phone\'s Look and sound', (tester) async {
     final app = await pumpRealRoot(tester, saved: {'sound.volume': 40});
+    await reachConnect(tester);
     await enterHostMode(tester);
     final container = _container(tester);
     expect(
