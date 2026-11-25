@@ -148,6 +148,9 @@ final class ShapeRaceViewer implements GameViewer {
           padRects: onPhone
               ? [for (final r in view.padRects) r.shift(const Offset(0, -phoneBarClearPx))]
               : view.padRects,
+          hudRects: onPhone
+              ? [for (final r in view.hudRects) r.shift(const Offset(0, -phoneBarClearPx))]
+              : view.hudRects,
           pxPerMm: view.pxPerMm,
           characters: _charactersOf(view),
         );

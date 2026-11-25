@@ -24,6 +24,9 @@ const _frameHeightPx = 540.0;
 const _upArmDevice = Rect.fromLTRB(129.6, 60.0, 237.4, 218.5);
 const _leftArmDevice = Rect.fromLTRB(25.0, 164.6, 183.5, 272.4);
 
+/// A HUD rect the host app draws, in device px: divided by the scale like the pad's.
+const _hudDevice = Rect.fromLTRB(300.0, 8.0, 560.0, 56.0);
+
 /// The scale and frame [HostFrame] makes of the room the phone host's gate
 /// leaves at [screen] (DESIGN section 2): `s = min(W/960, H/540)` over the
 /// room below the bar, 0.63148148 at 852x393 and 0.57037037 at 640x360.
@@ -52,6 +55,7 @@ Future<PuzzlePlayView> openRoundWithPad(
     overrides: [
       hostPadProvider.overrideWithValue((
         pxPerMm: _devicePxPerMm,
+        hudRects: (Size box) => const [_hudDevice],
         rects: (Size box) {
           asked(box);
           return deviceRects;
@@ -122,6 +126,7 @@ void main() {
       expectRects(view.padRects, [
         for (final rect in const [_upArmDevice, _leftArmDevice]) frameRect(rect, s),
       ]);
+      expectRects(view.hudRects, [frameRect(_hudDevice, s)]);
       expect(view.pxPerMm, closeTo(_devicePxPerMm / s, 1e-9));
     });
   }
@@ -140,6 +145,7 @@ void main() {
     final box = tester.getSize(find.byType(PuzzlePlayView));
     expect(asked, box);
     expectRects(view.padRects, const [_upArmDevice]);
+    expectRects(view.hudRects, const [_hudDevice]);
     expect(view.pxPerMm, _devicePxPerMm);
   });
 }

@@ -63,6 +63,7 @@ Widget draw(
           playerId: 'p1',
           wholeMatch: false,
           padRects: padRects,
+          hudRects: const <Rect>[],
           pxPerMm: phonePxPerMm,
         )),
       ),

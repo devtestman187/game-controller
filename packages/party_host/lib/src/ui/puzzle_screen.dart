@@ -333,6 +333,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                           camera: _camera,
                           wholeIfNoMirror: ref.watch(wholeMatchProvider),
                           padRects: pad.rects,
+                          hudRects: pad.hudRects,
                           pxPerMm: pad.pxPerMm,
                           match: widget.match,
                           paused: paused,

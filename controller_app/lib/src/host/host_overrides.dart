@@ -72,10 +72,16 @@ List<Override> phoneHostOverrides({required party.HostDirectories directories}) 
   party.hostPadProvider.overrideWith((ref) {
     final mm = ref.watch(pxPerMmProvider);
     final host = ref.watch(hostingProvider);
-    if (host == null || !host.service.shareView) return (pxPerMm: mm, rects: (Size box) => const <Rect>[]);
+    if (host == null || !host.service.shareView) {
+      return (pxPerMm: mm, rects: (Size box) => const <Rect>[], hudRects: (Size box) => const <Rect>[]);
+    }
     final mode = ref.watch(gyroProvider.select((g) => g.mode));
     final sticks = ref.watch(stickSettingsProvider);
-    return (pxPerMm: mm, rects: (Size box) => _hostPadRects(box, mode: mode, mm: mm, sticks: sticks));
+    return (
+      pxPerMm: mm,
+      rects: (Size box) => _hostPadRects(box, mode: mode, mm: mm, sticks: sticks),
+      hudRects: (Size box) => const <Rect>[],
+    );
   }),
 ];
 

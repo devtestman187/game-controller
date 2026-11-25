@@ -46,6 +46,7 @@ class FrameView extends StatefulWidget {
     this.playerId,
     this.wholeMatch = false,
     this.padRects = const [],
+    this.hudRects = const [],
     required this.pxPerMm,
     this.settings = HostingSettings.defaults,
     this.onSounds,
@@ -82,6 +83,10 @@ class FrameView extends StatefulWidget {
   /// of it (m12-opponent-mirror rule 3). Empty where nothing is drawn over the
   /// game.
   final List<Rect> padRects;
+
+  /// Where this phone's app draws its own readouts over the game, in this view's
+  /// own px, for [ViewContext.hudRects]. Empty where it draws none.
+  final List<Rect> hudRects;
 
   /// This phone's px per millimetre, for [ViewContext.pxPerMm]: what the game
   /// needs to draw a mark at a physical size (m12-opponent-mirror rule 7). The
@@ -305,6 +310,7 @@ class _FrameViewState extends State<FrameView> with SingleTickerProviderStateMix
       playerId: widget.playerId,
       wholeMatch: widget.wholeMatch,
       padRects: widget.padRects,
+      hudRects: widget.hudRects,
       pxPerMm: widget.pxPerMm,
     ));
   }

@@ -69,6 +69,7 @@ void main() {
     String? playerId,
     bool wholeMatch = false,
     List<Rect> padRects = const [],
+    List<Rect> hudRects = const [],
     double pxPerMm = testPxPerMm,
     GameRegistry? registry,
     void Function(List<String>)? onSounds,
@@ -83,6 +84,7 @@ void main() {
       playerId: playerId,
       wholeMatch: wholeMatch,
       padRects: padRects,
+      hudRects: hudRects,
       pxPerMm: pxPerMm,
       onSounds: onSounds,
       onDrawn: onDrawn,
@@ -95,6 +97,7 @@ void main() {
     String? playerId,
     bool wholeMatch = false,
     List<Rect> padRects = const [],
+    List<Rect> hudRects = const [],
     double pxPerMm = testPxPerMm,
     GameRegistry? registry,
     void Function(List<String>)? onSounds,
@@ -104,6 +107,7 @@ void main() {
       playerId: playerId,
       wholeMatch: wholeMatch,
       padRects: padRects,
+      hudRects: hudRects,
       pxPerMm: pxPerMm,
       registry: registry,
       onSounds: onSounds,
@@ -293,6 +297,23 @@ void main() {
     await send(tester, frameEvent(0, atMs: 1000, x: 0.5, roster: players));
     expect(drawn(tester).view.padRects, pad, reason: 'the app\'s controls, passed through unchanged');
     expect(drawn(tester).view.pxPerMm, 8.5, reason: 'the app\'s own density, passed through unchanged');
+
+    await unmount(tester);
+  });
+
+  testWidgets('the viewer is told where the app draws its HUD, and none by default', (tester) async {
+    const hud = [Rect.fromLTWH(8, 4, 200, 48)];
+    await mount(tester, playerId: 'p1', hudRects: hud);
+    clock.nowMs = 1000;
+    await send(tester, startEvent());
+    await send(tester, frameEvent(0, atMs: 1000, x: 0.5, roster: players));
+    expect(drawn(tester).view.hudRects, hud, reason: 'the app\'s HUD rects, passed through unchanged');
+    await unmount(tester);
+
+    await mount(tester, playerId: 'p1');
+    await send(tester, startEvent());
+    await send(tester, frameEvent(0, atMs: 1000, x: 0.5, roster: players));
+    expect(drawn(tester).view.hudRects, isEmpty, reason: 'no HUD unless the app says so');
 
     await unmount(tester);
   });

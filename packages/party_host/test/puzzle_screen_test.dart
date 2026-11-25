@@ -158,6 +158,7 @@ void main() {
         ownPlayerIdProvider.overrideWithValue('p2'),
         hostPadProvider.overrideWithValue((
           pxPerMm: 7.5,
+          hudRects: (Size box) => const <Rect>[],
           rects: (Size box) {
             asked = box;
             return [overGame];

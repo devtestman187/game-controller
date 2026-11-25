@@ -67,11 +67,16 @@ abstract interface class GameSnapshot {
 /// what it adds (the other side's mirror: m12-opponent-mirror rules 3 and 8)
 /// clear of them, and the screen's density so a mark the game draws at a
 /// physical size keeps it (rule 7). No pad is drawn where [padRects] is empty.
+///
+/// [hudRects] are the app's own readouts drawn over the game (its bar and chips),
+/// in the same px as [padRects], for the game's HUD to keep clear of. Empty
+/// where the app draws none.
 typedef ViewContext = ({
   Map<String, ({int number, String name})> roster,
   String? playerId,
   bool wholeMatch,
   List<Rect> padRects,
+  List<Rect> hudRects,
   double pxPerMm,
   // The character each player chose (M16 identity), by player ID: empty when
   // the host sent none. A player missing here wears their number's default.

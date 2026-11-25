@@ -122,6 +122,7 @@ void main() {
               playerId: null,
               wholeMatch: false,
               padRects: const <Rect>[],
+              hudRects: const <Rect>[],
               pxPerMm: phonePxPerMm,
             )),
           ),

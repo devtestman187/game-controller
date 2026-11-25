@@ -39,6 +39,7 @@ Widget draw(
   String? playerId,
   bool wholeMatch = false,
   List<Rect> padRects = const [],
+  List<Rect> hudRects = const [],
   double pxPerMm = phonePxPerMm,
   Size box = const Size(960, 540),
 }) => withLook(
@@ -54,6 +55,7 @@ Widget draw(
           playerId: playerId,
           wholeMatch: wholeMatch,
           padRects: padRects,
+          hudRects: hudRects,
           pxPerMm: pxPerMm,
         )),
       ),
@@ -70,6 +72,9 @@ PuzzleCamera paintedCameraOf(WidgetTester tester) =>
 
 /// The app's controls the drawn [MatchView] keeps clear of, as it was given them.
 List<Rect> padRectsOf(WidgetTester tester) => tester.widget<MatchView>(find.byType(MatchView)).padRects;
+
+/// The HUD rects the drawn [MatchView] keeps clear of, as it was given them.
+List<Rect> hudRectsOf(WidgetTester tester) => tester.widget<MatchView>(find.byType(MatchView)).hudRects;
 
 /// The drawn [MatchView]'s px per millimetre, as it was given it.
 double pxPerMmOf(WidgetTester tester) => tester.widget<MatchView>(find.byType(MatchView)).pxPerMm;
@@ -226,5 +231,15 @@ void main() {
     await tester.pumpWidget(draw(phones, phonesSnapshot, playerId: 'p1', padRects: pad, pxPerMm: 8.5));
     await tester.pump();
     expect(pxPerMmOf(tester), 8.5);
+
+    // The HUD's rects take the same shift on a phone (the top bar), and none
+    // shift on the screen layout.
+    const hud = [Rect.fromLTWH(10, 100, 80, 40)];
+    await tester.pumpWidget(draw(phones, phonesSnapshot, playerId: 'p1', hudRects: hud));
+    await tester.pump();
+    expect(hudRectsOf(tester), [const Rect.fromLTWH(10, 48, 80, 40)], reason: 'shifted up by the 52 px top bar');
+    await tester.pumpWidget(draw(screen, snapshot, playerId: 'p1', hudRects: hud));
+    await tester.pump();
+    expect(hudRectsOf(tester), hud, reason: 'the screen layout has no bar to shift for');
   });
 }

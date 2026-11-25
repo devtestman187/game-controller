@@ -4,8 +4,8 @@ import '../providers.dart';
 import 'host_frame.dart';
 
 /// What a round's board keeps clear of, in the px the board is laid out in
-/// (M16 phonehost3 pad): the pad's rects and its px per mm.
-typedef PadClearance = ({List<Rect> rects, double pxPerMm});
+/// (M16 phonehost3 pad): the pad's rects, the HUD rects and its px per mm.
+typedef PadClearance = ({List<Rect> rects, List<Rect> hudRects, double pxPerMm});
 
 /// [pad]'s clearances for a board that fills [boardBox], in the px the board
 /// draws with (M16 phonehost3 pad).
@@ -21,9 +21,11 @@ typedef PadClearance = ({List<Rect> rects, double pxPerMm});
 /// nothing changes.
 PadClearance padClearanceFor(BuildContext context, HostPad pad, Size boardBox) {
   final frame = HostFrameInfo.maybeOf(context);
-  if (frame == null) return (rects: pad.rects(boardBox), pxPerMm: pad.pxPerMm);
+  if (frame == null) return (rects: pad.rects(boardBox), hudRects: pad.hudRects(boardBox), pxPerMm: pad.pxPerMm);
+  final deviceBox = boardBox * frame.scale;
   return (
-    rects: [for (final rect in pad.rects(boardBox * frame.scale)) _frames(rect, frame.scale)],
+    rects: [for (final rect in pad.rects(deviceBox)) _frames(rect, frame.scale)],
+    hudRects: [for (final rect in pad.hudRects(deviceBox)) _frames(rect, frame.scale)],
     pxPerMm: pad.pxPerMm / frame.scale,
   );
 }
