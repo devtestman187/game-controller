@@ -48,3 +48,19 @@ METRICS a2 worker=claude model=claude-haiku-5-5 turns=36 in=50 out=20499 cache=9
 METRICS run-review worker=claude model=claude-haiku-5-5 turns=17 in=22 out=22108 cache=343189 min=1.9 wall=- result=0
 2026-11-25 13:56:48 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/m165/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 3 jobs, 6 min
+HAND-FIX a1s: apply-job.sh applied 14 files: controller_app/lib/src/ui/controller_top_bar.dart, controller_app/test/connection_test.dart, controller_app/test/diagnostics_test.dart, controller_app/test/haptics_test.dart, controller_app/test/host_mode_test.dart, controller_app/test/host_title_bar_test.dart, controller_app/test/joined_view_test.dart, controller_app/test/more_menu_test.dart, controller_app/test/phone_fit_test.dart, controller_app/test/phone_look_test.dart, controller_app/test/support/pump_app.dart, controller_app/test/support/site_shots.dart, docs/briefs/m16/m165/a1s-report.md, packages/party_host/lib/src/text/phone_text.dart
+HAND-FIX-EVENT a1s: 548 lines changed, replaced ladder level ?
+H2H a1s won over a1h: applied by tools/h2h.sh (loser patch: docs/briefs/m16/m165/loser-a1h.patch)
+2026-11-25 13:59:55 RUN_MAX_MIN=275 min (computed backstop of the jobs still to do)
+2026-11-25 13:59:55 start at 40a6232f on m16
+2026-11-25 13:59:55 worker: claude
+2026-11-25 13:59:56 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-25 14:00:16 phase: preflight
+2026-11-25 14:00:23 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-25 14:00:38 phase: worker (preflight took 22s)
+2026-11-25 14:00:38 skip a1s (kept: apply: no arm already ran)
+2026-11-25 14:00:38 skip a1h (kept: apply: no arm already ran)
+2026-11-25 14:00:39 WARN: a2 was committed by hand (362a2454); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-25 14:01:54 tests-first ok: controller_app/test/result_card_pad_test.dart fails on the old code
+2026-11-25 14:01:55 hand-fixed a2: tests-first proof and worker review done (marked in done.txt)
+2026-11-25 14:01:55 skip a2 (already done)
