@@ -104,7 +104,10 @@ void main() {
       child: Column(mainAxisSize: MainAxisSize.min, children: [row(sunny), row(night)]),
     );
     final bytes = await capturePng(tester, picture, window: box, box: box, look: sunny);
-    final file = File('../../docs/design/m13-placed-look.png')..writeAsBytesSync(bytes);
-    expect(file.lengthSync(), greaterThan(5000));
+    expect(bytes.length, greaterThan(5000));
+    // Written only on request, so a plain test run leaves the tree clean: UPDATE_GOLDENS=1 flutter test ...
+    if (Platform.environment.containsKey('UPDATE_GOLDENS')) {
+      File('../../docs/design/m13-placed-look.png').writeAsBytesSync(bytes);
+    }
   });
 }

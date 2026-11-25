@@ -41,6 +41,7 @@ printf '%s %s\n' "$stub_name" "$*" >> "${STUB_LOG:?}"
 out="${STUB_OUT_DIR:?}/$stub_name-$1"
 [ -f "$out.txt" ] && cat "$out.txt"
 [ -f "$out.hang" ] && exec sleep 30
+[ -f "$out.churn" ] && printf 'regen\n' >> "$(cat "$out.churn")" # a test run rewrites a generated file
 [ -f "$out.rc" ] && exit "$(cat "$out.rc")"
 exit 0
 FIXTURE
@@ -194,14 +195,25 @@ if [ "$rc" = 0 ] && last | grep -qF 'RESULT: ok:' && [ ! -e "$repo_path/.dart_to
 report "a stale lock is replaced and removed" "$r"
 
 repo churn
-printf 'dirty\n' >> "$repo_path/tv_test_app/windows/flutter/gen.cc"
 printf '// dirty\n' >> "$repo_path/app/lib/screen.dart"
 reset_stub
+printf '%s' "$repo_path/tv_test_app/windows/flutter/gen.cc" > "$stub/out/flutter-test.churn" # dirtied by the run itself
 mine "$repo_path"
 status="$(git -C "$repo_path" status --porcelain)"
 if [ "$rc" = 0 ] && grep -qF 'churn: reverted 1 generated file(s)' "$out" &&
   printf '%s' "$status" | grep -q '^ M app/lib/screen.dart$' && ! printf '%s' "$status" | grep -q 'gen.cc'; then r=0; else r=1; fi
-report "the churn file is reverted and the person's file is left alone" "$r"
+report "the churn file the run dirtied is reverted and the person's file is left alone" "$r"
+
+# A churn file that was already dirty when mine.sh started (a person's edit, or an earlier run's) is not reverted.
+repo churn_before
+printf 'my edit\n' >> "$repo_path/tv_test_app/windows/flutter/gen.cc"
+reset_stub
+printf '%s' "$repo_path/tv_test_app/windows/flutter/gen.cc" > "$stub/out/flutter-test.churn"
+mine "$repo_path"
+status="$(git -C "$repo_path" status --porcelain)"
+if [ "$rc" = 0 ] && ! grep -qF 'churn: reverted' "$out" && printf '%s' "$status" | grep -q 'gen.cc' &&
+  grep -q 'my edit' "$repo_path/tv_test_app/windows/flutter/gen.cc"; then r=0; else r=1; fi
+report "a churn file already dirty at the start is left alone (the pre-run snapshot)" "$r"
 
 repo interrupt
 printf '// touched\n' >> "$repo_path/app/lib/screen.dart"

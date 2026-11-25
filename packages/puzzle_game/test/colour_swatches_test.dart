@@ -74,8 +74,12 @@ void main() {
 
   testWidgets('writes docs/design/puzzles/colours.png', (tester) async {
     final picture = await capturePng(tester, sheet(sunny), window: box, box: box, look: sunny);
-    final file = File('../../docs/design/puzzles/colours.png')..createSync(recursive: true);
-    file.writeAsBytesSync(picture);
-    expect(file.lengthSync(), greaterThan(2000));
+    expect(picture.length, greaterThan(2000));
+    // Written only on request, so a plain test run leaves the tree clean: UPDATE_GOLDENS=1 flutter test ...
+    if (Platform.environment.containsKey('UPDATE_GOLDENS')) {
+      File('../../docs/design/puzzles/colours.png')
+        ..createSync(recursive: true)
+        ..writeAsBytesSync(picture);
+    }
   });
 }

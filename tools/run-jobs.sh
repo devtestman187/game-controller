@@ -101,7 +101,7 @@ SAFE_OUTSIDE='^(([^/]+/)*analysis_options\.yaml|\.gitignore|\.gitattributes|([^/
 # Known generated churn outside the list: dropped (never copied), logged per job. The one
 # list is tools/churn.sh's, sourced above: CHURN_REGEX and CHURN_PATHS (the unchurn below).
 CHURN_OUTSIDE=$CHURN_REGEX
-unchurn() { git checkout -- "${CHURN_PATHS[@]}" 2>/dev/null; }
+unchurn() { churn_revert > /dev/null; } # only what was clean at the wave's start (churn_snapshot below)
 SIZE_STOP=380
 RUN_TURN_CAP=${RUN_TURN_CAP:-120} # the most turns one job may take; a brief line `turns: <n>` raises it for that job
 # A brief's report: line must be exactly one bare path (spaces, quotes and backticks are refused).
@@ -300,7 +300,7 @@ for wave in "${WAVES[@]}"; do
         "$WORK/run-base-check.log"
   fi
   [ "$(wc -w <<< "$wave")" -le 3 ] || stop "a wave has more than 3 jobs: $wave"
-  started=() pids=() since=() resumed=()
+  started=() pids=() since=() resumed=(); churn_snapshot "$WORK/churn-snapshot" # unchurn reverts only what is clean now
   for j in $wave; do
     check_stop
     is_dropped "$j" && { note "skip $j (dropped)"; continue; }

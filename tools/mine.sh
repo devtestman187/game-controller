@@ -85,6 +85,7 @@ trap 'trap "" INT TERM; exit 130' INT
 trap 'trap "" INT TERM; exit 143' TERM
 tmp="$(mktemp -d "${TMPDIR:-${TEMP:-/tmp}}/thumbparty-mine-XXXXXX")" || bad_input "can't create a temp folder"
 deadline=$(($(date +%s) + timeout_s))
+churn_snapshot "$tmp/churn-snapshot" # churn already dirty now may be a person's edit: not reverted at the end
 
 timeout_exit() { # <what>: the run's time is gone; revert the churn and stop
   churn_revert

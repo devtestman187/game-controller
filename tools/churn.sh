@@ -3,7 +3,8 @@
 # a person's work. Sourced, not run; tools/mine.sh and tools/run-jobs.sh (through run-steps.sh) are the callers.
 #
 #   . tools/churn.sh
-#   churn_revert      # git checkout -- on the dirty generated paths, quietly
+#   churn_snapshot <file>  # optional, at a job's start: the paths already dirty then are never reverted
+#   churn_revert      # git checkout -- on the dirty generated paths (not the snapshot's), quietly
 #
 # The caller's working directory must be the repository root. These are the one
 # list: tools/run-jobs.sh sources this file for its CHURN_OUTSIDE (the paths it
@@ -40,7 +41,26 @@ churn_path() { # <path>: is it one of the known generated paths?
   [[ "$1" =~ $CHURN_REGEX ]]
 }
 
-churn_revert() { # git checkout -- on the dirty generated paths (never a person's file), quietly
+# A pre-job snapshot: the churn paths that are already dirty when a job (or a mine.sh run) starts may hold a
+# person's edit, so churn_revert leaves them alone; it reverts only what was clean at the start. The snapshot is
+# a file of paths, one per line (CHURN_SNAPSHOT names it); no snapshot (or no such file) reverts every dirty churn path.
+churn_snapshot() { # churn_snapshot <file>: write the dirty churn paths now to <file> and use it from here on
+  local entries=() entry path i=0
+  CHURN_SNAPSHOT=$1
+  export CHURN_SNAPSHOT
+  : > "$CHURN_SNAPSHOT" || return 0
+  while IFS= read -r -d '' entry; do entries+=("$entry"); done < <(git status --porcelain -z 2> /dev/null)
+  while [ "$i" -lt "${#entries[@]}" ]; do
+    entry="${entries[$i]}"
+    i=$((i + 1))
+    path="${entry:3}"
+    case "${entry:0:2}" in *R* | *C*) i=$((i + 1)) ;; esac
+    churn_path "$path" && printf '%s\n' "$path" >> "$CHURN_SNAPSHOT"
+  done
+  return 0
+}
+
+churn_revert() { # git checkout -- on the dirty generated paths that were clean at the snapshot, quietly
   local entries=() dirty=() entry path reverted=0
   local i=0
   while IFS= read -r -d '' entry; do entries+=("$entry"); done < <(git status --porcelain -z 2> /dev/null)
@@ -52,7 +72,9 @@ churn_revert() { # git checkout -- on the dirty generated paths (never a person'
       '??' | '!!') continue ;; # untracked: nothing for checkout to restore
       *R* | *C*) i=$((i + 1)) ;; # the rename's old path follows; checkout takes the new one
     esac
-    churn_path "$path" && dirty+=("$path")
+    churn_path "$path" || continue
+    if [ -n "${CHURN_SNAPSHOT:-}" ] && [ -f "$CHURN_SNAPSHOT" ] && grep -qxF -- "$path" "$CHURN_SNAPSHOT"; then continue; fi
+    dirty+=("$path")
   done
   for path in ${dirty[@]+"${dirty[@]}"}; do
     git checkout -- "$path" 2> /dev/null && reverted=$((reverted + 1))

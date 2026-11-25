@@ -334,9 +334,12 @@ Future<void> writeShot(WidgetTester tester, String name, {required ui.Image tv, 
     bytes,
     reason: 'two drawings of $name are the same bytes',
   );
-  final dir = Directory(shotDir)..createSync(recursive: true);
-  final file = File('${dir.path}/$name.png')..writeAsBytesSync(bytes);
-  final size = file.lengthSync();
+  // Written only on request, so a plain test run leaves the tree clean: UPDATE_GOLDENS=1 flutter test ...
+  if (Platform.environment.containsKey('UPDATE_GOLDENS')) {
+    final dir = Directory(shotDir)..createSync(recursive: true);
+    File('${dir.path}/$name.png').writeAsBytesSync(bytes);
+  }
+  final size = bytes.length;
   expect(
     size,
     lessThan(shotMaxBytes),

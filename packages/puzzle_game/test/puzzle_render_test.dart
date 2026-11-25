@@ -121,9 +121,12 @@ void main() {
       final picture = puzzle.id == 'sun'
           ? twice
           : await capturePng(tester, sheet(puzzle), window: box, box: box, look: sunny);
-      final file = File('../../docs/design/puzzles/${puzzle.id}.png')..createSync(recursive: true);
-      file.writeAsBytesSync(picture);
-      debugPrint('wrote ${file.path} (${picture.length} bytes)');
+      // Written only on request, so a plain test run leaves the tree clean: UPDATE_GOLDENS=1 flutter test ...
+      if (Platform.environment.containsKey('UPDATE_GOLDENS')) {
+        File('../../docs/design/puzzles/${puzzle.id}.png')
+          ..createSync(recursive: true)
+          ..writeAsBytesSync(picture);
+      }
       expect(picture.length, greaterThan(2000), reason: puzzle.id);
     }
   });

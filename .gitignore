@@ -40,3 +40,6 @@ docs/briefs/m14/run-m14.log
 
 # Driver bookkeeping marker written at batch start (never committed)
 docs/briefs/**/.start
+
+# Flutter regenerates these on every pub get / build and the tests rewrite them: churn, not source (tune3)
+tv_test_app/windows/flutter/generated_*
