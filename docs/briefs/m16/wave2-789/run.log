@@ -16,3 +16,7 @@
 2026-11-24 22:24:50 combined check: skips protocol connection metrics kit look arena puzzle host tv tools (no job's change reaches them)
 2026-11-24 22:26:16 committed n9e: 032b4f3a (no commit: job stopped before any change)
 2026-11-24 22:26:18 committed n8a: 729cbe77 Add Home contract: roles, anchors, highlight rule, showTips flag, strings
+2026-11-24 22:26:19 STOPPED: jobs that failed or passed their limit (parked, not committed): n9b1 (their logs: docs/briefs/m16/wave2-789/flash-<job>.log)
+HAND-FIX n9b1: apply-job.sh applied 2 files: controller_app/test/touch_targets_test.dart, docs/briefs/m16/wave2-789/n9b1-report.md
+HAND-FIX-EVENT n9b1: 0 lines changed, replaced ladder level ?
+HAND-FIX-EVENT n9b1: 0 lines changed (applied as is; worker over cap by 5 turns, stray tt_backup.dart left outside allow), replaced ladder level 2

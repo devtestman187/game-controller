@@ -1,0 +1,2 @@
+- 22:14 briefs w1-2 committed, runner started (PAUSE_AFTER_WAVE). next: wait; write wave 3 briefs at pause
+- 22:26 wave 1: n8a ok (haiku, 16 turns). n9e class: brief (Haiku stopped: HostButton already rests on `good`; my premise from the inventory helper was wrong; Resume on the host card needs no change; the open part is the phone Start pill in the player colour). n9b1 class: capability (sonnet 65 turns, cap 60; result 4 because a stray tt_backup.dart); applied via apply-job (HAND-FIX n9b1, 0 lines changed), analyze+review+test pass, e62fa06f. next: restart for wave 2.
