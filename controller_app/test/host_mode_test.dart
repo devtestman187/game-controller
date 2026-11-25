@@ -66,8 +66,7 @@ void main() {
     // its code on the left, the mode's three labels, Settings and Diagnostics
     // on the right. The compact one waits for the round.
     expect(find.byType(BarModes), findsOneWidget);
-    expect(find.byTooltip('Settings'), findsOneWidget);
-    expect(find.byTooltip('Diagnostics'), findsOneWidget);
+    expect(find.byKey(const Key('moreMenu')), findsOneWidget);
     expect(find.byKey(const Key('modeMenu')), findsNothing);
     expect(find.byKey(const Key('connectionDot')), findsNothing);
     expect(find.byKey(const Key('hostChip')), findsOneWidget);
@@ -135,8 +134,7 @@ void main() {
     expect(find.byKey(const Key('faceButtons')), findsOneWidget);
     expect(find.byType(BarModes), findsNothing);
     expect(find.byKey(const Key('modeMenu')), findsOneWidget);
-    expect(find.byTooltip('Settings'), findsOneWidget);
-    expect(find.byTooltip('Diagnostics'), findsOneWidget);
+    expect(find.byKey(const Key('moreMenu')), findsOneWidget);
     expect(find.byKey(const Key('connectionDot')), findsOneWidget);
     expect(find.byKey(const Key('hostChip')), findsOneWidget);
     expect(find.textContaining(host.service.state.host.pairingCode), findsOneWidget);
@@ -144,8 +142,8 @@ void main() {
       tester.getRect(find.byKey(const Key('hostChip'))).left,
       greaterThan(tester.getRect(find.byKey(const Key('connectionDot'))).right),
     );
-    final settings = tester.getSize(find.byTooltip('Settings'));
-    expect(tester.getSize(find.byKey(const Key('hostChip'))).height, greaterThanOrEqualTo(settings.height));
+    final more = tester.getSize(find.byKey(const Key('moreMenu')));
+    expect(tester.getSize(find.byKey(const Key('hostChip'))).height, greaterThanOrEqualTo(more.height));
     await until(
       tester,
       () => faceLabels(tester).contains('A Pick up'),
@@ -176,7 +174,7 @@ void main() {
     expect(find.byKey(const Key('faceButtons')), findsNothing);
     expect(find.byKey(const Key('dpad')), findsNothing);
     expect(find.byType(BarModes), findsNothing);
-    expect(find.byTooltip('Settings'), findsNothing);
+    expect(find.byKey(const Key('moreMenu')), findsNothing);
     // It takes the whole frame under the bar (M16 phonehost2 wph): unlike
     // "Play on this phone", nothing sits beside the game (C34).
     expectRect(tester, find.byType(party.GamesScreen), const Rect.fromLTRB(0, topBarHeightPx, 852, 393));
@@ -206,8 +204,7 @@ void main() {
     // left, the mode's three labels, Settings and Diagnostics on the right.
     expect(find.byKey(const Key('playerBadge')), findsOneWidget);
     expect(find.byType(BarModes), findsOneWidget);
-    expect(find.byTooltip('Settings'), findsOneWidget);
-    expect(find.byTooltip('Diagnostics'), findsOneWidget);
+    expect(find.byKey(const Key('moreMenu')), findsOneWidget);
     expect(find.byKey(const Key('hostChip')), findsOneWidget);
     expect(find.textContaining('Hosting · '), findsOneWidget);
     expect(find.textContaining(host.service.state.host.pairingCode), findsOneWidget);

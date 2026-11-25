@@ -184,9 +184,32 @@ Offset at(WidgetTester tester, Key key, Offset fraction) {
   return rect.topLeft + Offset(rect.width * fraction.dx, rect.height * fraction.dy);
 }
 
+/// Opens Settings from the bar's More menu.
 Future<void> openSettings(WidgetTester tester) async {
-  await tester.tap(find.byTooltip('Settings'));
+  await tester.tap(find.byKey(const Key('moreMenu')));
   await settle(tester);
+  await tester.tap(find.byKey(const Key('moreSettings')));
+  await settleMenuRoute(tester);
+}
+
+/// The menu closes before the route it opened is pushed: one settle for the
+/// menu, one for the route's transition.
+Future<void> settleMenuRoute(WidgetTester tester) async {
+  await settle(tester);
+  await settle(tester);
+}
+
+/// Opens Diagnostics from the bar's More menu, or from the plain Diagnostics
+/// button of a bar that has no menu ("Show on this device").
+Future<void> openDiagnostics(WidgetTester tester) async {
+  if (find.byKey(const Key('moreMenu')).evaluate().isEmpty) {
+    await tester.tap(find.byTooltip('Diagnostics'));
+  } else {
+    await tester.tap(find.byKey(const Key('moreMenu')));
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('moreDiagnostics')));
+  }
+  await settleMenuRoute(tester);
 }
 
 Future<void> closeSettings(WidgetTester tester) async {

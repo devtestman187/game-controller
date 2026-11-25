@@ -161,8 +161,8 @@ void main() {
       final look = ToyLookScope.of(tester.element(find.byType(BarConnection)));
       final chip = tester.widget<ActionChip>(find.byKey(const Key('connectionChip')));
       expect(chip.labelStyle!.color, look.colors.onBackground);
-      final settings = tester.widget<IconButton>(find.widgetWithIcon(IconButton, Icons.settings_outlined));
-      expect((settings.icon as Icon).color, look.colors.onBackground);
+      final more = tester.widget<IconButton>(find.byKey(const Key('moreMenu')));
+      expect((more.icon as Icon).color, look.colors.onBackground);
     });
   });
 

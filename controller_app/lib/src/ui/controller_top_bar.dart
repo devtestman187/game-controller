@@ -66,8 +66,7 @@ class _GameTopBar extends ConsumerWidget {
           if (hosting) const HostChip(compact: true),
           const Spacer(),
           if (controls) const ModeMenuButton(),
-          if (controls) const _SettingsButton(),
-          const _DiagnosticsButton(),
+          if (controls) const _MoreMenuButton() else const _DiagnosticsButton(),
         ],
       ),
     ),
@@ -92,23 +91,44 @@ class _ControllerTopBar extends ConsumerWidget {
         Expanded(child: hosting ? const HostChip() : const BarConnection()),
         const SizedBox(width: party.ToySizes.space8),
         if (controls) const BarModes(),
-        if (controls) const _SettingsButton(),
-        const _DiagnosticsButton(),
+        if (controls) const _MoreMenuButton() else const _DiagnosticsButton(),
       ],
     ),
   );
 }
 
-/// The bar's way into Settings: the pad's and the phone's. Its icon is drawn
-/// on the pad's background, so it takes `onBackground` (M13 3c).
-class _SettingsButton extends StatelessWidget {
-  const _SettingsButton();
+/// The bar's "More" menu on every device and look: Settings (the pad's and the
+/// phone's) and Diagnostics, so the bar keeps one button for both. Its icon is
+/// drawn on the pad's background, so it takes `onBackground` (M13 3c).
+class _MoreMenuButton extends StatelessWidget {
+  const _MoreMenuButton();
+
+  /// The touch target's side, in dp, which the bar's other buttons keep too.
+  static const _minTargetDp = 48.0;
 
   @override
-  Widget build(BuildContext context) => IconButton(
-    tooltip: party.PhoneText.settings,
-    icon: Icon(Icons.settings_outlined, color: party.ToyLookScope.of(context).colors.onBackground),
-    onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen())),
+  Widget build(BuildContext context) => MenuAnchor(
+    menuChildren: [
+      MenuItemButton(
+        key: const Key('moreSettings'),
+        leadingIcon: const Icon(Icons.settings_outlined),
+        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen())),
+        child: const Text(party.PhoneText.settings),
+      ),
+      MenuItemButton(
+        key: const Key('moreDiagnostics'),
+        leadingIcon: const Icon(Icons.monitor_heart_outlined),
+        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const DiagnosticsScreen())),
+        child: const Text(party.PhoneText.diagnostics),
+      ),
+    ],
+    builder: (context, menu, _) => IconButton(
+      key: const Key('moreMenu'),
+      tooltip: party.PhoneText.more,
+      constraints: const BoxConstraints(minWidth: _minTargetDp, minHeight: _minTargetDp),
+      icon: Icon(Icons.more_horiz, color: party.ToyLookScope.of(context).colors.onBackground),
+      onPressed: () => menu.isOpen ? menu.close() : menu.open(),
+    ),
   );
 }
 

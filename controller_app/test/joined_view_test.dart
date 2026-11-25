@@ -181,8 +181,7 @@ void main() {
       expect(badge.character, party.ToyCharacter.forPlayer(1));
       expect(find.byKey(const Key('connectionDot')), findsOneWidget);
       expect(find.byKey(const Key('modeMenu')), findsOneWidget);
-      expect(find.byTooltip('Settings'), findsOneWidget);
-      expect(find.byTooltip('Diagnostics'), findsOneWidget);
+      expect(find.byKey(const Key('moreMenu')), findsOneWidget);
       // Nothing in the middle: no host name, no ping, no status panel.
       expect(find.byKey(const Key('connectionChip')), findsNothing);
       expect(find.textContaining('Android TV'), findsNothing);
@@ -261,9 +260,8 @@ void main() {
       final app = await pumpApp(tester, paired: true);
       app.client.emit(connected.copyWith(player: 1));
       await settle(tester);
-      // The full bar's two icon buttons: the sizes the compact bar must keep.
-      final settings = tester.getSize(find.byTooltip('Settings'));
-      final diagnostics = tester.getSize(find.byTooltip('Diagnostics'));
+      // The full bar's More button: the size the compact bar must keep.
+      final more = tester.getSize(find.byKey(const Key('moreMenu')));
 
       app.client.nowMs = 1000;
       app.client.viewStart(arenaStart());
@@ -271,11 +269,10 @@ void main() {
       app.client.viewFrame(arenaFrame(0));
       await settle(tester);
 
-      expect(tester.getSize(find.byTooltip('Settings')), settings);
-      expect(tester.getSize(find.byTooltip('Diagnostics')), diagnostics);
+      expect(tester.getSize(find.byKey(const Key('moreMenu'))), more);
       final mode = tester.getSize(find.byKey(const Key('modeMenu')));
-      expect(mode.width, greaterThanOrEqualTo(settings.width), reason: 'the one mode icon is no smaller');
-      expect(mode.height, greaterThanOrEqualTo(settings.height), reason: 'the one mode icon is no smaller');
+      expect(mode.width, greaterThanOrEqualTo(more.width), reason: 'the one mode icon is no smaller');
+      expect(mode.height, greaterThanOrEqualTo(more.height), reason: 'the one mode icon is no smaller');
       // The bar draws the pad's body below its own height: the bar's padding
       // and its 48-high row are [topBarHeightPx], the constant `leftPadRects`
       // measures the controls from.

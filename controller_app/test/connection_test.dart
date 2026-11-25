@@ -59,8 +59,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 1200));
       app.client.emit(connected);
       await tester.pump();
-      await tester.tap(find.byTooltip('Diagnostics'));
-      await settle(tester);
+      await openDiagnostics(tester);
       final drop = find.textContaining('Dropped (No heartbeat), back after');
       await scrollTo(tester, drop);
       expect(drop, findsOneWidget);

@@ -72,8 +72,7 @@ void main() {
   testWidgets('the Diagnostics screen fits', (tester) async {
     await eachLook(tester, 'Diagnostics screen', (size, palette) async {
       await pump(tester, size, palette, paired: true);
-      await tester.tap(find.byTooltip('Diagnostics'));
-      await settle(tester);
+      await openDiagnostics(tester);
       expect(find.byType(DiagnosticsScreen), findsOneWidget);
     });
   });

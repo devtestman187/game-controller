@@ -26,8 +26,7 @@ Future<String> copiedReport(WidgetTester tester) async {
     return null;
   });
   addTearDown(() => messenger.setMockMethodCallHandler(SystemChannels.platform, null));
-  await tester.tap(find.byTooltip('Diagnostics'));
-  await settle(tester);
+  await openDiagnostics(tester);
   await tester.tap(find.byTooltip('Copy report'));
   await settle(tester);
   return copied ?? fail('Nothing was copied');
@@ -47,8 +46,7 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Diagnostics'));
-    await settle(tester);
+    await openDiagnostics(tester);
 
     expect(find.text('Diagnostics'), findsOneWidget);
     expect(find.text('Probably denied'), findsOneWidget);
@@ -92,8 +90,7 @@ void main() {
       // 10 s later the app has used 0.8 s of CPU: 8 % of one core.
       device.next = const DeviceStatus(battery: 0.79, thermal: 'fair', cpuMs: 800);
       await tester.pump(const Duration(seconds: 10));
-      await tester.tap(find.byTooltip('Diagnostics'));
-      await settle(tester);
+      await openDiagnostics(tester);
       await scrollTo(tester, find.text('Heat'));
       expect(find.textContaining('of one core'), findsOneWidget);
       expect(find.text('fair'), findsOneWidget);

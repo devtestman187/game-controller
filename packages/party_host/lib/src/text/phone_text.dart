@@ -43,6 +43,9 @@ abstract final class PhoneText {
   static const connect = 'Connect';
   static const hostAGame = 'Host a game';
   static const settings = 'Settings';
+
+  /// The bar's menu button, which holds Settings and Diagnostics.
+  static const more = 'More';
   static const tryWithoutTv = 'Try without a screen';
 
   /// The saved character on the join screen (M16 identity): "You: the Blue

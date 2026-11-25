@@ -124,8 +124,7 @@ void main() {
     testWidgets('Diagnostics counts the events and shows the last one', (tester) async {
       final app = await connectedApp(tester);
       await send(tester, app, HapticEvent.success, intensity: 0.8, ms: 300);
-      await tester.tap(find.byTooltip('Diagnostics'));
-      await settle(tester);
+      await openDiagnostics(tester);
       final pageList = find.byType(Scrollable).first;
       await tester.scrollUntilVisible(find.text('Last screen event'), 200, scrollable: pageList);
       expect(find.text('1 received, 1 played'), findsOneWidget);

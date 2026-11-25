@@ -11,12 +11,11 @@ import 'support/host_app.dart';
 import 'support/pump_app.dart';
 
 /// The parts of the phone's own bar: the host's chip and code, the mode's
-/// three labels, Settings and Diagnostics (m12-host-touch rule 1).
+/// three labels and the More menu (m12-host-touch rule 1).
 List<(String, Finder)> barParts() => [
   ('the host chip', find.byKey(const Key('hostChip'))),
   ('the mode labels', find.byType(BarModes)),
-  ('Settings', find.byTooltip('Settings')),
-  ('Diagnostics', find.byTooltip('Diagnostics')),
+  ('the More menu', find.byKey(const Key('moreMenu'))),
 ];
 
 /// [screen]'s title bar, the one [party.HostScreen] draws.

@@ -70,14 +70,13 @@ const glyphShotPx = 64.0;
 const noSuchFont = 'NoSuchFontInThisTest';
 
 /// The icons the six pictures show, one from each place they appear: the Start
-/// and Back buttons, the bar's Settings and Diagnostics (M13 3c), the pad's
+/// and Back buttons, the bar's More menu (M13 3c), the pad's
 /// mode tab, the picker's Puzzle settings, the results' Rematch and a board's
 /// check. A picture whose icon font didn't load draws every one as a box.
 const pictureIcons = [
   Icons.play_arrow,
   Icons.arrow_back,
-  Icons.settings_outlined,
-  Icons.monitor_heart_outlined,
+  Icons.more_horiz,
   Icons.gamepad_outlined,
   Icons.tune,
   Icons.check,
