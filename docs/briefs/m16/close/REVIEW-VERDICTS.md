@@ -30,3 +30,9 @@
 
 # f1 (d1 redone)
 - f1 stopped (overflow row outside allow). HAND-FIX-EVENT f1: Haiku found the Row (settings_profile_section.dart characterPreview) but the file was outside allow; the driver replaced the Row by a Wrap (note text start-aligned, one line when it fits), applied the d1 test cleanups from the worker's tree. controller_app full suite 822 pass; touch-target test now green at 320x640 TV.
+
+# Milestone-end review (rv1 rv2 rv3, fb2f6a5e..tip): 0 must, 8 should, 11 later; protocol unchanged (all three checked)
+- should (A6 test matrix gaps, tests only, no failing behaviour shown): home_view_test lacks Night/iPad/large text at 568x320; no test for a failed connect from Get ready/results/leaving (Home push on failure unspecified); bar ping rule at 280 dp untested; Connect title/StatusChip ellipsis untested at 320 with large text; Show tips row only default size; Arena HUD round/map tests no large text/iPad; pause otherLayout and night-awards phone host tests menu look only - minor - code-health (add tests in the next test batch).
+- later: Search again feedback (_searchWaited never reset), askLaunchConsent unawaited without error handler, Home watches whole client state (use select), duplicate 48 dp constant, _anchorsReady not recomputed, ManualEntry/ShowTipsRow/GameScreenShell constructor dartdoc, 'Round N of M' built in two packages, 360 edge test, Wrap note start-aligned on iPad - minor - code-health.
+- Wave 5 review: 8 should/later are wrong file:line cites in rv2/rv3 reports (cites corrected here: bar_connection.dart:23,47; settings_tips_row.dart:9-10; connect_manual_entry.dart:11,16,65; play_view.dart:201; arena_hud_widgets.dart:174; connect_screen.dart:102) - invalid for code, no action.
+- Release-blocking: none.
