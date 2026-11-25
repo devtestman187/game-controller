@@ -146,3 +146,21 @@ RESULT: STOPPED: brief gate: brief-check failed: FAIL changes f4: ArenaHud is us
 RESULT: STOPPED: checks failed twice on the combined tree after f1 f2
 HAND-FIX f3: apply-job.sh applied 1 files: controller_app/test/slider_semantics_test.dart
 HAND-FIX f2: worker fix rejected (shrank touch targets, phone suite hung), test narrowed to the one known case; f3: kept tree fixed by hand (probe line, missing arg) and applied
+2026-11-24 20:19:50 RUN_MAX_MIN=63 min (computed backstop of the jobs still to do)
+2026-11-24 20:19:50 start at 376f253a on m16
+2026-11-24 20:19:50 worker: claude
+2026-11-24 20:19:50 removed the last stop's STOP.md
+2026-11-24 20:20:00 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-24 20:20:16 skip n9a (already done)
+2026-11-24 20:20:16 skip n9c (already done)
+2026-11-24 20:20:17 skip n9d1 (already done)
+2026-11-24 20:20:32 skip n7a (already done)
+2026-11-24 20:20:33 skip n9d2 (already done)
+2026-11-24 20:20:48 skip n9d3 (already done)
+2026-11-24 20:21:04 skip f1 (already done)
+2026-11-24 20:21:04 WARN: f2 was committed by hand (13a328ac); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-24 20:21:05 hand-fixed f2: tests-first proof and worker review done (marked in done.txt)
+2026-11-24 20:21:05 skip f2 (already done)
+2026-11-24 20:21:06 WARN: f3 was committed by hand (8c9d9f24); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-24 20:21:06 hand-fixed f3: tests-first proof and worker review done (marked in done.txt)
+2026-11-24 20:21:06 skip f3 (already done)
