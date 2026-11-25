@@ -18,14 +18,11 @@ const targetScreens = {
 /// Today's offenders, measured on the base: `'<screen> <key, tooltip, text or type>'` to the size found (the
 /// smallest over the sizes and looks). The test needs every target outside this map to be at least
 /// [minTargetDp] and every entry here to still be below it, so whoever fixes a target removes its entry.
-const knownBelow48 = <String, Size>{
-  // The connected pad's chip shrinks to what the mode control, Settings and Diagnostics leave: 47x48 at 568x320 in
-  // the menu look, 26x49 at 640x360 in the TV look (bar_connection.dart:35).
-  'pad ActionChip connectionChip': Size(26, 49),
-};
+const knownBelow48 = <String, Size>{};
 
-/// The offenders seen so far, over every test of this file; the last test checks [knownBelow48] against it.
-final seenBelow48 = <String, Size>{};
+/// How far below [minTargetDp] a measured side may fall and still count as 48: layout rounds sizes to device pixels
+/// (a 48 dp box can measure a hair under).
+const touchRoundingSlackDp = 0.01;
 
 /// The screens measured: what is on screen after [open] ran.
 enum TargetScreen {
@@ -74,7 +71,6 @@ void main() {
             for (final e in found.entries)
               if (_below(e.value)) e.key: e.value,
           };
-          seenBelow48.addAll(below);
           final unlisted = [
             for (final e in below.entries)
               if (!knownBelow48.containsKey(e.key)) '${e.key}: ${e.value} (${entry.key}, ${tv ? 'TV' : 'menu'})',
@@ -85,13 +81,12 @@ void main() {
     }
   }
 
-  test('every entry of knownBelow48 is still below 48 dp somewhere', () {
-    final fixed = knownBelow48.keys.where((key) => !seenBelow48.containsKey(key)).toList();
-    expect(fixed, isEmpty, reason: 'these are 48 dp or more now: remove them from knownBelow48');
-  });
+  // No "entry is still below 48" check while knownBelow48 is empty: it would depend on the other tests' order. A
+  // future entry gets its check inside each case, over the keys of that screen.
 }
 
-bool _below(Size size) => size.width < minTargetDp - 0.01 || size.height < minTargetDp - 0.01;
+bool _below(Size size) =>
+    size.width < minTargetDp - touchRoundingSlackDp || size.height < minTargetDp - touchRoundingSlackDp;
 
 /// How far one drag scrolls Settings while its rows are measured (the list builds only the rows on screen).
 const scrollStepDp = 200.0;

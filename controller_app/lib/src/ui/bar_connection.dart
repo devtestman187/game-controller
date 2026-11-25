@@ -10,6 +10,18 @@ import 'connect_screen.dart';
 import 'labels.dart';
 import 'status_panel.dart';
 
+/// The smallest side of a touch target, in logical pixels (the PRD's rule).
+const minTouchTargetDp = 48.0;
+
+/// The chip's share of the room beside the ping or the status panel (flex 1):
+/// the chip is the touch target and the host's name, so it is served first.
+const chipFlex = 3;
+
+/// The narrowest bar, in logical pixels, that shows the ping beside the chip:
+/// the chip with the host's name whole (about 195 dp in the menu look) plus the
+/// ping's slot. The 667x375 menu bar is 201 dp; the TV look's is 87 dp.
+const pingBesideMinBarDp = 280.0;
+
 /// The bar's left side in controller mode: your player number, the connection
 /// and its ping, or the game's status panel (P6, C24).
 class BarConnection extends ConsumerWidget {
@@ -25,45 +37,68 @@ class BarConnection extends ConsumerWidget {
     // While a game shows on this phone the game draws its own status (m12
     // §2.7), so the panel stays out of the bar and the ping shows instead.
     final gameShown = ref.watch(showsGameProvider);
-    return Row(
-      children: [
-        if (client.isConnected && client.player != null) ...[
-          PlayerBadge(number: client.player!, character: client.character),
-          const SizedBox(width: ToySizes.space8),
-        ],
-        Flexible(
-          child: ActionChip(
-            key: const Key('connectionChip'),
-            avatar: const ConnectionDot(),
-            labelStyle: label,
-            label: Text(
-              client.isConnected
-                  ? PhoneText.linkWithPing(client.hostLabel, client.rttMs)
-                  : ref.watch(demoProvider)
-                  ? PhoneText.demoLink
-                  : PhoneText.tapToConnect(statusLabel(client)),
-              overflow: TextOverflow.ellipsis,
-            ),
-            onPressed: () => openConnect(context),
+    final panelShown = client.isConnected && !gameShown && !status.isHidden;
+    final pingWanted = client.isConnected && !panelShown && stats != null;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // A bar too narrow for the chip and the ping beside it drops the ping
+        // and shows the host's name alone in the chip, so the name stays whole
+        // instead of ending in an ellipsis (M16 n9b2).
+        final pingBeside = pingWanted && constraints.maxWidth >= pingBesideMinBarDp;
+        return Row(
+          children: [
+            if (client.isConnected && client.player != null) ...[
+              PlayerBadge(number: client.player!, character: client.character),
+              const SizedBox(width: ToySizes.space8),
+            ],
+            _chip(context, ref, client, label, hostOnly: pingWanted && !pingBeside),
+            // The game's status panel takes the ping's place (P6, C24).
+            if (panelShown) ...[
+              const SizedBox(width: ToySizes.space8),
+              Flexible(child: StatusPanel(status: status)),
+            ] else if (pingBeside) ...[
+              const SizedBox(width: ToySizes.space8),
+              Flexible(
+                child: Text(
+                  PhoneText.pingStats(stats.minMs, stats.avgMs, stats.maxMs),
+                  key: const Key('pingStats'),
+                  style: label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  /// The connection chip: at least 48 dp wide, showing the host alone when
+  /// [hostOnly] (the ping has no room beside it).
+  Widget _chip(BuildContext context, WidgetRef ref, ClientSnapshot client, TextStyle label, {required bool hostOnly}) {
+    return Flexible(
+      flex: chipFlex,
+      // A touch target is at least 48 dp wide, even when the row is full.
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: minTouchTargetDp),
+        child: ActionChip(
+          key: const Key('connectionChip'),
+          avatar: const ConnectionDot(),
+          labelStyle: label,
+          // No side padding beyond the label's own, so the host's name fits whole in the 667x375 bar.
+          padding: EdgeInsets.zero,
+          label: Text(
+            client.isConnected
+                ? (hostOnly ? client.hostLabel : PhoneText.linkWithPing(client.hostLabel, client.rttMs))
+                : ref.watch(demoProvider)
+                ? PhoneText.demoLink
+                : PhoneText.tapToConnect(statusLabel(client)),
+            overflow: TextOverflow.ellipsis,
           ),
+          onPressed: () => openConnect(context),
         ),
-        // The game's status panel takes the ping's place (P6, C24).
-        if (client.isConnected && !gameShown && !status.isHidden) ...[
-          const SizedBox(width: ToySizes.space8),
-          Flexible(child: StatusPanel(status: status)),
-        ] else if (client.isConnected && stats != null) ...[
-          const SizedBox(width: ToySizes.space8),
-          Flexible(
-            child: Text(
-              PhoneText.pingStats(stats.minMs, stats.avgMs, stats.maxMs),
-              key: const Key('pingStats'),
-              style: label,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ],
+      ),
     );
   }
 }
