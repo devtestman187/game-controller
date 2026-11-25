@@ -1,0 +1,6 @@
+# wave 1: runner tooling, arena value objects, shell value object (disjoint)
+t1 c1 c2
+# wave 2: volume test, top bar overflow, consent guard (disjoint)
+c3 c4 c5
+# wave 3: test cleanups, dartdoc, doc fixes (disjoint)
+d1 d2 d3
