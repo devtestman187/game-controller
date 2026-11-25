@@ -46,6 +46,9 @@ void forgetAsked(WidgetTester tester) {
   if (asked is _ResettableAsked) asked.reset();
 }
 
+/// The saved settings of a user who has seen the coach marks, which would else dim Home.
+const noTips = <String, Object>{'showTips': false};
+
 /// The colour of the role button labelled [label].
 Color? buttonColor(WidgetTester tester, String label) =>
     tester.widget<party.ToyButton>(find.widgetWithText(party.ToyButton, label)).color;
@@ -73,7 +76,7 @@ void main() {
 
   group('the three buttons', () {
     testWidgets('Join a Game opens the Connect screen', (tester) async {
-      await pumpApp(tester, paired: true);
+      await pumpApp(tester, paired: true, saved: noTips);
       await openHome(tester);
       await tester.tap(find.text(HomeText.joinGame));
       await settle(tester);
@@ -81,7 +84,7 @@ void main() {
     });
 
     testWidgets('Play here hosts on this phone, with its own player and no sheet', (tester) async {
-      await pumpHostApp(tester);
+      await pumpHostApp(tester, saved: noTips);
       await openHome(tester);
       await tester.tap(find.text(HomeText.playHere));
       await settle(tester);
@@ -94,7 +97,7 @@ void main() {
     });
 
     testWidgets('Display here hosts on this device, with no own player and no sheet', (tester) async {
-      await pumpHostApp(tester);
+      await pumpHostApp(tester, saved: noTips);
       await openHome(tester);
       await tester.tap(find.text(HomeText.displayHere));
       await settle(tester);
@@ -107,7 +110,7 @@ void main() {
     });
 
     testWidgets('Settings and the name row open Settings, Search again restarts discovery', (tester) async {
-      final app = await pumpApp(tester, paired: true);
+      final app = await pumpApp(tester, paired: true, saved: noTips);
       await openHome(tester);
       // The chip offers Search again once nothing was found.
       app.discovery.emit(const DiscoveryState(error: 'no network'));
@@ -126,7 +129,7 @@ void main() {
 
   group('the find', () {
     testWidgets('a found host highlights Join a Game', (tester) async {
-      final app = await pumpApp(tester, paired: true);
+      final app = await pumpApp(tester, paired: true, saved: noTips);
       await openHome(tester);
       app.discovery.emit(found());
       await settle(tester);
@@ -138,7 +141,7 @@ void main() {
     testWidgets('nothing is highlighted while searching, and Play here is after homeSearchWait with no host', (
       tester,
     ) async {
-      await pumpApp(tester, paired: true);
+      await pumpApp(tester, paired: true, saved: noTips);
       await openHome(tester);
       final good = party.ToyLookScope.of(tester.element(find.byType(HomeView))).colors.good;
       await tester.pump(const Duration(seconds: 1));
@@ -149,7 +152,7 @@ void main() {
     });
 
     testWidgets('a discovery error leads with Play here at once', (tester) async {
-      final app = await pumpApp(tester, paired: true);
+      final app = await pumpApp(tester, paired: true, saved: noTips);
       await openHome(tester);
       app.discovery.emit(const DiscoveryState(error: 'no network'));
       await settle(tester);
@@ -163,6 +166,7 @@ void main() {
     Future<TestApp> pumpAsking(WidgetTester tester) => pumpApp(
       tester,
       paired: true,
+      saved: noTips,
       extra: [
         launchConsentAskProvider.overrideWithValue(true),
         launchConsentAskedProvider.overrideWith(_ResettableAsked.new),
@@ -200,7 +204,7 @@ void main() {
 
   group('leaving', () {
     testWidgets('a connection closes Home', (tester) async {
-      final app = await pumpApp(tester, paired: true);
+      final app = await pumpApp(tester, paired: true, saved: noTips);
       app.client.emit(const ClientSnapshot(status: ClientStatus.idle));
       await openHome(tester);
       app.client.emit(connected);
@@ -210,7 +214,7 @@ void main() {
     });
 
     testWidgets('Back on a launch Home exits the app', (tester) async {
-      await pumpApp(tester, paired: true);
+      await pumpApp(tester, paired: true, saved: noTips);
       await openHome(tester, fromLaunch: true);
       await tester.binding.handlePopRoute();
       await settle(tester);
@@ -219,7 +223,7 @@ void main() {
     });
 
     testWidgets('Back on a Home from the pad menu returns to the pad', (tester) async {
-      await pumpApp(tester, paired: true);
+      await pumpApp(tester, paired: true, saved: noTips);
       await openHome(tester);
       await tester.binding.handlePopRoute();
       await settle(tester);
@@ -239,6 +243,7 @@ void main() {
           await pumpApp(
             tester,
             paired: true,
+            saved: noTips,
             screen: screen,
             extra: [if (tv) party.toyTvProvider.overrideWithValue(true)],
           );

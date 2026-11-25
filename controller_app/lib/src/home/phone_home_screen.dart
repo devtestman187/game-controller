@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:connection/connection.dart' show ClientStatus;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,7 +11,10 @@ import '../host/hosting.dart';
 import '../providers.dart';
 import '../ui/connect_screen.dart';
 import '../ui/settings_screen.dart';
+import 'coach_marks.dart';
 import 'home_contract.dart';
+import 'home_prefs.dart';
+import 'home_text.dart';
 import 'home_view.dart';
 import 'launch_consent.dart';
 
@@ -43,9 +47,10 @@ class _PhoneHomeScreenState extends ConsumerState<PhoneHomeScreen> {
   /// True once [homeSearchWait] passed since the first frame.
   bool _searchWaited = false;
 
-  /// True while this screen's launch prompts are up: a connection that lands
-  /// then waits for the answer, so closing never takes the dialog instead.
-  bool _promptUp = false;
+  /// True from the first build until this screen's launch prompts are answered: a
+  /// connection that lands then waits for the answer, so closing never takes the
+  /// dialog instead, and the coach marks wait too.
+  bool _promptUp = true;
 
   /// A connection landed under the prompts: the close is made up after them.
   bool _closeWaits = false;
@@ -58,7 +63,6 @@ class _PhoneHomeScreenState extends ConsumerState<PhoneHomeScreen> {
       _searchTimer = Timer(homeSearchWait, () {
         if (mounted) setState(() => _searchWaited = true);
       });
-      _promptUp = true;
       unawaited(askLaunchConsent(context, ref).whenComplete(_afterConsent));
     });
   }
@@ -70,7 +74,7 @@ class _PhoneHomeScreenState extends ConsumerState<PhoneHomeScreen> {
   }
 
   void _afterConsent() {
-    _promptUp = false;
+    if (mounted) setState(() => _promptUp = false);
     if (!_closeWaits) return;
     _closeWaits = false;
     if (mounted && ref.read(clientStateProvider).isConnected) _close();
@@ -115,21 +119,66 @@ class _PhoneHomeScreenState extends ConsumerState<PhoneHomeScreen> {
         if (!didPop) unawaited(SystemNavigator.pop());
       },
       child: Scaffold(
-        body: SafeArea(
-          child: HomeView(
-            find: _find(),
-            nickname: profile.nickname,
-            character: profile.character,
-            anchors: _anchors,
-            onJoin: () => openConnect(context),
-            onPlay: () => _host(HostChoice.onPhone),
-            onDisplay: () => _host(HostChoice.onDevice),
-            onSettings: _openSettings,
-            onEditName: _openSettings,
-            onSearchAgain: () => unawaited(ref.read(discoveryProvider).restart()),
-          ),
+        body: Stack(
+          children: [
+            SafeArea(
+              child: HomeView(
+                find: _find(),
+                nickname: profile.nickname,
+                character: profile.character,
+                anchors: _anchors,
+                onJoin: () => openConnect(context),
+                onPlay: () => _host(HostChoice.onPhone),
+                onDisplay: () => _host(HostChoice.onDevice),
+                onSettings: _openSettings,
+                onEditName: _openSettings,
+                onSearchAgain: () => unawaited(ref.read(discoveryProvider).restart()),
+              ),
+            ),
+            if (_marksShow(context)) Positioned.fill(child: _marks()),
+          ],
         ),
       ),
     );
   }
+
+  /// Whether the coach marks are on: the saved flag allows them and Home is idle.
+  bool _marksShow(BuildContext context) =>
+      ref.watch(showTipsProvider) &&
+      phoneHomeMarksIdle(
+        isPromptUp: _promptUp,
+        clientStatus: ref.watch(clientStateProvider).status,
+        isHostingLive: ref.watch(hostingProvider)?.live ?? false,
+        isCurrent: ModalRoute.of(context)?.isCurrent ?? false,
+      );
+
+  /// The three tips; finishing or skipping them saves that they were seen.
+  Widget _marks() {
+    void seen() => unawaited(ref.read(showTipsProvider.notifier).set(false));
+    return CoachMarks(
+      steps: [
+        CoachStep(anchor: _anchors.join, text: HomeText.tipJoin),
+        CoachStep(anchor: _anchors.play, text: HomeText.tipPlay),
+        CoachStep(anchor: _anchors.display, text: HomeText.tipDisplay),
+      ],
+      onDone: seen,
+      onSkip: seen,
+    );
+  }
 }
+
+/// Whether Home is idle, so the coach marks may run: the launch questions are
+/// answered ([isPromptUp] false), the client is neither connecting nor connected,
+/// this phone hosts no live game, and Home is the route on top ([isCurrent]), not
+/// Connect, Settings or a dialog above it.
+bool phoneHomeMarksIdle({
+  required bool isPromptUp,
+  required ClientStatus clientStatus,
+  required bool isHostingLive,
+  required bool isCurrent,
+}) =>
+    !isPromptUp &&
+    clientStatus != ClientStatus.connecting &&
+    clientStatus != ClientStatus.connected &&
+    !isHostingLive &&
+    isCurrent;
