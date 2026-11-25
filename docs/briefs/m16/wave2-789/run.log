@@ -157,3 +157,5 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-25 00:04:23 committed n8e0: 30bcfc1b Inventory the word TV in user-visible strings (n8e0)
 2026-11-25 00:04:23 finding: n8d1's report has no Summary block in its first 40 lines
 2026-11-25 00:04:24 committed n8d1: 648600fa Home shows the coach marks once it is idle
+2026-11-25 00:04:26 reviewed wave4-n8b2: 9 finding(s)
+2026-11-25 00:06:50 reviewed wave5: 9 finding(s)
