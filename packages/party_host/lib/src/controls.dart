@@ -5,15 +5,18 @@ import 'package:protocol/protocol.dart';
 final class Controls {
   /// Every screen's menus, for everyone, or only for the players in [only]
   /// (the pause menu: the player who paused and Player 1). [layout] replaces
-  /// the usual menu buttons on the phones.
-  const Controls.menus({this.only, this.layout}) : menus = true;
+  /// the usual menu buttons on the phones. [otherLayout] replaces them on the
+  /// phones of the players outside [only], so they can see what they may not
+  /// do (the pause menu: no Resume); null gives them [layout] as well.
+  const Controls.menus({this.only, this.layout, this.otherLayout}) : menus = true;
 
   /// A game is reading the controllers.
-  const Controls.game() : menus = false, only = null, layout = null;
+  const Controls.game() : menus = false, only = null, layout = null, otherLayout = null;
 
   final bool menus;
   final Set<String>? only;
   final GameLayoutMessage? layout;
+  final GameLayoutMessage? otherLayout;
 }
 
 /// The screens' claims on the controllers, newest on top. With none, the

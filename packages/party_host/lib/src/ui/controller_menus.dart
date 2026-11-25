@@ -154,7 +154,7 @@ class _ControllerMenusState extends ConsumerState<ControllerMenus> {
       for (final p in host.players)
         if (!p.simulated && !p.local && !p.away) p,
     ];
-    _showLayout(host, players, controls.layout ?? menuLayout);
+    _showLayout(host, players, controls);
     for (final p in players) {
       // A or B may change the screen: nothing more this time.
       if (_read(host, p, controls.only)) return;
@@ -162,14 +162,24 @@ class _ControllerMenusState extends ConsumerState<ControllerMenus> {
   }
 
   /// Each phone gets the menu's buttons, or gets them back after a game.
-  void _showLayout(GameHost host, List<GamePlayer> players, GameLayoutMessage layout) {
+  void _showLayout(GameHost host, List<GamePlayer> players, Controls controls) {
     for (final p in players) {
+      final layout = _layoutFor(p, controls);
       if (!identical(_labelled[p.id], layout)) {
         _labelled[p.id] = layout;
         host.setLayout(p.id, layout);
       }
     }
     _forget(players);
+  }
+
+  /// The buttons one phone gets: [Controls.otherLayout] when the claim limits
+  /// the menus to other players, else [Controls.layout], else the menu's.
+  static GameLayoutMessage _layoutFor(GamePlayer p, Controls controls) {
+    final only = controls.only;
+    final outside = only != null && !only.contains(p.id);
+    if (outside) return controls.otherLayout ?? controls.layout ?? menuLayout;
+    return controls.layout ?? menuLayout;
   }
 
   /// Drops what the menus remembered about the phones that left.

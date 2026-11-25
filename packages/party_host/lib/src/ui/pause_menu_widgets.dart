@@ -55,7 +55,7 @@ class _PauseMenu extends ConsumerWidget {
     final only = resumers(players);
     final look = ToyLookScope.of(context);
     return ControlsClaim(
-      controls: Controls.menus(only: only, layout: pauseLayout),
+      controls: Controls.menus(only: only, layout: pauseLayout, otherLayout: menuLayout),
       child: Dialog(
         key: const Key('pauseMenu'),
         child: ToyCard(
