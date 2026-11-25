@@ -79,3 +79,7 @@ RESULT: STOPPED: PAUSED after wave 2 (RUN_PAUSE_AFTER_WAVE=1): its review is com
 2026-11-25 06:42:55 combined check: the tools suite is skipped (no job changed a file under tools/)
 2026-11-25 06:46:28 committed d3: 91b4aba0 docs: phone minSdk 31 and coverage baseline 92.8% in close docs
 2026-11-25 06:46:30 committed d2: 44724d2b m16 close d2: dartdoc on public types and members that lacked it
+2026-11-25 06:46:31 STOPPED: jobs that failed or passed their limit (parked, not committed): d1 (their logs: docs/briefs/m16/close/flash-<job>.log)
+2026-11-25 06:48:22 RUN_MAX_MIN=45 min (computed backstop of the jobs still to do)
+2026-11-25 06:48:34 reviewed wave3: 4 finding(s)
+RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): d1 (their logs: docs/briefs/m16/close/flash-<job>.log)
