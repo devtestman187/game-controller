@@ -1,0 +1,4 @@
+# wave 1: contract, measuring test, resume colour (disjoint)
+n8a n9b1 n9e
+# wave 2: host-start extract, marks widget, Shape Race round (disjoint)
+n8b0 n8c n9sr
