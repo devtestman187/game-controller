@@ -225,4 +225,4 @@ touches the TV d-pad focus ring: check 1920x1080.
 
 ## Coverage (Nov 25, close batch): TOTAL 93.0% (21419/23034), floor 92.8% met.
 
-**Resume here (m16 close done, Nov 25):** batch docs/briefs/m16/close finished (report REPORT.md): coverage 93.0%, full check green, milestone-end review 0 must; open owner question c4 (pad top bar 12 px at 568x320 TV). Nothing pushed.
+**Resume here (close done, Nov 25):** batch docs/briefs/m16/close finished (report REPORT.md): coverage 93.0%, full check green, milestone-end review 0 must; open owner question c4 (pad top bar 12 px at 568x320 TV). Nothing pushed.
