@@ -1,0 +1,2 @@
+2026-11-25 04:20:00 inline batch (no runner): tools-only fixes, base 47ce2222; commits d048fa68 8ec8db02 1b7dde6c bbd15b6d e80aaa55 8b96f193 0280d351
+full check: All checks passed (tools alone 307s; full run: all other suites PASS) 2026-11-25 0280d351

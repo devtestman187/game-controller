@@ -1,0 +1,7 @@
+- 04:35 job1: tools/tests/run-stops-test.sh committed; 3 cases red (rc4+overcap, overcap unverified, parked diff), pause-restart and waiter cases pass (not reproduced). next: job 2
+- 04:50 job2 committed (untrack plugin files, UPDATE_GOLDENS guards, churn_snapshot in churn.sh/mine.sh/run-jobs.sh). next: job 3-4
+- 05:00 jobs 3+4 committed; run-stops-test 7/7 green; run-wave, process3-fix1, run-limits-wire green. next: job 5
+- 05:10 job5 (heartbeat + RUN_* unset) committed; wire2 STOP flake still to repro under check -j 4
+- 05:05 job6 committed (batch-report, batch-close, usage_wall WARN); wire2 STOP review sleep 20
+- 05:25 job8 committed (thumb-batch.md synced, brief-check comments, turns 80 note). next: full check -j 4 in background, then REPORT, close-out. job 7 not needed: pause restart and waiter not reproduced
+- 05:20 close-out: STATUS line, full check line recorded. REPORT.md could not be written (Write refused for report files); content is in the hand-back
