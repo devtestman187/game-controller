@@ -44,6 +44,15 @@ void main() {
         await tester.tap(find.text(palette));
         await tester.pumpAndSettle();
         for (final key in ['soundVolume', 'musicVolume']) {
+          final formatter = tester.widget<Slider>(find.byKey(Key(key))).semanticFormatterCallback;
+          expect(formatter, isNotNull, reason: '$key has its own spoken-value formatter in the ${look.name} look');
+          for (final value in [0, 30, 100]) {
+            expect(
+              formatter?.call(value.toDouble()),
+              HostText.percent(value),
+              reason: '$key speaks $value% in the ${look.name} look',
+            );
+          }
           final shown = _percentShownAbove(tester, key);
           expect(shown, isNotEmpty, reason: '$key shows a percentage in the ${look.name} look');
           expect(
