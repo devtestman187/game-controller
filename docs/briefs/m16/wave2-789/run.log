@@ -213,3 +213,10 @@ RESULT: DONE: 15 jobs, 20 min
 2026-11-25 00:24:23 job f2 used 69 turns, over its cap of 60 (parked, siblings continue)
 2026-11-25 00:48:13 STOPPED: stop file
 RESULT: STOPPED: stop file
+HAND-FIX f2: apply-job.sh applied 1 files: controller_app/lib/src/home/phone_home_screen.dart
+HAND-FIX-EVENT f2: 29 lines changed, replaced ladder level ?
+HAND-FIX f2: apply-job.sh applied 1 files: controller_app/test/phone_home_screen_test.dart
+HAND-FIX-EVENT f2: 84 lines changed, replaced ladder level ?
+HAND-FIX f2: apply-job.sh applied 1 files: docs/briefs/m16/wave2-789/f2-report.md
+HAND-FIX-EVENT f2: 0 lines changed, replaced ladder level ?
+HAND-FIX-EVENT f2: 0 lines changed (applied partial: anchors test file dropped, the gate cannot fail with HomeView's always-built buttons; haiku 69 turns over cap 60), replaced ladder level 2
