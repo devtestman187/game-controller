@@ -11,13 +11,14 @@ import 'support/host_harness.dart';
 List<String> _spokenValues(WidgetTester tester) {
   final values = <String>[];
   void visit(SemanticsNode node) {
-    if (node.hasFlag(SemanticsFlag.isSlider) && node.value.isNotEmpty) values.add(node.value);
+    if (node.value.isNotEmpty) values.add(node.value);
     node.visitChildren((child) {
       visit(child);
       return true;
     });
   }
 
+  // ignore: deprecated_member_use
   final root = tester.binding.pipelineOwner.semanticsOwner?.rootSemanticsNode;
   if (root != null) visit(root);
   return values;

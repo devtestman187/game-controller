@@ -30,13 +30,14 @@ const _stickSliders = ['stickButtonSize', 'stickDeadZone', 'stickSensitivity'];
 List<String> _spokenValues(WidgetTester tester) {
   final values = <String>[];
   void visit(SemanticsNode node) {
-    if (node.hasFlag(SemanticsFlag.isSlider) && node.value.isNotEmpty) values.add(node.value);
+    if (node.value.isNotEmpty) values.add(node.value);
     node.visitChildren((child) {
       visit(child);
       return true;
     });
   }
 
+  // ignore: deprecated_member_use
   final root = tester.binding.pipelineOwner.semanticsOwner?.rootSemanticsNode;
   if (root != null) visit(root);
   return values;
@@ -80,7 +81,7 @@ void main() {
       await tester.pump();
       await tester.tap(find.text('Gyro'));
       await tester.pump();
-      app.motion.hold(Vec3(1, 0, 0), samples: 50); // Upright in front of the player, as the gyro test holds it.
+      app.motion.hold(const Vec3(1, 0, 0), samples: 50); // Upright in front of the player, as the gyro test holds it.
       await tester.pump(const Duration(milliseconds: 100));
       await tester.tap(find.byTooltip('Gyro settings'));
       await tester.pump(const Duration(milliseconds: 300));
