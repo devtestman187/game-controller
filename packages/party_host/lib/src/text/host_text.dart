@@ -269,7 +269,7 @@ abstract final class HostText {
       'missed taps, timing, which mode), how quick the connection is, and how the games go. They help make '
       'the controls better.\n\n'
       'No names, accounts, contacts, location, advertising IDs or Wi-Fi details are ever sent. The stats are '
-      'kept on this device either way, and you can change this at any time in settings (on the TV, on the Stats '
+      'kept on this device either way, and you can change this at any time in settings (on the screen, on the Stats '
       'screen). The privacy '
       'policy explains it in full.';
   static const dontShare = 'Don\'t share';
