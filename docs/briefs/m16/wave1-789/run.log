@@ -164,3 +164,12 @@ HAND-FIX f2: worker fix rejected (shrank touch targets, phone suite hung), test 
 2026-11-24 20:21:06 WARN: f3 was committed by hand (8c9d9f24); a plain restart would skip its tests-first proof and worker review, so both run now
 2026-11-24 20:21:06 hand-fixed f3: tests-first proof and worker review done (marked in done.txt)
 2026-11-24 20:21:06 skip f3 (already done)
+2026-11-24 20:21:23 start f4
+2026-11-24 20:21:49 start f5
+2026-11-24 20:23:17 f4 finished: result 4 (17 turns, 1 min)
+2026-11-24 20:23:19 f4: dropped generated churn outside its list: site/shots/dpad.png site/shots/join.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-24 20:29:01 f5 finished: result 4 (40 turns, 7 min)
+2026-11-24 20:29:02 f5: dropped generated churn outside its list: site/shots/dpad.png site/shots/join.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-24 20:29:11 combined check: skips protocol connection metrics look tools (no job's change reaches them)
+2026-11-24 20:33:03 committed f4: e268b7bb M16 f4: Arena HUD warns on the clock only; race frame tested
+2026-11-24 20:33:04 committed f5: 35117ab3 Test: volume sliders read their own semantics value, both looks
