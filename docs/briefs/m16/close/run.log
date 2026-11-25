@@ -124,3 +124,4 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-25 07:15:37 committed rv2: e10aaae7 rv2: review of controller_app ui and providers (m16 close)
 2026-11-25 07:15:38 committed rv1: 298576c9 m16 close rv1: review of controller_app home and launch
 2026-11-25 07:15:40 committed rv3: 43fab1b4 m16 close: rv3 review of packages, tools and docs
+2026-11-25 07:17:51 reviewed wave5: 8 finding(s)
