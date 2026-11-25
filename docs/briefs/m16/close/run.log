@@ -1,0 +1,16 @@
+2026-11-25 05:22:47 RUN_MAX_MIN=313 min (computed backstop of the jobs still to do)
+2026-11-25 05:22:47 start at 20752c29 on HEAD
+2026-11-25 05:22:47 worker: claude
+2026-11-25 05:22:47 run-base 20752c29fd9952b56dedd93ee9df83a87b468283
+2026-11-25 05:23:06 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-25 05:23:21 start t1
+2026-11-25 05:23:47 start c1
+2026-11-25 05:24:12 start c2
+2026-11-25 05:26:33 c1 finished: result 0 (37 turns, 2 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 44/903659/47933/16900
+2026-11-25 05:28:16 c2 finished: result 4 (18 turns, 3 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 28/278260/15229/6846
+2026-11-25 05:28:16 job c2 parked (result 4); its siblings continue
+2026-11-25 05:30:50 t1 finished: result 0 (29 turns, 7 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 44/739047/37009/19321
+2026-11-25 05:31:08 combined check: the tools suite runs (a job changed a file under tools/)
+2026-11-25 05:39:57 committed c1: 69d62e39 m16 close c1: ArenaBoardOptions for ArenaHud and ArenaBoard
+2026-11-25 05:39:57 finding: t1's report has no Summary block in its first 40 lines
+2026-11-25 05:39:58 committed t1: 4f575503 m16 close t1: park_tree keeps shared and pre-dirty allow: paths
