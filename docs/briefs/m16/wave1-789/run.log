@@ -32,3 +32,5 @@ RESULT: STOPPED: checks failed twice on the combined tree after n9d1 n9a
 2026-11-24 18:14:24 checks failed; fetching packages and trying once more
 2026-11-24 18:15:59 STOPPED: checks failed twice on the combined tree after n9a n9d1
 RESULT: STOPPED: checks failed twice on the combined tree after n9a n9d1
+HAND-FIX n9c: apply-job.sh applied 6 files: controller_app/lib/src/ui/gyro_dialog.dart, controller_app/lib/src/ui/settings_screen.dart, controller_app/lib/src/ui/stick_dialog.dart, controller_app/test/slider_semantics_test.dart, packages/party_host/lib/src/ui/look_and_sound_section.dart, packages/party_host/test/volume_semantics_test.dart
+HAND-FIX n9c: test helper fixed by the driver, applied with apply-job.sh
