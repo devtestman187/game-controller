@@ -474,3 +474,5 @@ RESULT: STOPPED: PAUSED after wave 10 (RUN_PAUSE_AFTER_WAVE=1): its review is co
 2026-11-25 03:57:21 checks failed; fetching packages and trying once more
 2026-11-25 04:02:31 STOPPED: checks failed twice on the combined tree after n8g
 RESULT: STOPPED: checks failed twice on the combined tree after n8g
+HAND-FIX n8g: committed by hand: the combined check failed in tools/tests/run-tune2-test.sh and run-wire2-test.sh only because the runner's own RUN_PAUSE_AFTER_WAVE=1 leaked into those tests (both pass without it, 25/25 guard cases pass)
+HAND-FIX-EVENT n8g: 0 lines changed, replaced ladder level 1
