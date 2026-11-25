@@ -220,3 +220,35 @@ HAND-FIX-EVENT f2: 84 lines changed, replaced ladder level ?
 HAND-FIX f2: apply-job.sh applied 1 files: docs/briefs/m16/wave2-789/f2-report.md
 HAND-FIX-EVENT f2: 0 lines changed, replaced ladder level ?
 HAND-FIX-EVENT f2: 0 lines changed (applied partial: anchors test file dropped, the gate cannot fail with HomeView's always-built buttons; haiku 69 turns over cap 60), replaced ladder level 2
+2026-11-25 00:49:25 RUN_MAX_MIN=57 min (computed backstop of the jobs still to do)
+2026-11-25 00:49:26 start at 10151040 on HEAD
+2026-11-25 00:49:26 worker: claude
+2026-11-25 00:49:26 removed the last stop's STOP.md
+2026-11-25 00:49:36 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-25 00:49:52 skip n8a (already done)
+2026-11-25 00:49:52 skip n9b1 (already done)
+2026-11-25 00:49:53 skip n9e (already done)
+2026-11-25 00:50:08 skip n8b0 (already done)
+2026-11-25 00:50:09 skip n8c (already done)
+2026-11-25 00:50:09 skip n9sr (already done)
+2026-11-25 00:50:25 skip n8b1 (already done)
+2026-11-25 00:50:25 skip n9b2 (already done)
+2026-11-25 00:50:25 skip n9b3 (already done)
+2026-11-25 00:50:41 skip f1 (already done)
+2026-11-25 00:50:41 skip n8b2 (already done)
+2026-11-25 00:50:42 skip n8d2 (already done)
+2026-11-25 00:50:57 skip n8d1 (already done)
+2026-11-25 00:50:58 skip n8b3a (already done)
+2026-11-25 00:50:58 skip n8e0 (already done)
+2026-11-25 00:51:14 WARN: f2 was committed by hand (763c5ba5); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-25 00:51:15 hand-fixed f2: tests-first proof and worker review done (marked in done.txt)
+2026-11-25 00:51:15 skip f2 (already done)
+2026-11-25 00:51:15 skip f3 (already done)
+2026-11-25 00:51:16 start n8b3
+2026-11-25 01:19:11 n8b3 finished: result 4 (1 turns, 0 min) model claude-sonnet-5-5, ladder 2, tokens in/read/write/out 4/73027/620/305
+2026-11-25 01:19:13 n8b3: dropped generated churn outside its list: tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-25 01:20:30 tests-first ok: controller_app/test/launch_home_test.dart fails on the old code
+2026-11-25 01:20:57 combined check: skips protocol connection metrics kit look arena puzzle host tv tools (no job's change reaches them)
+2026-11-25 01:22:20 checks failed; fetching packages and trying once more
+2026-11-25 01:23:39 STOPPED: checks failed twice on the combined tree after n8b3
+RESULT: STOPPED: checks failed twice on the combined tree after n8b3
