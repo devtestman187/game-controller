@@ -512,3 +512,27 @@ HAND-FIX-EVENT n8g: 0 lines changed, replaced ladder level 1
 2026-11-25 04:06:41 WARN: n8g was committed by hand (cde937f5); a plain restart would skip its tests-first proof and worker review, so both run now
 2026-11-25 04:06:41 hand-fixed n8g: tests-first proof and worker review done (marked in done.txt)
 2026-11-25 04:06:41 skip n8g (already done)
+2026-11-25 04:08:22 reviewed wave11: 5 finding(s)
+METRICS f2 worker=claude model=claude-haiku-5-5 turns=69 in=106 out=67764 cache=4123220 min=9.0 wall=9.6 result=4
+METRICS f3 worker=claude model=claude-haiku-5-5 turns=23 in=34 out=15362 cache=525000 min=3.5 wall=4.1 result=4
+METRICS f4 worker=claude model=claude-sonnet-5-5 turns=75 in=78 out=20530 cache=1944040 min=6.3 wall=9.8 result=4
+METRICS f5 worker=claude model=claude-haiku-5-5 turns=26 in=40 out=17140 cache=637708 min=3.6 wall=4.4 result=4
+METRICS f6 worker=claude model=claude-haiku-5-5 turns=27 in=40 out=18231 cache=859502 min=4.0 wall=4.6 result=4
+METRICS f7 worker=claude model=claude-haiku-5-5 turns=15 in=24 out=5795 cache=256890 min=0.9 wall=1.7 result=4
+METRICS n8b3 worker=claude model=claude-sonnet-5-5 turns=1 in=4 out=305 cache=73647 min=0.0 wall=27.9 result=4
+METRICS n8e1 worker=claude model=claude-haiku-5-5 turns=36 in=38 out=15772 cache=651560 min=4.0 wall=7.5 result=4
+METRICS n8e2 worker=claude model=claude-haiku-5-5 turns=24 in=28 out=9789 cache=412070 min=3.7 wall=7.0 result=4
+METRICS n8e3 worker=claude model=claude-haiku-5-5 turns=20 in=28 out=8123 cache=348947 min=3.5 wall=7.1 result=4
+METRICS n8e4 worker=claude model=claude-haiku-5-5 turns=15 in=20 out=5940 cache=199874 min=2.6 wall=6.2 result=4
+METRICS n8e5 worker=claude model=claude-haiku-5-5 turns=28 in=30 out=9691 cache=431599 min=3.0 wall=6.2 result=4
+METRICS n8e6 worker=claude model=claude-haiku-5-5 turns=20 in=24 out=7695 cache=257948 min=1.8 wall=2.9 result=4
+METRICS n8g worker=claude model=claude-haiku-5-5 turns=23 in=34 out=20256 cache=759174 min=1.7 wall=6.6 result=4
+METRICS n9e3 worker=claude model=claude-haiku-5-5 turns=36 in=60 out=23882 cache=1252790 min=6.1 wall=8.8 result=4
+METRICS wave10-review worker=claude model=claude-haiku-5-5 turns=18 in=22 out=13124 cache=348390 min=1.1 wall=- result=0
+METRICS wave11-review worker=claude model=claude-haiku-5-5 turns=21 in=24 out=15857 cache=366304 min=1.4 wall=- result=0
+METRICS wave6-review worker=claude model=claude-haiku-5-5 turns=37 in=46 out=43935 cache=1363063 min=3.5 wall=- result=0
+METRICS wave7-review worker=claude model=claude-haiku-5-5 turns=17 in=26 out=12892 cache=431692 min=1.1 wall=- result=0
+METRICS wave8-review worker=claude model=claude-haiku-5-5 turns=31 in=30 out=17980 cache=560816 min=1.5 wall=- result=0
+METRICS wave9-review worker=claude model=claude-haiku-5-5 turns=27 in=28 out=21354 cache=524891 min=1.7 wall=- result=0
+2026-11-25 04:08:42 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/wave2-789/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 30 jobs, 5 min
