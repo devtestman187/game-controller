@@ -179,13 +179,15 @@ report "a usage row that covers the last resume only gets a WARN with the job's 
 
 # 6. wait-run.sh: the STOPPED line before the last `start at` is old; a run that has started and not ended is running (4).
 wd="$tmp/wait/docs/briefs/w"; mkdir -p "$wd" "$tmp/wait/state"
-cat > "$wd/run.log" <<'EOL'
-2026-11-24 22:00:00 start at aaaaaaa on m16
-2026-11-24 22:10:00 STOPPED: PAUSED after wave 1
-RESULT: STOPPED: PAUSED after wave 1
-2026-11-24 22:20:00 start at bbbbbbb on m16
-2026-11-24 22:20:05 start job1
-EOL
+# The times are relative to now: fixed dates made the run an OVERRUN once the clock passed expected-min (m165, Nov 25).
+stamp() { date -d "$1 minutes ago" "+%Y-%m-%d %H:%M:%S"; }
+{
+  echo "$(stamp 40) start at aaaaaaa on m16"
+  echo "$(stamp 30) STOPPED: PAUSED after wave 1"
+  echo "RESULT: STOPPED: PAUSED after wave 1"
+  echo "$(stamp 2) start at bbbbbbb on m16"
+  echo "$(stamp 2) start job1"
+} > "$wd/run.log"
 printf 'job: w j\nexpected-min: 600\nreport: x\n' > "$wd/job1.md"
 rcw=0; WAIT_STATE_DIR="$tmp/wait/state" bash "$loc/tools/wait-run.sh" "$wd" --max 2 > "$out" 2>&1 || rcw=$?
 if [ "$rcw" = 4 ]; then r=0; else r=1; fi
