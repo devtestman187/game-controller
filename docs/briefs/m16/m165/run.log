@@ -188,3 +188,43 @@ METRICS wave5-review worker=claude model=claude-haiku-5-5 turns=16 in=24 out=179
 2026-11-25 15:12:02 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/m165/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 10 jobs, 12 min
 full check: All checks passed (449s, 10 cached). Logs: C:\Users\mrman\AppData\Local\Temp/thumbparty-check-20261125-152946 2026-11-25 30b79813
+2026-11-25 16:14:22 RUN_MAX_MIN=407 min (computed backstop of the jobs still to do)
+2026-11-25 16:14:22 start at e0ff1aea on m16
+2026-11-25 16:14:22 worker: claude
+2026-11-25 16:14:23 proc-sweep: ORPHAN 45992 bash 4s "C:/Program Files/Git/bin/../usr/bin/bash.exe" -c "source /c/Users/mrman/.claude/shell-snapshots/snapshot-bash-179555545
+2026-11-25 16:14:23 proc-sweep: proc-sweep: 1 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-25 16:14:51 WARN brief-check skipped: b1s/b1h FAILs are old done jobs
+2026-11-25 16:14:51 phase: preflight
+2026-11-25 16:14:57 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-25 16:16:09 phase: worker (preflight took 78s)
+2026-11-25 16:16:09 skip a1s (kept: apply: no arm already ran)
+2026-11-25 16:16:09 skip a1h (kept: apply: no arm already ran)
+2026-11-25 16:16:09 skip a2 (already done)
+2026-11-25 16:16:25 phase: worker (worker took 16s)
+2026-11-25 16:16:25 skip c0a (already done)
+2026-11-25 16:16:25 skip b2s (kept: apply: no arm already ran)
+2026-11-25 16:16:25 skip b2h (kept: apply: no arm already ran)
+2026-11-25 16:16:41 phase: worker (worker took 16s)
+2026-11-25 16:16:41 skip c0b (already done)
+2026-11-25 16:16:57 phase: worker (worker took 15s)
+2026-11-25 16:16:57 skip b1s (kept: apply: no arm already ran)
+2026-11-25 16:16:57 skip b1h (kept: apply: no arm already ran)
+2026-11-25 16:17:12 phase: worker (worker took 16s)
+2026-11-25 16:17:13 skip b3 (already done)
+2026-11-25 16:17:28 phase: worker (worker took 16s)
+2026-11-25 16:17:29 start c1
+2026-11-25 16:17:55 start c2
+2026-11-25 16:18:21 start c3
+2026-11-25 16:23:11 c1 finished: result 0 (29 turns, 5 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 38/749778/61080/35198
+2026-11-25 16:24:12 c2 finished: result 0 (17 turns, 3 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 32/460298/34138/14761
+2026-11-25 16:27:34 c3 finished: result 0 (38 turns, 6 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 62/1638838/63962/39976
+2026-11-25 16:27:34 phase: tests-first (worker took 606s)
+2026-11-25 16:28:58 tests-first: controller_app/test/mirror_strip_proof_test.dart passes on the old code, exempt by its brief
+2026-11-25 16:29:06 tests-first: controller_app/test/top_bar_free_width_test.dart passes on the old code, exempt by its brief
+2026-11-25 16:29:35 phase: check (tests-first took 120s)
+2026-11-25 16:29:51 combined check: the tools suite is skipped (no job changed a file under tools/)
+2026-11-25 16:32:09 phase: apply (check took 155s)
+2026-11-25 16:32:11 committed c1: 461548b6 m165 c1: measure the mirror strip inside the game box, both sizes
+2026-11-25 16:32:13 committed c2: 0c53c453 m165 c2: measure the compact game bar's free width
+2026-11-25 16:32:15 committed c3: 74ee1163 m165 c3: connection chip goes icon-only below 170 dp room (B-044)
+2026-11-25 16:32:16 phase: review (apply took 7s)
