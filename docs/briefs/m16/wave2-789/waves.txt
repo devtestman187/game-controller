@@ -8,3 +8,5 @@ n8b1 n9b2 n9b3
 f1 n8b2 n8d2
 # wave 5: marks wiring, test helper for the Home-first launch, TV-word inventory (disjoint)
 n8d1 n8b3a n8e0
+# wave 6: Home exit adapter and marks gate, test fixes, launch routing (disjoint)
+f2 f3 n8b3

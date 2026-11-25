@@ -23,3 +23,21 @@
 - decision: no anchor found makes onDone fire with nothing shown - n8d1 must not mark tips seen unless the marks were mounted (wire CoachMarks only while every anchor is laid out)
 - decision: 568x320 TV look box over the anchor without arrow - accepted
 ## wave3 (n8b1 n9b2 n9b3): review at the next pause/end
+## wave 3 review (wave2-review-report: n8b0 n9sr; file name is the wave-2 number) - final
+- n9sr: round label only on the one-board painter, split and phone HUDs show none - should - OWNER QUESTION (n9sr-report Q1: is the label wanted on the split/phone screens); parked in REPORT.md
+- n9sr: no PuzzlePlayView test for the both-set rule - minor - docs/code-health.md
+- n9sr/n8b0 report wording (draft says unchanged/owner decision/clean) - trivial - reports left; n8b0 flow tests (host_mode_test, host_start_log_test) are run by the full check at the end
+## wave 4 (f1 n8d2 n8b2 reviews)
+- coach_marks.dart:134 item 1 behaviour-neutral - minor - test (e) exists; no fix
+- coach_marks_test.dart:265 tap-after-Skip test taps the box - must - f3
+- coach_marks_test.dart:238 test name wrong - should - f3
+- f1-report "6 tests" vs 5, n8c-report PASS lines, n8d2 churn wording, settings_tips_row doc wording - trivial/minor - code-health
+- settings_screen.dart:96 ShowTipsRow outside a _Section card - minor - docs/code-health.md (placement is the owner's taste; decision: keep)
+- phone_home_screen.dart:115 SystemNavigator.pop from the widget (guideline 1) - must - f2
+- phone_home_screen_test.dart:44 over 120 columns, :245 inverted reason - trivial - f2 (format and reason)
+- dispose-cancels-timer test, live-hosting guards test, report counts - should - f2 (tests) / code-health
+## wave 5 (n8d1 n8b3a n8e0)
+- phone_home_screen.dart:164 onDone saves false when no anchor was laid out - must - f2
+- phone_home_marks_test.dart:76-82 and :84-91 pass on the old code - must - f3
+- tap-under-marks assertions, inverted reason :182 - should - f3 (reason) / code-health
+- tools/mine.sh:286 churn_revert touches files dirty before the job - should - tooling note in REPORT.md and kit Proposed lesson
