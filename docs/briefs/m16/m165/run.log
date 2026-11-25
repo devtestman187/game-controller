@@ -150,3 +150,35 @@ METRICS b1h worker=claude model=claude-haiku-5-5 turns=59 in=96 out=47323 cache=
 METRICS b1s worker=claude model=claude-sonnet-5-5 turns=49 in=62 out=18022 cache=1347522 min=4.9 wall=10.0 result=0
 2026-11-25 14:57:31 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/m165/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 9 jobs, 15 min
+HAND-FIX b1h: apply-job.sh applied 8 files: controller_app/lib/src/host/host_overrides.dart, controller_app/lib/src/ui/joined_view.dart, controller_app/test/right_pad_rects_test.dart, docs/briefs/m16/m165/b1h-report.md, packages/puzzle_game/lib/src/camera.dart, packages/puzzle_game/lib/src/camera_fit.dart, packages/puzzle_game/lib/src/match_view.dart, packages/puzzle_game/test/hud_place_right_controls_test.dart
+HAND-FIX-EVENT b1h: 95 lines changed, replaced ladder level ?
+H2H b1h won over b1s: applied by tools/h2h.sh (loser patch: docs/briefs/m16/m165/loser-b1s.patch)
+2026-11-25 14:59:29 RUN_MAX_MIN=332 min (computed backstop of the jobs still to do)
+2026-11-25 14:59:29 start at db08196a on m16
+2026-11-25 14:59:29 worker: claude
+2026-11-25 14:59:30 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-25 14:59:51 phase: preflight
+2026-11-25 14:59:57 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-25 15:00:59 phase: worker (preflight took 67s)
+2026-11-25 15:00:59 skip a1s (kept: apply: no arm already ran)
+2026-11-25 15:00:59 skip a1h (kept: apply: no arm already ran)
+2026-11-25 15:00:59 skip a2 (already done)
+2026-11-25 15:01:15 phase: worker (worker took 16s)
+2026-11-25 15:01:15 skip c0a (already done)
+2026-11-25 15:01:15 skip b2s (kept: apply: no arm already ran)
+2026-11-25 15:01:15 skip b2h (kept: apply: no arm already ran)
+2026-11-25 15:01:31 phase: worker (worker took 17s)
+2026-11-25 15:01:31 skip c0b (already done)
+2026-11-25 15:01:46 phase: worker (worker took 15s)
+2026-11-25 15:01:47 skip b1s (kept: apply: no arm already ran)
+2026-11-25 15:01:47 skip b1h (kept: apply: no arm already ran)
+2026-11-25 15:02:02 phase: worker (worker took 16s)
+2026-11-25 15:02:03 start b3
+2026-11-25 15:06:53 b3 finished: result 0 (30 turns, 4 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 44/848828/46247/27415
+2026-11-25 15:06:53 phase: tests-first (worker took 291s)
+2026-11-25 15:08:08 tests-first: controller_app/test/mirror_proof_test.dart passes on the old code, exempt by its brief
+2026-11-25 15:08:24 phase: check (tests-first took 91s)
+2026-11-25 15:08:26 combined check: skips protocol connection metrics kit look arena puzzle host tv tools (no job's change reaches them)
+2026-11-25 15:10:05 phase: apply (check took 101s)
+2026-11-25 15:10:07 committed b3: 4a488f5e m165 b3: measure the mirror's top-right strip against the floor (B-042)
+2026-11-25 15:10:07 phase: review (apply took 2s)
