@@ -65,3 +65,11 @@ m165 c4 (B-044): done — test pins that place() and the mirror fit ignore hudRe
 ## Delete
 
 - none
+
+## Self-check (review-rules part A; added by the driver after the wave 7 review)
+1. Host setups: not affected; tests only. mirrorPlace returns null unless LayoutTarget.phones (camera.dart:241); the tests use the phones layout.
+2. Kept state: none; the tests build their own camera and layout.
+3. Combinations with pause, host away, Get ready, links, results: not tested; the camera's functions do not see them.
+4. Folder and allow: the test file and this report only.
+5. Stop: none needed.
+6. Looks: no look involved (geometry only); box 667x375 only.

@@ -93,8 +93,11 @@ void main() {
     });
 
     test('a control over the clock area\'s spot: the area moves clear of it and its air', () {
-      final spot = mirrorWith(const [])!.hud.rect;
-      final moved = mirrorWith([spot])!;
+      final free = mirrorWith(const []);
+      if (free == null) fail('no mirror');
+      final spot = free.hud.rect;
+      final moved = mirrorWith([spot]);
+      if (moved == null) fail('no mirror with the control');
       expect(moved.hud.rect.overlaps(spot.inflate(PuzzleCamera.mirrorGapPx)), isFalse, reason: '${moved.hud.rect}');
     });
   });

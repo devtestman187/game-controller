@@ -88,3 +88,41 @@ Open questions inside b3: may the strip use the top bar's band (height measured 
 - Calls: driver about 115 tool calls; waiters: 5 thumb-wait agents (10, 8, 4, 8, 6 tool uses); 3 blind Sonnet reviewers (2-6 calls each).
 - proc-sweep --since <batch start>: `proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)`
 - no background command of mine is still running
+
+## Wave C (Nov 25, 16:14 to 16:47; runs 2 more starts, 14 jobs total)
+Owner (Nov 25): "Go with the recommendations": 1A re-measure B-042 without the bar, H2H-3 only if it fits; 2C measure the bar's free width; 3A chip icon-only with 48 dp; 4A add the B-044 place() test plain.
+
+| job | model | turns | min (worker/wall) | out tokens (cache read) | result |
+|---|---|---|---|---|---|
+| c1 measure strip, bar taken out | Haiku | 29 | 4.9 / 5.7 | 35K (0.8M) | committed |
+| c2 compact bar free width | Haiku | 17 | 3.1 / 6.3 | 15K (0.5M) | committed |
+| c3 chip icon-only below 170 dp (74ee1163) | Haiku | 38 | 6.5 / 9.2 | 40K (1.7M) | committed |
+| c4 B-044 place() test (8a8138ca) | Haiku | 16 | 1.2 / 1.7 | 11K (0.3M) | committed |
+All Haiku, ladder 1, no stop, no hand-fix in a job (two trivial and one must-by-form fixes after the reviews, below). Sonnet share this wave 0 of 4.
+
+### c1 (key finding: the game's box is not the screen)
+On a phone the game's box is the screen minus the 52 px bar (puzzle_game/puzzle_module.dart:152-160), and the pad and right rects are shifted up 52. b3 measured in the whole screen, so its heights were 52 px too generous and its tray edges too (the world scale differs). Re-measured per puzzle in the real box (956x388 and 667x323), strip x from tray right + 8, y from 0 to the top of the highest right rect - 8:
+- GATE: strip fits both dims for 8/18 at 956x440 and 2/18 at 667x375. Strip height is 58.6 px (956x440) and 48.0 px (667x375); width never binds (narrowest 124 px against a widest floor 74.2 px). The floor needs 36-74 px wide and 38-68 px tall per puzzle (2.2 mm = 13.9 px at the smallest piece; the floor is the board at that piece size).
+- Today's mirrorPlace returns null for 1/18 at 956x440 and 17/18 at 667x375; the strip would fit where today is null for 1 and 2 puzzles.
+- Select and Start overlap the board in 18/18 puzzles at both sizes (gap 0.0); Select is at 408,146 66x40 (956) and 274,122 55x40 (667), Start next to it.
+- GATE DECISION: fails broadly. H2H-3 (c5s/c5h) was NOT run, as instructed. The b3 fit rule cannot give a top-right spot by itself: the height above the face-button ring is under the floor for most puzzles. Options for the owner (not decided here): let the strip overlap the face ring's empty corner, shrink the face ring, or leave the mirror where it is.
+
+### c2 (bar free width, compact game bar, menu and TV looks identical)
+Free width between the connection button (and badge) and the mode menu: 568x320: 404 dp (no badge) / 363 (badge); 667x375: 503 / 462; 956x440: 792 / 751. Row height 48. A 96x44 Start fits everywhere, and Start plus Select (2x96+8 = 200) fits everywhere. Moving Start (and Select) into the compact bar is geometrically possible; TV look does not change the bar. Not built.
+
+### c3 (chip)
+iconOnlyChipBelowDp = 170 dp (bar_connection.dart): below it the chip is the dot alone in a Tooltip carrying the label, box at least 48x48. Un-skipped: 568x320 menu, 667x375 TV (chip_readable_test), 667x375 TV (connection_chip_test). Still skipped with measures: 568x320 TV chip and pad (room 35.9 dp, below 48 dp; needs a row or badge change, owner's call). Review: threshold ignores the ping text (code-health); comment and tooltip-assert fixed by hand.
+
+### c4
+Three tests added (hud_place_right_controls_test.dart, 6 tests green): place() and the mirror's rect/scale are unchanged by hudRects at 667x375, and the clock area moves clear of a control over its spot. Review must (no part A self-check in the report) fixed by adding it; `!` casts replaced by fail() guards.
+
+### H2H-3 row
+Not run (c1 gate failed). Costs per arm: none. Direction (updated): n=3 pairs only, caveat unchanged: one blind reviewer, static reading, Haiku wins ties. Wave C had four plain Haiku jobs, all green first time, 16-38 turns: measurement and small tests are a Haiku fit; Sonnet's edge showed only on the big UI job.
+agent-cost since 16:10 (wave C, includes reviewers and waiters): haiku $0.18, opus $0.40, sonnet $1.08, total $1.66.
+
+### Fixed, unverified
+B-043, B-044 (device check). The icon-only chip (c3) needs a look on a phone at about 570 and 667 dp wide in the TV look. B-042 stays open (no spot built); tracker note added, not "Fixed".
+
+### Proposed lessons (candidates, evidence)
+4. A measurement job must say what box the code under test really gets (c1: the game box is the screen minus the 52 px bar; b3 measured the screen and was 52 px too generous).
+5. The driver reports a gate failure as the result and skips the dependent arms: no brief for the H2H arms was written before c1 (cost: none).
