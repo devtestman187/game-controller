@@ -2,6 +2,7 @@ job: M16 wave1-789 n9c — every slider reads its value to a screen reader (four
 stop: Do not write a shared helper or a new package dependency; set the callback at each of the four sites. No layout change.
 read: docs/briefs/templates/COMMON.md · controller_app/lib/src/ui/gyro_dialog.dart:105-124 · controller_app/lib/src/ui/stick_dialog.dart:93-109 · controller_app/lib/src/ui/settings_screen.dart:186-262 · packages/party_host/lib/src/ui/look_and_sound_section.dart:120-169 · controller_app/test/look_prefs_test.dart (Slider finds) · packages/party_host/test/sound_settings_test.dart · decision (owner, Nov 24): "Accept all"; item 9c: the four Slider sites set no semanticFormatterCallback.
 changes: semanticFormatterCallback
+tests-first: exempt (the party_host volume slider already reads its percentage by default on 0-100; its test pins the callback and passes on the old code; the controller_app test failed first, see run.log at 18:23)
 turns: 60
 expected-min: 25
 do:

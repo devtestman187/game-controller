@@ -2,3 +2,4 @@
 - 17:56 STOPPED: n9a 568x320 TV overflow 12px (class d), n9c over turn cap 45 (limit). repair 1: repair note + n9c turns 60, restart
 - 18:18 n9a: 568x320 TV overflow is the pad's top bar (controller_top_bar.dart:89, 12px, preexisting): test ignores it, code-health item. n9c: hand-fixed test (getSemantics value) via apply-job. next: review.sh, commit-job n9a n9d1 n9c, restart
 - 18:21 n9c tests: analyze infos fixed by hand (base analyze FAIL); restart
+- 18:24 tests-first stop on n9c volume test (default formatter already right): brief exempt line; restart
