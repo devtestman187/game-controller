@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:connection/connection.dart';
+import 'package:controller/src/home/home_prefs.dart';
 import 'package:controller/src/home/home_text.dart';
 import 'package:controller/src/home/home_view.dart';
 import 'package:controller/src/home/phone_home_screen.dart';
@@ -78,6 +79,13 @@ void main() {
       await openHome(tester, app);
       expect(_marks, findsNothing);
       expect(find.byType(HomeView), findsOneWidget);
+      // The positive control: once the flag is set on, the same Home shows the marks.
+      final container = ProviderScope.containerOf(tester.element(find.byType(HomeView)));
+      await container.read(showTipsProvider.notifier).set(true);
+      await settle(tester);
+      await tester.pump();
+      await tester.pump();
+      expect(_marks, findsOneWidget, reason: 'the flag was set on');
       await endHome(tester);
     });
 
@@ -87,6 +95,12 @@ void main() {
       expect(find.byType(HomeView), findsOneWidget);
       expect(_marks, findsNothing);
       expect(savedTips(app), isNull);
+      // The positive control: once the client is idle, the same Home shows the marks.
+      app.client.emit(const ClientSnapshot(status: ClientStatus.idle));
+      await settle(tester);
+      await tester.pump();
+      await tester.pump();
+      expect(_marks, findsOneWidget, reason: 'the client is idle now');
       await endHome(tester);
     });
 
@@ -137,8 +151,10 @@ void main() {
       await tester.tap(find.text(HomeText.joinGame), warnIfMissed: false);
       await settle(tester);
       expect(find.byType(ConnectScreen), findsNothing, reason: 'the overlay takes the touch');
+      expect(find.text(HomeText.tipPlay), findsOneWidget, reason: 'the tap advanced the marks to step 2');
       await tester.tap(_marks);
       await settle(tester);
+      expect(_marks, findsNothing, reason: 'Skip ended the marks');
       await endHome(tester);
     });
   });
@@ -179,7 +195,7 @@ void main() {
               screen: screen,
               extra: [if (isTv) party.toyTvProvider.overrideWithValue(true)],
             );
-            expect(tester.takeException(), isNull, reason: 'the pad alone overflows');
+            expect(tester.takeException(), isNull, reason: 'the pad alone must not overflow');
             await openHome(tester, app);
             expect(_marks, findsOneWidget);
             expect(tester.takeException(), isNull, reason: 'no overflow');

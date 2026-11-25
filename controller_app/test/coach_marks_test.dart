@@ -235,7 +235,7 @@ void main() {
   });
 
   group('the marks stop cleanly and the tap after the end does nothing', () {
-    testWidgets('unmounting the marks before the anchor is read calls neither onDone nor onSkip', (tester) async {
+    testWidgets('unmounting the marks after their first frame calls neither onDone nor onSkip', (tester) async {
       final calls = await pumpMarks(tester, settle: false);
       await tester.pump();
       await tester.pumpWidget(const SizedBox());
@@ -264,11 +264,11 @@ void main() {
 
     testWidgets('a tap after Skip does not call onSkip again', (tester) async {
       final calls = await pumpMarks(tester);
-      await tester.tap(find.text(tipOne));
+      await tester.tap(find.text('Skip'));
       await settleMarks(tester);
       await tester.tap(find.text('Skip'));
       await settleMarks(tester);
-      await tester.tap(find.text(tipTwo));
+      await tester.tap(find.text(tipOne));
       await settleMarks(tester);
       expect(calls.skipped, 1);
       expect(calls.done, 0);
