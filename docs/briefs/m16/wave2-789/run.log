@@ -142,3 +142,18 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-24 23:53:52 skip n8b2 (already done)
 2026-11-24 23:53:53 skip n8d2 (already done)
 2026-11-24 23:53:53 wave 4 review: wave4-review-report.md does not cover n8b2, so its review is wave4-n8b2
+2026-11-24 23:54:15 start n8d1
+2026-11-24 23:54:41 start n8b3a
+2026-11-24 23:56:24 start n8e0
+2026-11-24 23:58:19 n8b3a finished: result 4 (29 turns, 3 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 28/444568/37461/15258
+2026-11-24 23:58:20 n8b3a: dropped generated churn outside its list: tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-24 23:58:46 n8e0 finished: result 4 (26 turns, 2 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 32/504898/43154/25649
+2026-11-24 23:58:47 n8e0: dropped generated churn outside its list: tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-25 00:00:55 n8d1 finished: result 4 (68 turns, 6 min) model claude-sonnet-5-5, ladder 1, tokens in/read/write/out 72/1656354/58815/23583
+2026-11-25 00:00:56 n8d1: dropped generated churn outside its list: tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-25 00:02:11 tests-first ok: controller_app/test/phone_home_marks_test.dart fails on the old code
+2026-11-25 00:02:48 combined check: skips protocol connection metrics kit look arena puzzle host tv tools (no job's change reaches them)
+2026-11-25 00:04:21 committed n8b3a: 0bd07cc7 Test helper: reach Connect from an unpaired launch
+2026-11-25 00:04:23 committed n8e0: 30bcfc1b Inventory the word TV in user-visible strings (n8e0)
+2026-11-25 00:04:23 finding: n8d1's report has no Summary block in its first 40 lines
+2026-11-25 00:04:24 committed n8d1: 648600fa Home shows the coach marks once it is idle
