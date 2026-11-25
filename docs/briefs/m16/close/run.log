@@ -14,3 +14,9 @@
 2026-11-25 05:39:57 committed c1: 69d62e39 m16 close c1: ArenaBoardOptions for ArenaHud and ArenaBoard
 2026-11-25 05:39:57 finding: t1's report has no Summary block in its first 40 lines
 2026-11-25 05:39:58 committed t1: 4f575503 m16 close t1: park_tree keeps shared and pre-dirty allow: paths
+2026-11-25 05:39:59 STOPPED: jobs that failed or passed their limit (parked, not committed): c2 (their logs: docs/briefs/m16/close/flash-<job>.log)
+HAND-FIX c2: apply-job.sh applied 2 files: packages/party_host/lib/src/ui/game_screen.dart, packages/party_host/lib/src/ui/game_screen_shell.dart
+HAND-FIX-EVENT c2: 28 lines changed, replaced ladder level ?
+2026-11-25 05:40:55 RUN_MAX_MIN=194 min (computed backstop of the jobs still to do)
+2026-11-25 05:42:17 reviewed wave1: 7 finding(s)
+RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): c2 (their logs: docs/briefs/m16/close/flash-<job>.log)
