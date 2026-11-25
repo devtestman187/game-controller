@@ -26,10 +26,23 @@ park() { # park <job>: the job stops alone; its siblings run on and the wave's e
   park_tree "$1"
 }
 
+park_keeps() { # park_keeps <job> <path>: 0 when the path stays in the tree, because it was dirty before the wave
+  # (the churn snapshot) or another job of this wave lists it in its allow: (a sibling's file is not the parked job's)
+  local j=$1 a=$2 o
+  grep -qxF -- "$a" "${CHURN_SNAPSHOT:-/dev/null}" 2> /dev/null && return 0
+  for o in "${started[@]}"; do
+    [ "$o" = "$j" ] && continue
+    sed -n 's/^allow: *//p' "$B/$o.md" 2> /dev/null | tr -d '\r' | sed 's/ *· */\n/g; s:/$::' |
+      grep -qxF -- "$a" && return 0
+  done
+  return 1
+}
+
 park_tree() { # park_tree <job>: its allow: files and report leave the tree, saved as $WORK/parked-<job>.patch, so the
   # combined check of its siblings never sees them (wave2-789: parked n8b3, n8e2 and n8e3 broke the siblings' check).
-  # A restart runs the job again; a hand-fix copies from the kept worktree (tools/apply-job.sh), not from this patch.
-  local j=$1 a rep paths=() untracked tracked
+  # A path park_keeps names (dirty before the wave, or a sibling's allow:) stays. A restart runs the job again;
+  # a hand-fix copies from the kept worktree (tools/apply-job.sh), not from this patch.
+  local j=$1 a rep paths=() kept=() untracked tracked
   while IFS= read -r a; do
     a=${a%/}
     case "$a" in '' | "$B"/*) continue ;; esac # the batch folder is the runner's own (run.log, done.txt)
@@ -37,6 +50,8 @@ park_tree() { # park_tree <job>: its allow: files and report leave the tree, sav
   done < <(sed -n 's/^allow: *//p' "$B/$j.md" 2> /dev/null | tr -d '\r' | sed 's/ *· */\n/g')
   rep=$(sed -n 's/^report: *//p' "$B/$j.md" 2> /dev/null | tr -d '\r')
   [ -n "$rep" ] && paths+=("$rep")
+  for a in "${paths[@]}"; do park_keeps "$j" "$a" || kept+=("$a"); done
+  paths=("${kept[@]}")
   [ ${#paths[@]} -gt 0 ] || return 0
   untracked=$(git ls-files --others --exclude-standard -- "${paths[@]}")
   [ -n "$untracked" ] && printf '%s\n' "$untracked" | xargs -d '\n' git add -N

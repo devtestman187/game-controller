@@ -138,6 +138,19 @@ if [ "$rc" = 1 ] && logged "committed sib" && done_has sib && ! done_has pk && [
   [ "$(last_line)" = "RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): pk (their logs: $batch/flash-<job>.log)" ]; then r=0; else r=1; fi
 report "a parked job's diff is saved to the work folder and removed from the tree, so the sibling's combined check passes" "$r"
 
+# 4b. A parked job's allow: files that a sibling lists too, or that were dirty before the run, stay in the tree.
+fixture parkshare
+mkdir -p "$repo/site/shots" && printf 'base\n' > "$repo/site/shots/dirty.png" && git -C "$repo" add -A && git -C "$repo" commit -q -m dirtybase || exit 2
+printf 'edit\n' > "$repo/site/shots/dirty.png"
+printf 'allow: src/parked.txt · src/shared.txt · site/shots/dirty.png · %s/pk-report.md\nreport: %s/pk-report.md\nexpected-min: 20\nturns: 5\nstub-sleep: 2\nstub-write: src/parked.txt\nstub-rc: 1\n' "$batch" "$batch" > "$repo/$batch/pk.md"
+printf 'allow: src/shared.txt · %s/sib-report.md\nreport: %s/sib-report.md\ncheck: format analyze\nexpected-min: 20\nstub-write: src/shared.txt\n' "$batch" "$batch" > "$repo/$batch/sib.md"
+waves "pk sib"; row pk 8 60
+run_jobs
+if [ "$rc" = 1 ] && logged "committed sib" && done_has sib && ! done_has pk && [ ! -e "$repo/src/parked.txt" ] &&
+  git -C "$repo" ls-tree -r --name-only HEAD | grep -qx src/shared.txt && grep -qx edit "$repo/site/shots/dirty.png" &&
+  [ "$(last_line)" = "RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): pk (their logs: $batch/flash-<job>.log)" ]; then r=0; else r=1; fi
+report "a parked job keeps a sibling's shared file and its own pre-run dirty file in the tree; only its own new file leaves" "$r"
+
 # 5. RUN_PAUSE_AFTER_WAVE=1 (reviews on): the run pauses after wave 1; the restart runs wave 2 and does not pause again.
 fixture pause
 brief w1j; brief w2j
