@@ -57,3 +57,7 @@
 - controller_parts.dart:143 still says TV - should - n8e5 (wave 9, already briefed)
 - client_messages.dart:152 :90 :179 :218 :227 still TV - should/could - f7
 - launch_home_test.dart:61 stale test name - could - f6
+## wave 9 (n8e5 n9e3 f5)
+- tools/churn.sh:58 churn_revert reverts generated tv_test_app files that were dirty before the job - must(tooling) - OWNER/tooling note in REPORT.md (the files are tracked generated churn, nothing of ours is lost; owner decides whether churn_revert skips files dirty at job start); no fix job
+- launch_home_test.dart:176 host not disposed when an expect fails - should - f6 item 4
+- controls.dart dartdoc, haptics_test name - minor - docs/code-health.md
