@@ -26,20 +26,30 @@ class Calls {
   int skipped = 0;
 }
 
+/// The phone a test runs on: its screen in dp, its look and its text scale.
+class Phone {
+  const Phone({this.screen = const Size(568, 320), this.tv = false, this.textScale = 1});
+
+  final Size screen;
+  final bool tv;
+  final double textScale;
+}
+
 /// Mounts a host screen with three anchors (top left, middle, bottom right, so
-/// the box goes below some and above others) and the marks over it.
+/// the box goes below some and above others) and the marks over it. With
+/// [settle] false it stops after the first frame, with the anchor read but the
+/// box not yet shown.
 Future<Calls> pumpMarks(
   WidgetTester tester, {
-  Size screen = const Size(568, 320),
-  bool tv = false,
-  double textScale = 1,
+  Phone phone = const Phone(),
   List<GlobalKey>? anchors,
   List<CoachStep>? steps,
+  bool settle = true,
 }) async {
-  tester.view.physicalSize = screen;
+  tester.view.physicalSize = phone.screen;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
-  tester.platformDispatcher.textScaleFactorTestValue = textScale;
+  tester.platformDispatcher.textScaleFactorTestValue = phone.textScale;
   addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
@@ -50,7 +60,7 @@ Future<Calls> pumpMarks(
       overrides: [
         party.lookPrefsProvider.overrideWithValue(prefs),
         party.lookClockProvider.overrideWithValue(() => DateTime(2026, 11, 8, 12)),
-        if (tv) party.toyTvProvider.overrideWithValue(true),
+        if (phone.tv) party.toyTvProvider.overrideWithValue(true),
       ],
       child: Consumer(
         builder: (context, ref, _) {
@@ -85,7 +95,7 @@ Future<Calls> pumpMarks(
       ),
     ),
   );
-  await settleMarks(tester);
+  if (settle) await settleMarks(tester);
   return calls;
 }
 
@@ -115,6 +125,12 @@ class _Host extends StatelessWidget {
       ],
     );
   }
+}
+
+/// The sizes of every CustomPaint on the screen, in the order they are in the tree.
+List<Size> paintSizes(WidgetTester tester) {
+  final paints = find.byType(CustomPaint);
+  return [for (var i = 0; i < paints.evaluate().length; i++) tester.getSize(paints.at(i))];
 }
 
 void main() {
@@ -183,23 +199,108 @@ void main() {
     });
   });
 
+  group('the box sits below or above its anchor, with the arrow between them', () {
+    testWidgets('on the bottom right anchor the box lies above the anchor, and its bottom is above the anchor top', (
+      tester,
+    ) async {
+      final keys = [GlobalKey(), GlobalKey(), GlobalKey()];
+      await pumpMarks(
+        tester,
+        phone: const Phone(screen: Size(640, 360)),
+        anchors: keys,
+      );
+      await tester.tap(find.text(tipOne));
+      await settleMarks(tester);
+      await tester.tap(find.text(tipTwo));
+      await settleMarks(tester);
+      expect(find.text(tipThree), findsOneWidget);
+      final box = tester.getRect(find.byType(party.ToyCard));
+      final anchor = tester.getRect(find.byKey(keys[2]));
+      expect(box.bottom, lessThanOrEqualTo(anchor.top), reason: 'box $box, anchor $anchor');
+    });
+
+    testWidgets('with room below the top left anchor the box lies below it and an arrow is drawn', (tester) async {
+      final keys = [GlobalKey(), GlobalKey(), GlobalKey()];
+      await pumpMarks(
+        tester,
+        phone: const Phone(screen: Size(640, 360)),
+        anchors: keys,
+      );
+      final box = tester.getRect(find.byType(party.ToyCard));
+      final anchor = tester.getRect(find.byKey(keys[0]));
+      // The box sits one hole padding and one arrow height below the anchor.
+      expect(box.top, anchor.bottom + coachHolePaddingDp + coachArrowHeightDp, reason: 'box $box, anchor $anchor');
+      expect(paintSizes(tester), contains(const Size(coachArrowWidthDp, coachArrowHeightDp)));
+    });
+  });
+
+  group('the marks stop cleanly and the tap after the end does nothing', () {
+    testWidgets('unmounting the marks before the anchor is read calls neither onDone nor onSkip', (tester) async {
+      final calls = await pumpMarks(tester, settle: false);
+      await tester.pump();
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      expect(calls.done, 0);
+      expect(calls.skipped, 0);
+    });
+
+    testWidgets('a tap after onDone does not call onDone again', (tester) async {
+      final calls = await pumpMarks(tester);
+      await tester.tap(find.text(tipOne));
+      await settleMarks(tester);
+      await tester.tap(find.text(tipTwo));
+      await settleMarks(tester);
+      await tester.tap(find.text(tipThree));
+      await settleMarks(tester);
+      expect(calls.done, 1);
+      await tester.tapAt(const Offset(284, 5));
+      await settleMarks(tester);
+      await tester.tapAt(const Offset(284, 5));
+      await settleMarks(tester);
+      expect(calls.done, 1);
+      expect(calls.skipped, 0);
+    });
+
+    testWidgets('a tap after Skip does not call onSkip again', (tester) async {
+      final calls = await pumpMarks(tester);
+      await tester.tap(find.text(tipOne));
+      await settleMarks(tester);
+      await tester.tap(find.text('Skip'));
+      await settleMarks(tester);
+      await tester.tap(find.text(tipTwo));
+      await settleMarks(tester);
+      expect(calls.skipped, 1);
+      expect(calls.done, 0);
+    });
+  });
+
   group('the box fits the screen and its touch targets are at least 48 dp', () {
     for (final tv in [false, true]) {
       final lookName = tv ? 'TV look' : 'menu look';
       for (final entry in screens.entries) {
         testWidgets('at ${entry.key} in the $lookName every step keeps the box inside and Skip 48x48', (tester) async {
-          await pumpMarks(tester, screen: entry.value, tv: tv);
+          await pumpMarks(
+            tester,
+            phone: Phone(screen: entry.value, tv: tv),
+          );
           await expectEveryStepFits(tester, entry.value, '${entry.key} $lookName');
         });
       }
       testWidgets('at 320x640 with text scale 1.3 in the $lookName every step fits', (tester) async {
         const screen = Size(320, 640);
-        await pumpMarks(tester, screen: screen, tv: tv, textScale: largeTextScale);
+        await pumpMarks(
+          tester,
+          phone: Phone(screen: screen, tv: tv, textScale: largeTextScale),
+        );
         await expectEveryStepFits(tester, screen, '320x640 at 1.3x $lookName');
       });
       testWidgets('at 568x320 with text scale 1.3 in the $lookName every step fits', (tester) async {
         const screen = Size(568, 320);
-        await pumpMarks(tester, tv: tv, textScale: largeTextScale);
+        await pumpMarks(
+          tester,
+          phone: Phone(tv: tv, textScale: largeTextScale),
+        );
         await expectEveryStepFits(tester, screen, '568x320 at 1.3x $lookName');
       });
     }

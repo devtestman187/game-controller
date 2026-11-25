@@ -31,6 +31,7 @@ const coachArrowHeightDp = ToySizes.space12;
 
 /// One stop of the coach marks: the button to point at and what to tell about it.
 class CoachStep {
+  /// One stop: the widget to point at and the hint to show about it.
   const CoachStep({required this.anchor, required this.text});
 
   /// Marks the widget the step points at; a step whose anchor has no render
@@ -48,6 +49,7 @@ class CoachStep {
 /// It fills the space its parent gives it, so it sits in a [Stack] above the
 /// screen whose anchors it points at.
 class CoachMarks extends StatefulWidget {
+  /// Shows the marks over the screen; the caller decides when, and reacts to [onDone] and [onSkip].
   const CoachMarks({super.key, required this.steps, required this.onDone, required this.onSkip});
 
   /// The stops, in the order they show.
@@ -130,52 +132,55 @@ class _CoachMarksState extends State<CoachMarks> {
     // The size is read so a rotation or a text scale change builds again and the
     // anchor is read again from its new place.
     MediaQuery.sizeOf(context);
-    _scheduleRead();
     final look = ToyLookScope.of(context);
     final anchor = _anchor;
     return LayoutBuilder(
-      builder: (context, _) => Stack(
-        fit: StackFit.expand,
-        children: [
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: _advance,
-            child: CustomPaint(
-              painter: _ScrimPainter(
-                color: look.colors.ink.withValues(alpha: coachScrimAlpha),
-                hole: anchor == null
-                    ? null
-                    : RRect.fromRectAndRadius(
-                        anchor.inflate(coachHolePaddingDp),
-                        const Radius.circular(ToySizes.cardCorner),
-                      ),
+      builder: (context, _) {
+        // A layout change of the overlay can move the anchor too, so it is read again.
+        _scheduleRead();
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _advance,
+              child: CustomPaint(
+                painter: _ScrimPainter(
+                  color: look.colors.ink.withValues(alpha: coachScrimAlpha),
+                  hole: anchor == null
+                      ? null
+                      : RRect.fromRectAndRadius(
+                          anchor.inflate(coachHolePaddingDp),
+                          const Radius.circular(ToySizes.cardCorner),
+                        ),
+                ),
               ),
             ),
-          ),
-          if (anchor != null && _index < widget.steps.length)
-            CustomMultiChildLayout(
-              delegate: _HintLayout(anchor.inflate(coachHolePaddingDp)),
-              children: [
-                LayoutId(
-                  id: _HintSlot.box,
-                  child: _HintBox(
-                    text: widget.steps[_index].text,
-                    onTap: _advance,
-                    onSkip: () => _finish(widget.onSkip),
+            if (anchor != null && _index < widget.steps.length)
+              CustomMultiChildLayout(
+                delegate: _HintLayout(anchor.inflate(coachHolePaddingDp)),
+                children: [
+                  LayoutId(
+                    id: _HintSlot.box,
+                    child: _HintBox(
+                      text: widget.steps[_index].text,
+                      onTap: _advance,
+                      onSkip: () => _finish(widget.onSkip),
+                    ),
                   ),
-                ),
-                LayoutId(
-                  id: _HintSlot.arrowUp,
-                  child: _Arrow(look: look, isUp: true),
-                ),
-                LayoutId(
-                  id: _HintSlot.arrowDown,
-                  child: _Arrow(look: look, isUp: false),
-                ),
-              ],
-            ),
-        ],
-      ),
+                  LayoutId(
+                    id: _HintSlot.arrowUp,
+                    child: _Arrow(look: look, isUp: true),
+                  ),
+                  LayoutId(
+                    id: _HintSlot.arrowDown,
+                    child: _Arrow(look: look, isUp: false),
+                  ),
+                ],
+              ),
+          ],
+        );
+      },
     );
   }
 }
