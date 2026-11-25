@@ -7,7 +7,8 @@
 # runner checks and commits the finished jobs, then stops naming the parked ones; they are not in
 # done.txt, so a restart runs them again. The STOP file, RUN_MAX_MIN and a failed combined check
 # still stop everything (tools/run-jobs.sh's check_stop and checks).
-# A job over RUN_TURN_CAP turns whose own run ended with result 0 and a report is accepted with a
+# A job over RUN_TURN_CAP turns whose own run ended with result 0 and a report is accepted (after the runner has
+# run its check: suites and its new tests itself, cap_verify) with a
 # WARN (its own checks passed; flash.sh's --max-turns stays the hard stop); over the cap with any
 # other result it is parked.
 # Not run on its own; it reads the runner's globals (B, LOGS, started, pids, since, limits,
@@ -22,6 +23,46 @@ job_limit_over() { # job_limit_over <index into started>: 0 when that job passed
 
 park() { # park <job>: the job stops alone; its siblings run on and the wave's end stops naming it
   parked+=("$1")
+  park_tree "$1"
+}
+
+park_tree() { # park_tree <job>: its allow: files and report leave the tree, saved as $WORK/parked-<job>.patch, so the
+  # combined check of its siblings never sees them (wave2-789: parked n8b3, n8e2 and n8e3 broke the siblings' check).
+  # A restart runs the job again; a hand-fix copies from the kept worktree (tools/apply-job.sh), not from this patch.
+  local j=$1 a rep paths=() untracked tracked
+  while IFS= read -r a; do
+    a=${a%/}
+    case "$a" in '' | "$B"/*) continue ;; esac # the batch folder is the runner's own (run.log, done.txt)
+    paths+=("$a")
+  done < <(sed -n 's/^allow: *//p' "$B/$j.md" 2> /dev/null | tr -d '\r' | sed 's/ *· */\n/g')
+  rep=$(sed -n 's/^report: *//p' "$B/$j.md" 2> /dev/null | tr -d '\r')
+  [ -n "$rep" ] && paths+=("$rep")
+  [ ${#paths[@]} -gt 0 ] || return 0
+  untracked=$(git ls-files --others --exclude-standard -- "${paths[@]}")
+  [ -n "$untracked" ] && printf '%s\n' "$untracked" | xargs -d '\n' git add -N
+  git diff --binary HEAD -- "${paths[@]}" > "$WORK/parked-$j.patch"
+  git reset -q -- "${paths[@]}"
+  [ -s "$WORK/parked-$j.patch" ] || { rm -f "$WORK/parked-$j.patch"; return 0; }
+  tracked=$(git diff --name-only HEAD -- "${paths[@]}")
+  [ -n "$tracked" ] && printf '%s\n' "$tracked" | xargs -d '\n' git checkout HEAD --
+  [ -n "$untracked" ] && printf '%s\n' "$untracked" | xargs -d '\n' rm -f
+  note "job $j parked: its files are saved in $WORK/parked-$j.patch and out of the tree (the siblings' check does not see them)"
+}
+
+cap_verify() { # cap_verify <job>: the runner's own format/analyze and the job's new tests; 0 when they pass.
+  # An over-cap job is never taken on its report's word (f2 of wave2-789 was incomplete).
+  local j=$1 suites t pkg cmd out=$WORK/cap-$j.log
+  suites=$(sed -n 's/^check: *//p' "$B/$j.md" | head -n 1 | tr -d '\r')
+  [ -n "$suites" ] || suites="format analyze"
+  # shellcheck disable=SC2086
+  tools/check.sh $suites > "$out" 2>&1 || return 1
+  while IFS= read -r t; do
+    [ -f "$t" ] || continue
+    pkg=${t%%/test/*}
+    cmd="dart test"; grep -q 'sdk: flutter' "$pkg/pubspec.yaml" 2> /dev/null && cmd="flutter test"
+    ( cd "$pkg" && timeout 300 $cmd "${t#"$pkg"/}" ) >> "$out" 2>&1 || return 1
+  done < <(sed -n 's/^allow: *//p' "$B/$j.md" | tr -d '\r' | sed 's/ *· */\n/g' | grep '/test/.*_test\.dart$')
+  return 0
 }
 
 limit_stop() { # limit_stop <index>: park the job, naming its limit and its estimate; its siblings run on
@@ -44,8 +85,12 @@ turn_cap() { # turn_cap <job> <rc>: the job's turns, from the usage row `usage` 
   case $cap in '' | 0) cap=$RUN_TURN_CAP ;; esac
   [ "$t" -gt "$cap" ] || return 0
   if [ "$rc" -eq 0 ] && [ -f "$B/$j-report.md" ]; then
-    note "WARN: job $j used $t turns, over its cap of $cap (its own checks passed; accepted)"
-    return 0
+    if cap_verify "$j"; then
+      note "WARN: job $j used $t turns, over its cap of $cap (its own checks passed; accepted)"
+      return 0
+    fi
+    note "job $j used $t turns, over its cap of $cap and the runner's own check or tests failed (see $WORK/cap-$j.log) (parked, siblings continue)"
+    return 1
   fi
   note "job $j used $t turns, over its cap of $cap (parked, siblings continue)"
   return 1
@@ -56,12 +101,14 @@ finished_job() { # finished_job <index>: wait its exit, log it, cap it, then sor
   j=${started[$i]}
   wait "${pids[$i]}"; rc=$?
   note "$j finished: result $rc ($(usage "$B/$j.md")) $(job_line "$j")"
-  turn_cap "$j" "$rc" || { park "$j"; return; }
+  # Result 4 with only generated churn outside the list comes first: the churn is dropped and the job's own files are
+  # applied, so the cap below judges a result 0 (n9b1, n8c, n8b2, f4 were parked as "over cap" with churn as the only fault).
   if [ $rc -eq 4 ] && apply_safe "$j" "$LOGS/flash-$j.log"; then
     [ -n "$DROPPED" ] && note "$j: dropped generated churn outside its list: $DROPPED"
     [ -n "$APPLIED" ] && note "$j: applied always-fine files outside its list: $APPLIED"
     extra+=($APPLIED); rc=0
   fi
+  turn_cap "$j" "$rc" || { park "$j"; return; }
   if [ $rc -eq 0 ] && [ -f "$B/$j-report.md" ]; then ok+=("$j")
   else note "job $j parked (result $rc); its siblings continue"; park "$j"; fi
 }
