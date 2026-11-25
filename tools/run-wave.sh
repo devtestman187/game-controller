@@ -7,6 +7,7 @@
 # runner checks and commits the finished jobs, then stops naming the parked ones; they are not in
 # done.txt, so a restart runs them again. The STOP file, RUN_MAX_MIN and a failed combined check
 # still stop everything (tools/run-jobs.sh's check_stop and checks).
+# A job whose brief says `apply: no` (head-to-head arm, m165 t2) is kept: flash.sh applies nothing, the log says `kept <tree>`.
 # A job over RUN_TURN_CAP turns whose own run ended with result 0 and a report is accepted (after the runner has
 # run its check: suites and its new tests itself, cap_verify) with a
 # WARN (its own checks passed; flash.sh's --max-turns stays the hard stop); over the cap with any
@@ -97,14 +98,18 @@ turn_cap() { # turn_cap <job> <rc>: the job's turns, from the usage row `usage` 
   local j=$1 rc=$2 t cap
   CAP_APPLIED=0
   t=$(usage "$B/$j.md" | sed -n 's/^\([0-9][0-9]*\) turns.*/\1/p')
+  # No usage row (a stand-in worker, or flash.sh died before it recorded one): nothing to count, so no cap and no
+  # over-cap apply either; finished_job then judges the result alone and parks any nonzero one (m165 t1, settled).
   [ -n "$t" ] || return 0
   cap=$(sed -n 's/^turns:[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$B/$j.md" | head -n 1)
   case $cap in '' | 0) cap=$RUN_TURN_CAP ;; esac
-  [ "$t" -gt "$cap" ] || return 0
+  [ "$t" -ge "$cap" ] || return 0 # m165 t1: was -gt; a worker at its cap has used its allowance (measured: cap 2 hit = 3 turns, rc 1)
   # tune4 T3: the worker ended nonzero only because it hit its turn cap (flash.sh still applied its files; result 3-7 are
   # protected files, outside files, a failed check or apply, or a failed preflight, never this) and its report is finished
   # (a Summary block): the runner's own check and new tests decide, as for a result 0. Green: applied, not parked.
-  if [ "$rc" -gt 0 ] && { [ "$rc" -lt 3 ] || [ "$rc" -gt 7 ]; } && [ -f "$B/$j-report.md" ] &&
+  # m165 t1: measured Nov 25 (claude 2.1.318, --max-turns 2): the cap ends the CLI with exit code 1, subtype error_max_turns,
+  # num_turns cap+1. So only rc 1 is the cap (OVER_CAP_RC); 124 (timeout) and 137+ (killed) are never accepted.
+  if [ "$rc" -eq "${OVER_CAP_RC:-1}" ] && [ "$rc" -lt 124 ] && [ -f "$B/$j-report.md" ] &&
     head -n 40 "$B/$j-report.md" | grep -q '^## Summary' && cap_verify "$j"; then
     note "over-cap applied: job $j used $t turns, over its cap of $cap (worker result $rc; the runner's own checks are green and its report is finished)"
     CAP_APPLIED=1
@@ -135,12 +140,31 @@ usage_wall() { # usage_wall <job> <index into started>: a usage row of "1 turns,
   return 0
 }
 
+job_keeps() { # job_keeps <job>: 0 when its brief has `apply: no` (m165 t2, a head-to-head arm)
+  grep -qi '^apply:[[:space:]]*no' "$B/$1.md" 2> /dev/null
+}
+
+is_kept() { # is_kept <job>: a head-to-head arm that already ran (kept.txt, written by kept_job); a restart skips it
+  grep -q "^$1 " "$B/kept.txt" 2> /dev/null
+}
+
+kept_job() { # kept_job <job> <rc>: an `apply: no` arm is neither committed nor parked: flash.sh kept its worktree and applied
+  # nothing (so the wave's check never sees it), the runner logs `kept <tree>` and the driver judges it (tools/h2h.sh).
+  # Its result and turns are only logged: an over-cap or failed arm is a "not green" result, not a stop of the run.
+  local j=$1 rc=$2 tree
+  tree=$(sed -n 's/^---- flash: .*the worktree is kept: //p' "$LOGS/flash-$j.log" 2> /dev/null | tail -n 1 | tr -d '\r')
+  echo "$j ${tree:-none} rc=$rc" >> "$B/kept.txt"
+  if [ -n "$tree" ]; then note "job $j kept $tree (apply: no; worker result $rc, $(usage "$B/$j.md"))"
+  else note "WARN: job $j (apply: no) left no kept worktree (worker result $rc; see $LOGS/flash-$j.log)"; fi
+}
+
 finished_job() { # finished_job <index>: wait its exit, log it, cap it, then sort it into ok or parked
   local i=$1 j rc
   j=${started[$i]}
   wait "${pids[$i]}"; rc=$?
   note "$j finished: result $rc ($(usage "$B/$j.md")) $(job_line "$j")"
   usage_wall "$j" "$i"
+  if job_keeps "$j"; then kept_job "$j" "$rc"; return; fi # a head-to-head arm: kept, judged by the driver
   # Result 4 with only generated churn outside the list comes first: the churn is dropped and the job's own files are
   # applied, so the cap below judges a result 0 (n9b1, n8c, n8b2, f4 were parked as "over cap" with churn as the only fault).
   if [ $rc -eq 4 ] && apply_safe "$j" "$LOGS/flash-$j.log"; then

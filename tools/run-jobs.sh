@@ -298,6 +298,7 @@ for wave in "${WAVES[@]}"; do
   for j in $wave; do
     check_stop
     is_dropped "$j" && { note "skip $j (dropped)"; continue; }
+    is_kept "$j" && { note "skip $j (kept: apply: no arm already ran)"; continue; }
     [ -f "$B/$j.md" ] || stop "no brief $B/$j.md"
     committed "$B/$j.md" || stop "the brief $B/$j.md is not committed (job folders are cut from the last commit)"
     if is_done "$j"; then

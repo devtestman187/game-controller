@@ -50,6 +50,7 @@ w=$(f stub-write); [ -n "$w" ] && { mkdir -p "$(dirname "$w")"; printf '%s\n' "$
 rep=$(f report)
 [ "$(f stub-noreport)" = yes ] || { mkdir -p "$(dirname "$rep")" && printf '## Summary\n\nstub report\n' > "$rep"; }
 code=$(f stub-rc); code=${code:-0}
+if [ "$(f stub-kept)" = yes ]; then echo "---- flash: apply: no (head-to-head arm): changes NOT applied here; the worktree is kept: $STUB_TREE"; fi
 if [ "$(f stub-outside)" = yes ]; then
   echo "---- flash: CHANGED FILES OUTSIDE --allow (src/app.dart tv_test_app/windows/flutter/generated_plugins.cmake):"
   echo "  tv_test_app/windows/flutter/generated_plugins.cmake"
@@ -254,6 +255,51 @@ waves ocb; row ocb 8 60
 STUB_CONTENT=BROKEN run_jobs
 if [ "$rc" = 1 ] && ! done_has ocb && ! logged "over-cap applied"; then r=0; else r=1; fi
 report "an over-cap job with a failing runner check is parked even with a report (exit $rc)" "$r"
+
+# 8b. m165 t1: only the measured cap exit code (1) auto-applies, and a worker AT its cap counts (turns >= cap, was >).
+fixture ocat
+brief oca "turns: 5" "stub-write: src/app.dart" "stub-rc: 1"
+waves oca; row oca 5 60
+run_jobs
+if [ "$rc" = 0 ] && done_has oca && logged "over-cap applied: job oca used 5 turns, over its cap of 5"; then r=0; else r=1; fi
+report "a worker with result 1 at exactly its turn cap (5 of 5) is applied when green (turns >= cap) (exit $rc)" "$r"
+fixture ocunder
+brief ocu "turns: 5" "stub-write: src/app.dart" "stub-rc: 1"
+waves ocu; row ocu 4 60
+run_jobs
+if [ "$rc" = 1 ] && ! done_has ocu && ! logged "over-cap applied"; then r=0; else r=1; fi
+report "a result-1 worker under its cap (4 of 5) is parked, not applied (exit $rc)" "$r"
+for orc in 2 124 137; do
+  fixture "ocrc$orc"
+  brief "ocr$orc" "turns: 5" "stub-write: src/app.dart" "stub-rc: $orc"
+  waves "ocr$orc"; row "ocr$orc" 8 60
+  run_jobs
+  if [ "$rc" = 1 ] && ! done_has "ocr$orc" && ! logged "over-cap applied"; then r=0; else r=1; fi
+  report "an over-cap job with worker result $orc (not the measured cap code 1) is parked (exit $rc)" "$r"
+done
+fixture ocnorow
+brief ocn "turns: 5" "stub-write: src/app.dart" "stub-rc: 1"
+waves ocn
+run_jobs
+if [ "$rc" = 1 ] && ! done_has ocn && ! logged "over-cap applied"; then r=0; else r=1; fi
+report "a result-1 job with no usage row is parked: no row, no over-cap apply (exit $rc)" "$r"
+
+# 8c. m165 t2, head-to-head arms (`apply: no`): the worktree is kept, nothing is committed or parked, run.log says
+#     `kept <tree>`, the sibling arm and a normal job of the wave are unaffected, and a restart does not run an arm again.
+fixture h2h
+brief ha "apply: no" "stub-kept: yes" "stub-noreport: yes" "turns: 5"
+brief hb "apply: no" "stub-kept: yes" "stub-noreport: yes" "turns: 5" "stub-rc: 1"
+brief hn "stub-write: src/app.dart"
+waves "ha hb hn"; row ha 9 60; row hb 9 60; row hn 2 60
+mkdir -p "$STUB_TREE"
+run_jobs
+if [ "$rc" = 0 ] && logged "job ha kept $STUB_TREE (apply: no; worker result 0" && logged "job hb kept $STUB_TREE (apply: no; worker result 1" &&
+  done_has hn && ! done_has ha && ! done_has hb && ! logged "(parked" && ! logged "over its cap"; then r=0; else r=1; fi
+report "apply: no arms are kept (even over their cap or nonzero), not committed or parked; a normal job of the wave is committed (exit $rc)" "$r"
+n1=$(wc -l < "$STUB_MARK")
+run_jobs
+if [ "$(wc -l < "$STUB_MARK")" = "$n1" ] && logged "skip ha (kept: apply: no arm already ran)"; then r=0; else r=1; fi
+report "a restart skips the arms already kept (kept.txt)" "$r"
 
 # 9. tune4 M2, phase lines: run.log names the phases (preflight is skipped here, worker, check, apply), each closing the last.
 fixture phases

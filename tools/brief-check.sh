@@ -198,6 +198,8 @@ search_item() { # search_item <text>: the lib/ and test/ .dart files under root 
 
 check_pair() { # check_pair <jobA> <jobB>: FAIL for every allow: path the two of one wave share
   local a=$1 b=$2 pa pb
+  # m165: two head-to-head arms (`apply: no`) run in their own worktrees and neither is applied by the runner, so they share files by design.
+  [ -n "$(field "$B/$a.md" apply | grep -ix no)" ] && [ -n "$(field "$B/$b.md" apply | grep -ix no)" ] && return 0
   mapfile -t la < "$tmp/$a.allow"
   mapfile -t lb < "$tmp/$b.allow"
   for pa in ${la[@]+"${la[@]}"}; do

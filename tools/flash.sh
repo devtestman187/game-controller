@@ -59,6 +59,8 @@
 #                    is removed; if they can't be applied (the same files
 #                    changed here meanwhile), the patch and the worktree are
 #                    kept (exit 6).
+#                    A brief line `apply: no` (a head-to-head arm, m165): the worktree is kept and nothing is applied, exit as
+#                    usual (0 when it passed); tools/h2h.sh applies the winner and saves the loser.
 #
 # Needs: DEEPSEEK_API_KEY in the environment, or (Windows) as a user
 # environment variable, which the script reads itself and never prints.
@@ -83,6 +85,7 @@ pre=0
 here=0
 pub=0
 web=0
+keep=0 # apply: no in the brief (head-to-head arm): the worktree is kept, nothing is applied (m165 t2)
 wsl=""
 brief=""
 report=""
@@ -133,6 +136,7 @@ if [ -n "$brief" ]; then
   if [ -n "$r" ]; then report="$r"; allow+=("$r"); fi
   case "$(field pub)" in yes|get) pub=1 ;; esac
   case "$(field web)" in yes) web=1 ;; esac
+  case "$(field apply)" in no) keep=1 ;; esac # m165 t2: a head-to-head arm keeps its worktree and applies nothing
   [ -z "$wsl" ] && wsl="$(field wsl)"
   extra="$task"
   task="Your brief is $brief: read it first, then do the job it describes."
@@ -587,6 +591,8 @@ if [ "$here" = 0 ]; then
   cd "$repo" || exit 2
   if [ "$code" = 3 ] || [ "$code" = 4 ]; then
     echo "---- flash: changes NOT applied here; the worktree is kept: $wt"
+  elif [ "$keep" = 1 ]; then
+    echo "---- flash: apply: no (head-to-head arm): changes NOT applied here; the worktree is kept: $wt"
   elif [ ${#touched[@]} -gt 0 ] && ! { git diff --binary "$start_tree" "$end_tree" -- "${touched[@]}" > "$log.patch" &&
     git apply "$log.patch"; }; then
     echo "---- flash: COULDN'T APPLY the changes here (the same files changed meanwhile?). Patch: $log.patch; worktree kept: $wt"

@@ -1,0 +1,2 @@
+# wave A: head-to-head 1 (two arms, apply: no) and a2
+a1s a1h a2

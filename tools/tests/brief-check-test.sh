@@ -55,6 +55,11 @@ if [ "$rc" = 1 ] &&
   exact 'RESULT: FAILED: 2 FAIL, 0 WARN (2 job(s) checked)'; then r=0; else r=1; fi
 report "two jobs of one wave sharing an allow: path FAIL with rule wave (equal path and folder)" "$r"
 
+# 2b. m165: two `apply: no` arms (head-to-head) of one wave may share every file: each runs in its own kept worktree.
+check "$fixtures/h2h-arms"
+if [ "$rc" = 0 ] && none FAIL && exact "RESULT: ok: 2 job(s), 0 WARN"; then r=0; else r=1; fi
+report "two apply: no arms sharing allow: paths pass the wave rule" "$r"
+
 # 3. A do: line creates a file the job's own allow: does not cover: the job could not commit it.
 check "$fixtures/missing-new-file"
 if [ "$rc" = 1 ] &&

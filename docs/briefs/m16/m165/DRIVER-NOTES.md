@@ -1,0 +1,4 @@
+# m165 driver notes
+- 13:15 wave 0 (inline): t1 measured claude 2.1.318 --max-turns 2 on a 5-command task: exit 1, subtype error_max_turns, num_turns 3 (= cap+1), is_error true. A 2-turn task that finishes early exits 0. turn_cap now: turns >= cap (was >; stated), worker rc exactly 1 (and < 124) for over-cap apply, no usage row: no cap and no over-cap apply (comment settles line 100). Tests in run-stops-test.sh (cases 8b).
+- t2 `apply: no`: flash.sh keeps the worktree (log line "the worktree is kept: <tree>"), run-wave.sh kept_job logs `job <j> kept <tree> (apply: no; ...)` and writes kept.txt (restart skips), brief-check lets two apply: no arms share files, tools/h2h.sh applies winner + saves loser patch + removes trees. Tests: run-stops-test 8c, brief-check-test 2b, h2h-test.sh.
+- t3 driver-kit section 13.
