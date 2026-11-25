@@ -16,6 +16,11 @@ const _barTop = 1.2;
 /// The milliseconds in a second, for the ms a snapshot times in.
 const _msPerSecond = 1000;
 
+/// The air between the name and the clock's pill, in world units: a name with
+/// the round's label before it is cut short of this, so it never draws over the
+/// clock.
+const _nameGap = 1.0;
+
 /// The share of a time bar's width filled: all of it when [done] (the picture
 /// is complete, so the bar is full the frame the last piece goes in and stays
 /// full on the win screen, B-001), else the share of the time limit the board
@@ -35,15 +40,21 @@ extension _BoardHud on PuzzlePainter {
     final clock = '${secondsLeft ~/ 60}:${(secondsLeft % 60).toString().padLeft(2, '0')}';
     final warn = s.warning && s.phase == PuzzlePhase.playing;
     final text = _colours.onBackground;
-    _text(
-      canvas,
-      puzzle.name,
-      Offset(field.board.left + 2, _hudY),
-      _hudNameSize,
-      text,
-      style: look.type.body,
-      align: TextAlign.left,
-    );
+    // The round's label goes before the name on the first board only (M16 A2).
+    final label = board == 0 ? roundLabel : null;
+    if (label == null) {
+      _text(
+        canvas,
+        puzzle.name,
+        Offset(field.board.left + 2, _hudY),
+        _hudNameSize,
+        text,
+        style: look.type.body,
+        align: TextAlign.left,
+      );
+    } else {
+      _labelledName(canvas, '$label · ${puzzle.name}', clock);
+    }
     _clock(canvas, clock, warn, scale, styles);
     // The side's points, in a night, beside its count (M14 a1).
     _countWithPoints(
@@ -62,6 +73,24 @@ extension _BoardHud on PuzzlePainter {
     if (_barFill(s, s.isComplete, timeLimitS) case final fill?) {
       _bar(canvas, fill, warn ? _colours.bad : _colours.good, styles);
     }
+  }
+
+  /// The name at its place, as [_text] draws it, cut with an ellipsis where it
+  /// would reach the clock's pill, so the label never pushes the clock.
+  void _labelledName(Canvas canvas, String name, String clock) {
+    final at = Offset(field.board.left + 2, _hudY);
+    final clockWidth = _layout(clock, _hudClockSize, _colours.onBackground, style: look.type.clock).width;
+    final room = field.size.width / 2 - clockWidth / 2 - _pillPad - _nameGap - at.dx;
+    final painter = TextPainter(
+      text: TextSpan(
+        text: name,
+        style: look.type.body.copyWith(fontSize: _hudNameSize, color: _colours.onBackground, height: 1),
+      ),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+      ellipsis: '…',
+    )..layout(maxWidth: max(room, 0));
+    painter.paint(canvas, _textTopLeft(painter, at, TextAlign.left));
   }
 
   /// The clock, on a `bad` pill with ink text in the warning time: `bad` text

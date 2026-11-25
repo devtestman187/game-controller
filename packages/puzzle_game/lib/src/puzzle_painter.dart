@@ -30,6 +30,7 @@ class PuzzlePainter extends CustomPainter {
     this.cat,
     this.characters = const {},
     this.fillsBackground = true,
+    this.roundLabel,
   });
 
   final Puzzle puzzle;
@@ -69,6 +70,10 @@ class PuzzlePainter extends CustomPainter {
   final int board;
 
   final int? timeLimitS;
+
+  /// The night's round, "Round N of M", drawn before the puzzle's name on the
+  /// first board (M16 A2); null: the name alone, as a round outside a night.
+  final String? roundLabel;
 
   /// The side's world: the one-board layout or a half of the split screen.
   final PuzzleField field;
@@ -353,5 +358,9 @@ class PuzzlePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(PuzzlePainter old) =>
-      !identical(old.s, s) || old.nowMs != nowMs || old.look != look || !mapEquals(old.characters, characters);
+      !identical(old.s, s) ||
+      old.nowMs != nowMs ||
+      old.look != look ||
+      old.roundLabel != roundLabel ||
+      !mapEquals(old.characters, characters);
 }

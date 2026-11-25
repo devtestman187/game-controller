@@ -33,6 +33,7 @@ class MatchView extends StatefulWidget {
     this.paused = false,
     this.characters = const {},
     this.clock,
+    this.roundLabel,
   });
 
   final Puzzle puzzle;
@@ -77,6 +78,10 @@ class MatchView extends StatefulWidget {
   /// Where the view reads the time for the pieces' motion, in milliseconds.
   /// Null: a [Stopwatch] started when the view is built.
   final Stopwatch? clock;
+
+  /// The night's round, "Round N of M", for the one board's HUD (M16 A2); null
+  /// outside a night.
+  final String? roundLabel;
 
   @override
   State<MatchView> createState() => _MatchViewState();
@@ -202,6 +207,7 @@ class _MatchViewState extends State<MatchView> {
               cat: snapshot.cat,
               characters: widget.characters,
               fillsBackground: fills,
+              roundLabel: widget.roundLabel,
             ),
     );
   }

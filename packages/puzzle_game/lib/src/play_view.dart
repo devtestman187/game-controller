@@ -191,6 +191,14 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
   int get _timeLeftMs =>
       match.sides.map((side) => (side.game.timeLeftS * Duration.millisecondsPerSecond).round()).reduce(min);
 
+  /// The round's label, "Round N of M", when the host names both (M16 A2); null
+  /// for a round outside a night.
+  String? get _roundLabel {
+    final round = widget.round;
+    final rounds = widget.rounds;
+    return round == null || rounds == null ? null : 'Round $round of $rounds';
+  }
+
   @override
   Widget build(BuildContext context) => MatchView(
     puzzle: widget.puzzle,
@@ -203,5 +211,6 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
     pxPerMm: widget.pxPerMm,
     paused: widget.paused,
     characters: widget.characters,
+    roundLabel: _roundLabel,
   );
 }
