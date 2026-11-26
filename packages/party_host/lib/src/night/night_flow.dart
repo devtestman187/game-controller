@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'night_state.dart';
+
 /// Why a round was skipped or rerolled, or why a player left: a reason code, never a name.
 enum NightReason {
   /// The host chose it.
@@ -242,7 +244,7 @@ final class NightFlow {
 
   /// A night of [rounds] rounds before anything has happened: the setup stage, round 0.
   static NightFlow start(int rounds) {
-    assert(rounds > 0, 'a night plays at least one round');
+    assert(rounds > 0 && rounds <= nightRoundCap, 'a night plays 1 to $nightRoundCap rounds');
     return NightFlow._(stage: NightStage.setup, round: 0, rounds: rounds, paused: false);
   }
 

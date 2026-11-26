@@ -6,12 +6,16 @@ import 'package:protocol/protocol.dart' show PlayerCharacter;
 import 'night_award_results.dart';
 import 'night_awards.dart';
 
+/// The most rounds any night may play. Nights stay at 5 rounds until about 15 game variants exist (M17 plan n1c), so
+/// 8 rounds stays unavailable.
+const nightRoundCap = 5;
+
 /// How many rounds a night plays (design section 4: "3 rounds" / "5 rounds").
 enum NightLength {
   three(3),
   five(5);
 
-  const NightLength(this.rounds);
+  const NightLength(this.rounds) : assert(rounds <= nightRoundCap, 'a night plays at most $nightRoundCap rounds');
 
   /// The night's rounds.
   final int rounds;
