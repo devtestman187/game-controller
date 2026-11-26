@@ -13,13 +13,25 @@ const _cards = [
   ChoiceCard(id: 'locked', title: 'Locked', enabled: false),
 ];
 
-/// The grace time the away tests use, in ms.
-const _graceMs = 200;
+/// The grace time the away tests use, in ms. Wide enough that a slow reconnect
+/// still lands inside it on a slow machine.
+const _graceMs = 300;
 
 /// A round that lasts long enough for a test to close it by hand.
 const _longRound = Duration(seconds: 30);
 
-/// The fake clock's start and the time left a resend shows after [_clockStepMs].
+/// A round that the timer ends during the test; long enough that setup on a slow
+/// machine finishes before it ends.
+const _shortRound = Duration(milliseconds: 300);
+
+/// How long a test waits past a round's end, so the end timer has surely fired.
+const _pastEnd = Duration(milliseconds: 600);
+
+/// The most time a test waits for the round to reach a state, so a stuck test fails.
+const _waitLimit = Duration(seconds: 5);
+
+/// The clock step a resend test advances to; the time left a resend shows is
+/// this much less than the round's length.
 const _clockStepMs = 4000;
 
 final class _Setup {
@@ -71,10 +83,10 @@ Future<_Setup> _setup(
   return _Setup(server, capable, old, round, clock);
 }
 
-/// Waits until the round has set the away first phone to the default.
+/// Waits until the round has set phone-1, which is away, to the default.
 Future<void> _untilLocked(ChoiceRound round) async {
   if (round.lockedIds.contains('phone-1')) return;
-  await round.changes.firstWhere((_) => round.lockedIds.contains('phone-1')).timeout(const Duration(seconds: 5));
+  await round.changes.firstWhere((_) => round.lockedIds.contains('phone-1')).timeout(_waitLimit);
 }
 
 void main() {
@@ -196,7 +208,7 @@ void main() {
         expect(s.round.close()['phone-1'], const ChoiceOutcome(cardId: 'build', count: 2, byDefault: false));
       });
 
-      test('a player away at close time with no pick change gets byDefault true', () async {
+      test('close with a player still away and no pick change gives the default, marked byDefault', () async {
         final s = await _setup(t);
         s.capable.send(const ChoicePickMessage(round: 7, pick: 'build'));
         await s.capable.drain();
@@ -227,13 +239,53 @@ void main() {
       });
 
       test('the timer ends the round', () async {
-        final s = await _setup(t, duration: const Duration(milliseconds: 100));
+        final s = await _setup(t, duration: _shortRound);
 
-        await s.round.changes.first.timeout(const Duration(seconds: 5));
+        await s.round.changes.first.timeout(_waitLimit);
 
         expect(s.round.isClosed, isTrue);
         await s.capable.drain();
         expect(s.capable.fromHost.whereType<ChoicesEndMessage>(), hasLength(1));
+      });
+
+      test('dispose before the end timer: no ChoicesEnd arrives, and pick, close and start change nothing', () async {
+        final s = await _setup(t, duration: _shortRound);
+        await s.round.dispose();
+
+        s.round.pick('phone-1', pickId: 'build');
+        expect(s.round.close(), isEmpty);
+        s.round.start();
+        await Future<void>.delayed(_pastEnd);
+        await s.capable.drain();
+
+        expect(s.round.isClosed, isFalse);
+        expect(s.round.lockedIds, isEmpty);
+        expect(s.capable.fromHost.whereType<ChoicesEndMessage>(), isEmpty);
+      });
+
+      test('dispose while a player is away: the grace never sets a default', () async {
+        final s = await _setup(t);
+        s.server.dropAllConnections();
+        await hostUntil(s.server, (h) => stateOf(h, 'phone-1') == ControllerState.disconnected);
+        await s.round.dispose();
+
+        await Future<void>.delayed(_pastEnd);
+
+        expect(s.round.lockedIds, isEmpty);
+        expect(s.round.close(), isEmpty);
+        expect(s.round.isClosed, isFalse);
+      });
+
+      test('start after dispose sends no round and starts no timer', () async {
+        final s = await _setup(t, start: false);
+        await s.round.dispose();
+
+        s.round.start();
+        await Future<void>.delayed(_pastEnd);
+        await s.capable.drain();
+
+        expect(s.round.isClosed, isFalse);
+        expect(s.capable.fromHost.whereType<ChoicesMessage>(), isEmpty);
       });
     });
   }

@@ -16,6 +16,7 @@ part 'choice_round_state.dart';
 /// ("legacy" phones) still get an outcome, and their picks come in through
 /// [pick] (the old-phone fallback).
 final class ChoiceRound {
+  /// Builds a round for [players]; nothing is sent or timed until [start].
   ChoiceRound({
     required this.server,
     required this.round,
@@ -29,6 +30,7 @@ final class ChoiceRound {
     this.currency,
   });
 
+  /// The host the round sends through and listens to for picks and connections.
   final HostServer server;
 
   /// The round's number, which a phone's pick must name.
@@ -67,7 +69,8 @@ final class ChoiceRound {
   StreamSubscription<ControllerMessage>? _messageSub;
   StreamSubscription<HostSnapshot>? _serverSub;
   int _endsAtMs = 0;
-  bool _started = false;
+  bool _isStarted = false;
+  bool _isDisposed = false;
 
   /// Fires after every pick, every default set for an away player, and the close.
   Stream<void> get changes => _changes.stream;
@@ -85,14 +88,16 @@ final class ChoiceRound {
   Map<String, ChoiceOutcome> get outcomes => _outcomes ?? const {};
 
   /// Sends the round to every player whose phone lists the capability and
-  /// starts the timer.
+  /// starts the timer. Does nothing once started, closed or disposed.
   void start() {
-    if (_started || isClosed) return;
-    _started = true;
+    if (_isStarted || _isDisposed || isClosed) return;
+    _isStarted = true;
     _endsAtMs = nowMs() + duration.inMilliseconds;
     _messageSub = server.messages.listen(_onMessage);
     _serverSub = server.changes.listen(_onServerChange);
-    _endTimer = Timer(duration, close);
+    _endTimer = Timer(duration, () {
+      if (!_isDisposed) close();
+    });
     final live = _connectedPlayers(server.snapshot);
     for (final id in players) {
       if (live.contains(id)) {
@@ -106,10 +111,10 @@ final class ChoiceRound {
 
   /// Stores [pickId] for [playerId]; null, or an unlocked pick, is an undo.
   /// Ignores a player not in the round, a card the player's list lacks or that
-  /// is disabled, and any pick once the round is closed. [count] is held to
-  /// 1 up to the card's maxCount.
+  /// is disabled, and any pick once the round is closed or disposed. [count] is
+  /// held to 1 up to the card's maxCount.
   void pick(String playerId, {String? pickId, int count = 1, bool locked = false}) {
-    if (isClosed || !players.contains(playerId)) return;
+    if (_isDisposed || isClosed || !players.contains(playerId)) return;
     if (pickId == null) {
       if (_picks.remove(playerId) != null) _changes.add(null);
       return;
@@ -122,10 +127,12 @@ final class ChoiceRound {
 
   /// Ends the round, now or at the timer: settles each player's outcome, sends
   /// each capable phone its end and returns the outcomes. A second call
-  /// returns the same outcomes and sends nothing.
+  /// returns the same outcomes and sends nothing. After [dispose] it returns
+  /// the stored outcomes, or an empty map, and sends nothing.
   Map<String, ChoiceOutcome> close() {
     final done = _outcomes;
     if (done != null) return done;
+    if (_isDisposed) return const {};
     _cancelWatching();
     final outcomes = {for (final id in players) id: _outcomeFor(id)};
     _outcomes = outcomes;
@@ -139,6 +146,7 @@ final class ChoiceRound {
 
   /// Cancels the timers and listeners. The round sends nothing after it.
   Future<void> dispose() async {
+    _isDisposed = true;
     _cancelWatching();
     for (final t in _awayTimers.values) {
       t.cancel();
@@ -167,6 +175,7 @@ final class ChoiceRound {
   }
 
   void _onMessage(ControllerMessage m) {
+    if (_isDisposed) return;
     final message = m.message;
     if (message is! ChoicePickMessage || message.round != round) return;
     final sender = server.snapshot.controllers.where((c) => c.controllerId == m.controllerId).firstOrNull;
@@ -175,6 +184,7 @@ final class ChoiceRound {
   }
 
   void _onServerChange(HostSnapshot snapshot) {
+    if (_isDisposed) return;
     final live = _connectedPlayers(snapshot);
     for (final id in players) {
       final isLive = live.contains(id);
@@ -193,8 +203,8 @@ final class ChoiceRound {
     _awayTimers[playerId]?.cancel();
     _awayTimers[playerId] = Timer(grace, () {
       _awayTimers.remove(playerId);
+      if (_isDisposed || isClosed) return;
       final card = defaultId;
-      if (isClosed) return;
       if (card == null) {
         _picks.remove(playerId);
       } else {
