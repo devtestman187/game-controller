@@ -4,7 +4,9 @@ import 'dart:math';
 
 import 'package:controller/src/gyro.dart';
 import 'package:controller/src/layout.dart';
+import 'package:controller/src/sticks.dart';
 import 'package:controller/src/ui/joined_view.dart';
+import 'package:controller/src/ui/top_bar_metrics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:puzzle_game/puzzle_game.dart' hide phonePxPerMm;
@@ -100,9 +102,12 @@ void measure(String label, Puzzle puzzle, Size box) {
   final smallest = puzzle.pieces.map((p) => p.shape.size).reduce(min);
   final smallestPx = smallest * world.scale;
   final floorPx = floorWidthPxOf(puzzle, layout);
-  // Start/Pause is the last of rightPadRects in stick mode (face buttons, right stick, Start). The
-  // face buttons' square is the one nearest the box's top right, so "nearest" would pick it instead.
-  final start = right.last;
+  // Start/Pause is in the game bar since Nov 26, so rightPadRects no longer has it: it is read off the
+  // stick layout here, under the bar, as the right hand's layout draws it.
+  final start = stickLayout(
+    Size(box.width, box.height - topBarHeightPx),
+    buttonSize: const StickSettings().buttonSize,
+  ).start.shift(const Offset(0, topBarHeightPx));
   // The strip's free height: from the box's top down to the highest right-hand rect in its x range.
   final tops = right.where((r) => r.right > stripLeft).map((r) => r.top);
   final stripRoomPx = tops.isEmpty ? box.height : tops.reduce(min);

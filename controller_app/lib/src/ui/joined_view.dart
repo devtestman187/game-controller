@@ -49,9 +49,10 @@ List<Rect> leftPadRects(
 /// The right hand's controls, in a screen of [box], as [mode] draws them, in the
 /// screen's px, passed to the game through [FrameView.hudRects] (B-044). The
 /// clock area keeps clear of them, while the board and the mirror do not: they
-/// keep to [leftPadRects]. They are the face buttons and Start in every mode,
-/// and in stick mode the right stick (its zone while a floating stick may be
-/// anywhere).
+/// keep to [leftPadRects]. They are the face buttons in every mode, and in
+/// stick mode the right stick (its zone while a floating stick may be
+/// anywhere). Start is not one of them: since Nov 26 it sits in the game's bar,
+/// above the pad, so the HUD has no need to keep clear of it.
 List<Rect> rightPadRects(
   Size box, {
   required PadMode mode,
@@ -65,14 +66,10 @@ List<Rect> rightPadRects(
     case PadMode.dpad:
     case PadMode.gyro:
       final layout = padLayout(body, mm: mm);
-      return [layout.faceButtons.shift(bar), layout.start.shift(bar)];
+      return [layout.faceButtons.shift(bar)];
     case PadMode.sticks:
       final layout = stickLayout(body, mm: mm, buttonSize: sticks.buttonSize);
-      return [
-        layout.faceButtons.shift(bar),
-        (sticks.floating ? layout.rightZone : layout.rightStick).shift(bar),
-        layout.start.shift(bar),
-      ];
+      return [layout.faceButtons.shift(bar), (sticks.floating ? layout.rightZone : layout.rightStick).shift(bar)];
   }
 }
 

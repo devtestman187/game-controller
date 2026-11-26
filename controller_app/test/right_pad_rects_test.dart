@@ -35,25 +35,26 @@ Rect startOf(Size box, PadMode mode, StickSettings sticks) {
 }
 
 void main() {
-  // The modes, each with how many rects its right hand has: the face buttons
-  // and Start, and the right stick (or its zone when floating) in stick mode.
+  // The modes, each with how many rects its right hand has: the face buttons,
+  // and the right stick (or its zone when floating) in stick mode. Start is in
+  // the game bar since Nov 26, so it is not one of them.
   const cases = [
-    ('D-pad', PadMode.dpad, StickSettings(), 2),
-    ('fixed sticks', PadMode.sticks, fixedSticks, 3),
-    ('floating sticks', PadMode.sticks, floatingSticks, 3),
-    ('gyro', PadMode.gyro, StickSettings(), 2),
+    ('D-pad', PadMode.dpad, StickSettings(), 1),
+    ('fixed sticks', PadMode.sticks, fixedSticks, 2),
+    ('floating sticks', PadMode.sticks, floatingSticks, 2),
+    ('gyro', PadMode.gyro, StickSettings(), 1),
   ];
 
   group('rightPadRects: the right hand\'s controls, which the HUD keeps clear of (B-044)', () {
     for (final box in [portrait, landscape]) {
       for (final (name, mode, sticks, count) in cases) {
-        test('$name at $box: $count rects inside the box, the Start button among them', () {
+        test('$name at $box: $count rects inside the box, no Start button among them', () {
           final rects = rightPadRects(box, mode: mode, mm: phonePxPerMm, sticks: sticks);
           expect(rects.length, count);
           for (final rect in rects) {
             expect(inside(rect, box), isTrue, reason: '$rect is outside $box');
           }
-          expect(rects, contains(startOf(box, mode, sticks)));
+          expect(rects, isNot(contains(startOf(box, mode, sticks))));
         });
 
         test('$name at $box: no right-hand rect meets a left-hand rect', () {
