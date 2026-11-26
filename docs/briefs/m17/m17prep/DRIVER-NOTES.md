@@ -1,0 +1,1 @@
+- 14:10 briefs+release notes written (home, ci, p0a, e0f); p0b/p0c by hand, outside the runner. next: dry-run, commit, start runner

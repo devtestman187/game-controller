@@ -1,0 +1,1 @@
+Home screen: while your phone looks for a TV, it now says "Looking for a screen…" (in progress). "Search again" and coming back to the app start a fresh 3-second search, so the "No screen found" message no longer shows while a new search is still running. Please check on a phone with the TV on and off.
