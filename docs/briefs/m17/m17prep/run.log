@@ -57,3 +57,5 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-26 14:50:37 phase: apply (check took 23s)
 2026-11-26 14:50:39 committed ci: 509eaea0 ci: raise analyze-test-android to 45 min; run tests once with coverage
 2026-11-26 14:50:39 phase: review (apply took 2s)
+2026-11-26 14:52:39 reviewed wave1-home: 10 finding(s)
+2026-11-26 14:52:39 reviewed wave2: 6 finding(s)
