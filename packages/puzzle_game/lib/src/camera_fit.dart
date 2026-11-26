@@ -50,3 +50,56 @@ bool _meetsControls(Rect rect, List<Rect> controls) =>
   }
   return null;
 }
+
+/// The mirror's rect at scale [s]: [board]'s shape, [PuzzleCamera.mirrorGapPx]
+/// from the box's top and right edges.
+Rect _stripRect(Size box, Size board, double s) => Rect.fromLTWH(
+  box.width - PuzzleCamera.mirrorGapPx - board.width * s,
+  PuzzleCamera.mirrorGapPx,
+  board.width * s,
+  board.height * s,
+);
+
+/// The largest scale, up to [maxScale], at which the top-right strip's mirror
+/// is inside [box], keeps [PuzzleCamera.mirrorGapPx] from every one of
+/// [obstacles] and from every round control in [hudRects] (the square ones: the
+/// face buttons and the right stick; a floating stick's zone is no circle and
+/// takes no look from the mirror), or null when that is under [floor]. Null too
+/// where [hudRects] holds no circle: there is no ring whose corner to take.
+double? _stripFitting(Size box, Size board, double maxScale, double floor, List<Rect> obstacles, List<Rect> hudRects) {
+  final circles = [
+    for (final r in hudRects)
+      if ((r.width - r.height).abs() < 1e-6) r,
+  ];
+  if (circles.isEmpty || floor > maxScale) return null;
+  bool clear(double s) {
+    final rect = _stripRect(box, board, s);
+    if (rect.left < 0 || rect.bottom > box.height + PuzzleCamera._floorSlack) return false;
+    if (obstacles.any((o) => o.inflate(PuzzleCamera.mirrorGapPx).overlaps(rect))) return false;
+    for (final c in circles) {
+      final nearest = Offset(
+        max(rect.left, min(c.center.dx, rect.right)),
+        max(rect.top, min(c.center.dy, rect.bottom)),
+      );
+      if ((c.center - nearest).distance - c.width / 2 + PuzzleCamera._floorSlack < PuzzleCamera.mirrorGapPx) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  if (!clear(floor)) return null;
+  if (clear(maxScale)) return maxScale;
+  // Clear only gets harder as the mirror grows, so bisect.
+  var lo = floor;
+  var hi = maxScale;
+  for (var i = 0; i < 30; i++) {
+    final mid = (lo + hi) / 2;
+    if (clear(mid)) {
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+  }
+  return lo;
+}

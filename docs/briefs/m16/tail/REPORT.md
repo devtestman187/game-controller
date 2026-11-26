@@ -8,3 +8,11 @@
 - Proposed lessons: none. Calls: driver about 40; waiters 2 (7 and 7 tool uses). 
 - proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
 - no background command of mine is still running
+
+## Addendum (Nov 26, job 3 and measures; inline, no runner)
+- Job 3 BUILT: mirrorPlace order is now strip (top right, 8 px inset, over the ring's empty corner; only tried where hudRects holds a round control) -> today's corner -> today's gap -> null. Code: camera.dart (+5 lines, 376) and camera_fit.dart (_stripRect, _stripFitting; circles = square hudRects, a floating stick's zone is no circle and is ignored; obstacles tray, board, HUD, pad all with the 8 px air). The mirror takes no touch (the game draws behind the controls). At 956x440 (sticks) 16/18 mirrors move from today's spot to the ring corner (2 stay in today's spot); with 18/18 placed.
+- Pin changed: packages/puzzle_game/test/hud_place_right_controls_test.dart (ring present => strip). New measure tests: controller_app/test/mirror_floor_proof_test.dart, bar_count_fit_test.dart.
+- check.sh: All checks passed (259s). No worker, no run.log rows: inline work by the driver (kit allows inline).
+- Fixed, unverified: strip placement on a device (please check at 667x375 and 844x390).
+- Owner gate (low small-phone count at 2.2 mm) stays open: see numbers; nothing pushed.
+- proc-sweep and background: none left (checks finished).

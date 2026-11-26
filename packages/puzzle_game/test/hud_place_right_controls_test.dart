@@ -71,15 +71,17 @@ void main() {
       hudRects: hudRects,
     );
 
-    test('a control over the board\'s centre leaves the mirror\'s rect and scale as they were', () {
+    test('a control over the board centre leaves the board; the mirror takes the top-right strip beside the ring', () {
       final world = PuzzleCamera.place(layout, sideLeft, phone169, PuzzleSide.left);
       final centre = world.origin + layout.left.board.center * world.scale;
       final overBoard = Rect.fromCenter(center: centre, width: handPx, height: handPx);
       final free = mirrorWith(const []);
       final held = mirrorWith([overBoard]);
-      expect(free, isNotNull);
-      expect(held?.rect, free?.rect);
-      expect(held?.scale, free?.scale);
+      expect(held, isNotNull);
+      // With a ring in the box the mirror goes to the top-right strip, 8 px from the top and the right.
+      expect(held!.rect.top, PuzzleCamera.mirrorGapPx);
+      expect(held.rect.right, closeTo(phone169.width - PuzzleCamera.mirrorGapPx, 1e-9));
+      expect(free!.rect.left, PuzzleCamera.hudMarginPx);
     });
 
     test('place() gives the same origin and scale before and after the mirror is fitted with a control', () {

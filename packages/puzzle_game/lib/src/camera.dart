@@ -216,7 +216,8 @@ final class PuzzleCamera {
   /// screen (the TV), and a box where neither place is both clear of this
   /// player's pad and big enough to read.
   ///
-  /// Rule 8's two places, in order. The corner: [hudMarginPx] from the box's
+  /// Rule 8's places, in order: the strip (top right, over the empty corner
+  /// of the right hand's ring, where [hudRects] holds one), then the corner: [hudMarginPx] from the box's
   /// left and [hudTopFraction] of its height down, with the clock area to its
   /// right in its short form (rule 5). The gap: under the clock area, between
   /// the left hand's controls and their board (rule 8's sketch). In each the
@@ -256,6 +257,10 @@ final class PuzzleCamera {
     // pad (rules 3 and 8), and the clock area.
     final boardAndTray = [onScreen(board), onScreen(layout.left.tray), ...padRects];
     final hud = hudPlace(layout, camera, box, text, padRects: padRects, split: split, hudRects: hudRects);
+    // First place (owner, Nov 26): the top-right strip over the empty corner of
+    // the right hand's button ring; the mirror takes no touch.
+    final strip = _stripFitting(box, board.size, maxScale, floor, [...boardAndTray, hud.rect], hudRects);
+    if (strip != null) return (rect: _stripRect(box, board.size, strip), scale: strip, hud: hud);
     // The corner, with the clock area to its right in its short form, clear of
     // the world: its left edge is where the mirror's right must stop.
     final unit = hudUnit(box);
