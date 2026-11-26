@@ -21,3 +21,4 @@ Wave 3 + run review (wave3-review-report.md, run-review.md, 14 findings):
 - late-connecting old phone, held not cleared, dartdocs, unread field, literals 12/24, duplicate test (should/could) - f3.
 - Open questions: picked-unlocked counts at the end (kept: owner defaults "undo until the timer ends" and "nothing chosen gets the default"); labels = card title with the tap count in the status line "Build 3 = 9 Bolts" (kept, O3); pause owner for the timers = y0d / night controller, REPORT open item; 300 ms test margins kept; maxCards and maxCountLimit stay public.
 - Unlogged hand edit coverage_all_test.dart:10 (y0a): the brief asked for it; it matches the generator output.
+- Waves 4-5 (verify, Nov 26): should 1 choice_fallback.dart:95 start() after dispose() - hand-fixed (run.log HAND-FIX); should 2 f3-report self-check wording - hand-fixed; coulds (title limit constant, surrogate cut, test copies the code's own cut) - accepted, left for B6 y0h.
