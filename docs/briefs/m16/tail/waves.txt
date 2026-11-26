@@ -1,0 +1,2 @@
+# wave 1: measure the corner spot; Start into the game bar; drop Start from the right rects
+m1 s1 s2
