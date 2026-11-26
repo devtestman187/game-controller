@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:game_kit/game_kit.dart' show RoundOutcome, RoundResult;
 import 'package:protocol/protocol.dart' show PlayerCharacter;
 
+import 'champion.dart';
 import 'night_award_results.dart';
 import 'night_awards.dart';
 
@@ -306,6 +307,14 @@ final class NightState {
         ),
     ];
   }
+
+  /// The night's champion ids under the Quick night rule (champion.dart): the
+  /// players with the most points, tied players sharing the win. It agrees with
+  /// the scoreboard's place 1 from [rows], which is the same rule over the same
+  /// totals.
+  Set<String> championsAmong(Iterable<GamePlayer> players) => ChampionChain.quickNight.champions([
+    for (final row in rows(players)) ChampionEntry(id: row.id, points: row.total),
+  ]);
 
   /// 1-based place of [entry] in [order], which is sorted by total: the first
   /// player on the same total holds it.
