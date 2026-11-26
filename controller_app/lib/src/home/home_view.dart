@@ -185,8 +185,8 @@ class _NameRow extends StatelessWidget {
   }
 }
 
-/// The chip for what discovery found, with Search again when none was found.
-/// Nothing is shown while searching.
+/// The chip for what discovery is doing or found, with Search again when none was
+/// found. While searching the chip says Looking for a screen.
 class _FindRow extends StatelessWidget {
   const _FindRow({required this.find, required this.onSearchAgain, required this.look});
 
@@ -196,7 +196,6 @@ class _FindRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (find == HomeFind.searching) return const SizedBox.shrink();
     final isFound = find == HomeFind.found;
     final colors = look.colors;
     final chip = DecoratedBox(
@@ -208,10 +207,11 @@ class _FindRow extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: ToySizes.space16, vertical: ToySizes.space8),
-        child: Text(
-          isFound ? HomeText.foundNearby : HomeText.noScreenFound,
-          style: look.type.body.copyWith(color: colors.ink),
-        ),
+        child: Text(switch (find) {
+          HomeFind.found => HomeText.foundNearby,
+          HomeFind.searching => HomeText.lookingForScreen,
+          HomeFind.none => HomeText.noScreenFound,
+        }, style: look.type.body.copyWith(color: colors.ink)),
       ),
     );
     return Wrap(

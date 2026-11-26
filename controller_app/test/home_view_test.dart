@@ -150,8 +150,9 @@ void main() {
       expect(find.text(HomeText.searchAgain), findsOneWidget);
     });
 
-    testWidgets('searching shows no chip and no Search again', (tester) async {
+    testWidgets('searching shows Looking for a screen and no Search again', (tester) async {
       await pumpHome(tester, find: HomeFind.searching);
+      expect(find.text(HomeText.lookingForScreen), findsOneWidget);
       expect(find.text(HomeText.foundNearby), findsNothing);
       expect(find.text(HomeText.noScreenFound), findsNothing);
       expect(find.text(HomeText.searchAgain), findsNothing);

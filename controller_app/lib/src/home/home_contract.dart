@@ -7,7 +7,8 @@ enum HomeRole { join, play, display }
 enum HomeFind { searching, found, none }
 
 /// The button to highlight for [find]: a found screen leads with Join a Game,
-/// no screen leads with Play here, and nothing is highlighted while searching.
+/// no screen leads with Play here, and nothing is highlighted while searching (the
+/// chip says Looking for a screen then).
 HomeRole? highlightedRole(HomeFind find) => switch (find) {
   HomeFind.found => HomeRole.join,
   HomeFind.none => HomeRole.play,

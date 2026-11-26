@@ -134,17 +134,59 @@ void main() {
       expect(buttonColor(tester, HomeText.playHere), isNot(good));
     });
 
-    testWidgets('nothing is highlighted while searching, and Play here is after homeSearchWait with no host', (
+    testWidgets('while searching Home says Looking for a screen, and after homeSearchWait with no host it says none', (
       tester,
     ) async {
       await pumpApp(tester, paired: true, saved: noTips);
       await openHome(tester);
       final good = party.ToyLookScope.of(tester.element(find.byType(HomeView))).colors.good;
+      expect(find.text(HomeText.lookingForScreen), findsOneWidget, reason: 'still searching');
       await tester.pump(const Duration(seconds: 1));
       expect(buttonColor(tester, HomeText.playHere), isNot(good), reason: 'still searching');
       expect(buttonColor(tester, HomeText.joinGame), isNot(good), reason: 'still searching');
       await tester.pump(homeSearchWait);
+      expect(find.text(HomeText.lookingForScreen), findsNothing);
+      expect(find.text(HomeText.noScreenFound), findsOneWidget);
       expect(buttonColor(tester, HomeText.playHere), good);
+    });
+
+    testWidgets('Search again after none searches afresh: Looking for a screen, then none after homeSearchWait', (
+      tester,
+    ) async {
+      final app = await pumpApp(tester, paired: true, saved: noTips);
+      await openHome(tester);
+      await tester.pump(homeSearchWait);
+      expect(find.text(HomeText.noScreenFound), findsOneWidget);
+      await tester.tap(find.text(HomeText.searchAgain));
+      await tester.pump();
+      expect(app.discovery.restarts, 1);
+      final good = party.ToyLookScope.of(tester.element(find.byType(HomeView))).colors.good;
+      expect(find.text(HomeText.lookingForScreen), findsOneWidget);
+      expect(find.text(HomeText.searchAgain), findsNothing);
+      expect(buttonColor(tester, HomeText.playHere), isNot(good), reason: 'nothing highlighted while searching');
+      await tester.pump(homeSearchWait);
+      expect(find.text(HomeText.noScreenFound), findsOneWidget);
+      expect(buttonColor(tester, HomeText.playHere), good);
+    });
+
+    testWidgets('the app resuming after none searches afresh: Looking for a screen, then none after homeSearchWait', (
+      tester,
+    ) async {
+      final app = await pumpApp(tester, paired: true, saved: noTips);
+      await openHome(tester);
+      await tester.pump(homeSearchWait);
+      expect(find.text(HomeText.noScreenFound), findsOneWidget);
+      // The test binding starts resumed, so the platform's walk through inactive comes first.
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      await tester.pump();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      await tester.pump();
+      expect(app.discovery.restarts, 1);
+      expect(find.text(HomeText.lookingForScreen), findsOneWidget);
+      expect(find.text(HomeText.searchAgain), findsNothing);
+      await tester.pump(homeSearchWait);
+      expect(find.text(HomeText.noScreenFound), findsOneWidget);
     });
 
     testWidgets('a discovery error leads with Play here at once', (tester) async {

@@ -36,6 +36,11 @@ String? hostKindFrom(String? txt) => switch (txt) {
   _ => null,
 };
 
+/// The log line for the first screen found, with how long after the search
+/// started it came: the time-to-first-host figure for the Home search.
+String firstHostLine(DateTime startedAt, DateTime now) =>
+    'First screen found ${now.difference(startedAt).inMilliseconds} ms after the search started';
+
 /// What discovery knows right now: whether it's searching, the hosts it has
 /// found, and the last error. [everFound] stays true once any host was found,
 /// so a search that lost its hosts can be told from one that never found any.
@@ -119,8 +124,9 @@ class BonsoirHostDiscovery implements HostDiscovery {
           _set(_state.copyWith(error: '$e'));
         },
       );
+      final began = DateTime.now();
       await discovery.start();
-      _set(_state.copyWith(running: true, error: null, startedAt: DateTime.now()));
+      _set(_state.copyWith(running: true, error: null, startedAt: began));
     } catch (e) {
       _log('Discovery could not start: $e');
       _discovery = null;
@@ -197,7 +203,10 @@ class BonsoirHostDiscovery implements HostDiscovery {
       kind: hostKindFrom(service.attributes[party.HostKind.txtKey]),
     );
     _log('Resolved "${service.name}" at ${addresses.join(', ')} port ${service.port}');
+    final wasEmpty = _hosts.isEmpty;
     _hosts[service.name] = host;
+    final started = _state.startedAt;
+    if (wasEmpty && started != null) _log(firstHostLine(started, DateTime.now()));
     _publish(found: true);
   }
 

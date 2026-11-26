@@ -230,8 +230,18 @@ class FakeDiscovery implements HostDiscovery {
   @override
   Future<void> stop() async => stops++;
 
+  /// A restart gets a new [DiscoveryState.startedAt], as the real search does, so the
+  /// Home wait starts over; the microseconds keep two restarts apart.
   @override
-  Future<void> restart() async => restarts++;
+  Future<void> restart() async {
+    restarts++;
+    emit(
+      _state.copyWith(
+        startedAt: DateTime.now().add(Duration(microseconds: restarts)),
+        hosts: const [],
+      ),
+    );
+  }
 
   @override
   Future<void> dispose() => _changes.close();

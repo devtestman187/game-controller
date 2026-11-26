@@ -73,11 +73,20 @@ class _PhoneHomeScreenState extends ConsumerState<PhoneHomeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _searchTimer = Timer(homeSearchWait, () {
-        if (mounted) setState(() => _searchWaited = true);
-      });
+      _startSearchWait();
       if (_allAnchorsLaidOut()) setState(() => _anchorsReady = true);
       unawaited(askLaunchConsent(context, ref).whenComplete(_afterConsent));
+    });
+  }
+
+  /// Starts the wait before "No screen found", again on every new search: Search
+  /// again and the app's resume both restart discovery, and the chip says
+  /// Looking for a screen until the wait ends.
+  void _startSearchWait() {
+    _searchTimer?.cancel();
+    setState(() => _searchWaited = false);
+    _searchTimer = Timer(homeSearchWait, () {
+      if (mounted) setState(() => _searchWaited = true);
     });
   }
 
@@ -134,6 +143,14 @@ class _PhoneHomeScreenState extends ConsumerState<PhoneHomeScreen> {
         return;
       }
       _close();
+    });
+    // A new search (Search again, or the app's resume) starts the wait over.
+    // A search that starts with no earlier start time (the first one, or one after a
+    // failed start) counts as new too.
+    ref.listen(discoveryStateProvider, (previous, next) {
+      final after = next.startedAt;
+      if (after == null || after == previous?.startedAt || !mounted) return;
+      _startSearchWait();
     });
     // "Try without a TV" on the Connect screen above Home shows the pad with the demo link.
     ref.listen(demoProvider, (previous, next) {

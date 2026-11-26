@@ -15,6 +15,10 @@ abstract final class HomeText {
   /// The discovery status line when no screen has been found.
   static const noScreenFound = 'No screen found';
 
+  /// The chip while discovery is still searching, so a slow first answer is not
+  /// read as a failed search.
+  static const lookingForScreen = 'Looking for a screen…';
+
   /// The button that restarts discovery after a failed search.
   static const searchAgain = 'Search again';
 
