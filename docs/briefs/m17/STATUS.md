@@ -19,6 +19,7 @@
   - Xcode 27.2 is pinned (codemagic.yaml:28). Build 1718 passed and the owner's part-1 device checks passed. Flutter stays 3.47.8.
   - m16.6 holds Pause in the compact game bar and the B-042 mini board (strip/corner, 1.5 mm floor). The owner said "Go for the tag on m16.6", and thumb-release was running when this was written. Check `git tag -l m16.6` and the GitHub/Codemagic runs.
 - **Next:** start B1 (m17prep) once the m16.6 release's check has finished; only one full check runs on the machine at a time.
+  - Nov 26 owner pick "B": wait until the m16.6 TestFlight build (Codemagic, Xcode 27.2) is confirmed before starting B1. The GitHub release (build 1737, Android and Windows) passed. If TestFlight fails, an m16.7 check has priority over B1's check.
   - B1 now also holds the home search-wait job (owner picked A): show "Looking for a screen…", fix "Search again" and resume, log time-to-first-host, keep 3 s.
 - **Owner questions to send at batch start, each with a default:**
   - O1, the champion chain: before B2 ends.
