@@ -5,7 +5,7 @@
 What changed:
 - `choices.dart` (new part of `messages.dart`): `ChoiceCard`, `ChoicesMessage` (`choices`), `ChoicePickMessage` (`choice_pick`), `ChoicesEndMessage` (`choices_end`), with the wire fields from contract.md (Wire). Decoding rejects an empty card id, a repeated id, 0 or more than 6 cards, and a `maxCount` outside 1..9, each as a `FormatException`.
 - `Capability.choices = 'choices'`; the three wire types are registered in `MessageCodec._decoders`.
-- Host side: `HostConnection` forwards a `ChoicePickMessage` only from a paired phone that lists `choices`; the two host messages (`ChoicesMessage`, `ChoicesEndMessage`) and a pick from a phone that is not paired close with protocolError. `HostServer.capabilityFor` maps both host messages to `Capability.choices`, so `sendToAll` and `send` skip a phone without it.
+- Host side: `HostConnection` forwards a `ChoicePickMessage` only from a paired phone that lists `choices`; the two host messages (`ChoicesMessage`, `ChoicesEndMessage`) close with protocolError; a pick from a phone that is not paired is ignored. `HostServer.capabilityFor` maps both host messages to `Capability.choices`, so `sendToAll` and `send` skip a phone without it.
 - Phone side (`client_messages.dart`): the three messages sit in the "Ignoring unexpected" group with a comment that B6 (y0d) routes them. No cap is added to any phone hello, and no protocolVersion change.
 
 Tests (run in this job, seen passing):
