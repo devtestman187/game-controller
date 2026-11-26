@@ -40,7 +40,7 @@ void main() {
               text: raceText(e.value),
               padRects: scene.pad,
               hudRects: scene.circles,
-              pxPerMm: phonePxPerMm * mm / mirrorMinPieceMm,
+              pxPerMm: phonePxPerMm * mm / mirrorFloorPieceMm,
             );
             if (m == null) {
               final b = binder(scene, mm * phonePxPerMm);

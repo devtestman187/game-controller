@@ -224,6 +224,7 @@ class MatchPainter extends CustomPainter {
     board: s.split ? _otherSide(camera.side!).index : 0,
     rect: mirror.rect,
     scale: mirror.scale,
+    pxPerMm: pxPerMm,
     cat: s.cat?.side == _otherSide(camera.side!) ? s.cat : null,
   ).paint(canvas);
 

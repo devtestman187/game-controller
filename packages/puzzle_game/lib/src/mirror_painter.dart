@@ -24,6 +24,7 @@ class MirrorPainter {
     this.nowMs = 0,
     this.board = 0,
     this.cat,
+    this.pxPerMm = phonePxPerMm,
   });
 
   final Puzzle puzzle;
@@ -51,6 +52,9 @@ class MirrorPainter {
   final CatMoments? catMoments;
 
   final int nowMs;
+
+  /// The screen's px per mm, which tells how big the smallest piece draws ([lineShare]).
+  final double pxPerMm;
 
   /// Which board of the match theirs is, for its pieces' moments.
   final int board;
@@ -84,10 +88,13 @@ class MirrorPainter {
       ..translate(-board.left, -board.top);
     // In the canvas's whole scale, as the boards are (Claude's 4a review).
     final px = _pxPerUnit(canvas);
+    // Where the smallest piece draws under mirrorMinPieceMm (the mirror shrunk toward its floor), the
+    // outline and the shadow shrink with it, so they keep the share of the piece they have at that size.
+    final line = lineShare(puzzle, px, pxPerMm);
     final style = ToyShapeStyle(
       ink: _colours.ink,
-      outlineWidth: look.sizes.outlineWidth / px,
-      shadowOffset: ToySizes.shadowOffset / px,
+      outlineWidth: look.sizes.outlineWidth * line / px,
+      shadowOffset: ToySizes.shadowOffset * line / px,
     );
     // The panel is flat: a miniature reads as a picture, not as a second board.
     canvas.drawRRect(
@@ -260,4 +267,13 @@ class MirrorPainter {
 double mirrorDotRadius(Puzzle puzzle) {
   final smallest = puzzle.pieces.map((p) => p.shape.size).reduce(min);
   return max(PuzzleGame.dotRadius, smallest / 2);
+}
+
+/// The share of the look's outline width and shadow offset the mirror draws: 1 while the smallest
+/// piece is [mirrorMinPieceMm] or more across on the screen, and in proportion to it below that
+/// (a piece at the 1.5 mm floor is about 9.5 dp, and a full 3 dp outline and a (3, 4) dp shadow
+/// would eat it). [px] is the canvas's px per world unit as the mirror draws.
+double lineShare(Puzzle puzzle, double px, double pxPerMm) {
+  final smallest = puzzle.pieces.map((p) => p.shape.size).reduce(min);
+  return min(1.0, smallest * px / (mirrorMinPieceMm * pxPerMm));
 }

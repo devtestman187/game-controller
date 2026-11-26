@@ -126,9 +126,12 @@ void main() {
         expect(mirror.scale, lessThanOrEqualTo(place.scale * PuzzleCamera.mirrorFraction + 1e-9), reason: where);
       }
       // The boat's board runs from 245 px: the gap from the disc to it is 50 px
-      // wide, and its mirror needs 73 even at its floor, so neither place holds
-      // it and the box draws none (rule 8: then no mirror).
-      expect(placed(load('boat'), iphone, const [disc]), isNull);
+      // The boat's board runs from 245 px: the gap from the disc to it is 50 px wide and its mirror
+      // needs 73 at the 2.2 mm cap, so it shrinks to fit the gap (option a), never under the 1.5 mm floor.
+      final boat = placed(load('boat'), iphone, const [disc]);
+      expect(boat, isNotNull);
+      final boatSmallest = load('boat').pieces.map((p) => p.shape.size).reduce(min);
+      expect(boat!.scale * boatSmallest / pxPerMm, greaterThanOrEqualTo(mirrorFloorPieceMm - 1e-9));
       // The corner is where the disc is: the disc is what moves the mirror.
       expect(placed(tree, iphone)!.rect.overlaps(disc), isTrue);
       expect(placed(tree, iphone, const [disc])!.rect, isNot(placed(tree, iphone)!.rect));
@@ -158,11 +161,11 @@ void main() {
       // The TV and the split screen keep today's picture.
       final screen = SplitLayout.of(tree, 1);
       expect(PuzzleCamera.mirrorPlace(tree, screen, sideLeft, const Size(960, 540), split: true, text: text), isNull);
-      // A narrow box leaves the HUD its corner: no room for a mirror either.
-      expect(PuzzleCamera.mirrorPlace(tree, l, sideLeft, const Size(380, 375), split: true, text: text), isNull);
+      // A narrow box leaves the HUD its corner: no room for a mirror either (at 380 px wide the 1.5 mm floor now fits one).
+      expect(PuzzleCamera.mirrorPlace(tree, l, sideLeft, const Size(300, 375), split: true, text: text), isNull);
     });
 
-    test('every piece the mirror draws, and their dot, is at least mirrorMinPieceMm', () {
+    test('every piece the mirror draws, and their dot, is at least mirrorFloorPieceMm', () {
       // The smallest piece of each puzzle in board units: house sun 14.0,
       // rocket window 12.0, tree sun 16.0, boat flag 12.65. The dot is never
       // smaller than that (mirrorDotRadius), so the piece is what decides.
@@ -181,9 +184,9 @@ void main() {
             seen++;
             final where = '$id at $box with $pad';
             final smallest = puzzle.pieces.map((p) => p.shape.size).reduce(min);
-            expect(mirror.scale * smallest / pxPerMm, greaterThanOrEqualTo(mirrorMinPieceMm - 1e-9), reason: where);
+            expect(mirror.scale * smallest / pxPerMm, greaterThanOrEqualTo(mirrorFloorPieceMm - 1e-9), reason: where);
             final dot = 2 * mirrorDotRadius(puzzle) * mirror.scale / pxPerMm;
-            expect(dot, greaterThanOrEqualTo(mirrorMinPieceMm - 1e-9), reason: where);
+            expect(dot, greaterThanOrEqualTo(mirrorFloorPieceMm - 1e-9), reason: where);
           }
         }
       }
@@ -212,15 +215,15 @@ void main() {
       expect(mirror.rect.right, closeTo(board.left - PuzzleCamera.mirrorGapPx, 0.01));
       // And still readable: its smallest piece is over the floor.
       final smallest = wide.pieces.map((p) => p.shape.size).reduce(min);
-      expect(mirror.scale * smallest / pxPerMm, greaterThanOrEqualTo(mirrorMinPieceMm - 1e-9));
+      expect(mirror.scale * smallest / pxPerMm, greaterThanOrEqualTo(mirrorFloorPieceMm - 1e-9));
     });
 
-    test('a board whose smallest piece would draw under mirrorMinPieceMm has no mirror', () {
+    test('a board whose smallest piece would draw under mirrorFloorPieceMm has no mirror', () {
       // A square board whose pieces get smaller: the board's own floor is
       // [minPieceMm], and the mirror's is the same mark at [mirrorFraction] of
       // the board's scale, so they run out together. A 10-unit square is
-      // 2.55 mm at the mirror's, an 8-unit one under 2.
-      for (final (side, expected) in const [(24.0, true), (16.0, true), (10.0, true), (8.0, false)]) {
+      // 2.55 mm at the mirror's, an 8-unit one 1.5 mm (the floor, option a); a 5-unit one has none.
+      for (final (side, expected) in const [(24.0, true), (16.0, true), (10.0, true), (8.0, true), (5.0, false)]) {
         final puzzle = madeUpPuzzle(aspect: 1, side: side);
         final l = SplitLayout.of(puzzle, 1, target: LayoutTarget.phones);
         final place = PuzzleCamera.place(l, sideLeft, iphone, PuzzleSide.left);
@@ -230,7 +233,7 @@ void main() {
         final why = 'a $side-unit piece, ${onBoardMm.toStringAsFixed(2)} mm on the board';
         if (expected) {
           expect(mirror, isNotNull, reason: why);
-          expect(mirror!.scale * smallest / pxPerMm, greaterThanOrEqualTo(mirrorMinPieceMm - 1e-9), reason: why);
+          expect(mirror!.scale * smallest / pxPerMm, greaterThanOrEqualTo(mirrorFloorPieceMm - 1e-9), reason: why);
         } else {
           expect(mirror, isNull, reason: why);
         }

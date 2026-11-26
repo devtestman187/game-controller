@@ -243,10 +243,10 @@ final class PuzzleCamera {
     final world = place(layout, camera, box, camera.side!);
     final board = layout.left.board;
     final maxScale = world.scale * mirrorFraction;
-    // A dot draws at that size or bigger ([mirrorDotRadius]), so the smallest
+    // The smallest piece draws at [mirrorFloorPieceMm] or more; a dot is its size ([mirrorDotRadius]), so the smallest
     // piece is the smallest mark and sets the floor.
     final smallest = puzzle.pieces.map((p) => p.shape.size).reduce(min);
-    final floor = mirrorMinPieceMm * pxPerMm / smallest;
+    final floor = mirrorFloorPieceMm * pxPerMm / smallest;
     Rect onScreen(Rect r) => Rect.fromLTWH(
       world.origin.dx + r.left * world.scale,
       world.origin.dy + r.top * world.scale,
@@ -257,36 +257,42 @@ final class PuzzleCamera {
     // pad (rules 3 and 8), and the clock area.
     final boardAndTray = [onScreen(board), onScreen(layout.left.tray), ...padRects];
     final hud = hudPlace(layout, camera, box, text, padRects: padRects, split: split, hudRects: hudRects);
-    // First place (owner, Nov 26): the top-right strip over the empty corner of
-    // the right hand's button ring; the mirror takes no touch.
-    final strip = _stripFitting(box, board.size, maxScale, floor, [...boardAndTray, hud.rect], hudRects);
-    if (strip != null) return (rect: _stripRect(box, board.size, strip), scale: strip, hud: hud);
-    // The corner, with the clock area to its right in its short form, clear of
-    // the world: its left edge is where the mirror's right must stop.
-    final unit = hudUnit(box);
-    final shortForm = _hudSize(HudForm.short, text);
-    final besideHud = Rect.fromLTWH(
-      world.origin.dx - hudWorldGapPx - unit * shortForm.width,
-      unit * hudTopFraction,
-      unit * shortForm.width,
-      unit * shortForm.height,
-    );
-    final at = Offset(hudMarginPx, unit * hudTopFraction);
-    final corner = _fitting(box, board.size, at, maxScale, floor, [...boardAndTray, besideHud]);
-    if (corner != null) {
-      final rect = Rect.fromLTWH(at.dx, at.dy, board.width * corner, board.height * corner);
-      return (rect: rect, scale: corner, hud: hudPlace(layout, camera, box, text, mirror: rect, hudRects: hudRects));
+    MirrorPlacement? at(double floor) {
+      // First place (owner, Nov 26): the top-right strip over the empty corner of
+      // the right hand's button ring; the mirror takes no touch.
+      final strip = _stripFitting(box, board.size, maxScale, floor, [...boardAndTray, hud.rect], hudRects);
+      if (strip != null) return (rect: _stripRect(box, board.size, strip), scale: strip, hud: hud);
+      // The corner, with the clock area to its right in its short form, clear of
+      // the world: its left edge is where the mirror's right must stop.
+      final unit = hudUnit(box);
+      final shortForm = _hudSize(HudForm.short, text);
+      final besideHud = Rect.fromLTWH(
+        world.origin.dx - hudWorldGapPx - unit * shortForm.width,
+        unit * hudTopFraction,
+        unit * shortForm.width,
+        unit * shortForm.height,
+      );
+      final at = Offset(hudMarginPx, unit * hudTopFraction);
+      final corner = _fitting(box, board.size, at, maxScale, floor, [...boardAndTray, besideHud]);
+      if (corner != null) {
+        final rect = Rect.fromLTWH(at.dx, at.dy, board.width * corner, board.height * corner);
+        return (rect: rect, scale: corner, hud: hudPlace(layout, camera, box, text, mirror: rect, hudRects: hudRects));
+      }
+      // The gap, under the clock area, right of the controls that reach into the
+      // band the mirror can take there.
+      final top = hud.rect.bottom + mirrorGapPx;
+      var left = hudMarginPx;
+      for (final pad in padRects) {
+        if (pad.top < top + board.height * maxScale && pad.bottom > top) left = max(left, pad.right + mirrorGapPx);
+      }
+      final gap = _fitting(box, board.size, Offset(left, top), maxScale, floor, [...boardAndTray, hud.rect]);
+      if (gap == null) return null;
+      return (rect: Rect.fromLTWH(left, top, board.width * gap, board.height * gap), scale: gap, hud: hud);
     }
-    // The gap, under the clock area, right of the controls that reach into the
-    // band the mirror can take there.
-    final top = hud.rect.bottom + mirrorGapPx;
-    var left = hudMarginPx;
-    for (final pad in padRects) {
-      if (pad.top < top + board.height * maxScale && pad.bottom > top) left = max(left, pad.right + mirrorGapPx);
-    }
-    final gap = _fitting(box, board.size, Offset(left, top), maxScale, floor, [...boardAndTray, hud.rect]);
-    if (gap == null) return null;
-    return (rect: Rect.fromLTWH(left, top, board.width * gap, board.height * gap), scale: gap, hud: hud);
+
+    // The 2.2 mm cap is tried first in every place; only where none fits does the mirror
+    // shrink toward the 1.5 mm floor (owner option a), so a roomy phone is unchanged.
+    return at(mirrorMinPieceMm * pxPerMm / smallest) ?? at(floor);
   }
 
   /// Where the clock area goes in [box] and which form it takes

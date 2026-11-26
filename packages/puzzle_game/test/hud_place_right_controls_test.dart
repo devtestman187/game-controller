@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
 import 'support/match_helpers.dart';
-import 'support/mirror_helpers.dart' show phone169, raceText, sideLeft;
+import 'support/mirror_helpers.dart' show phone169, pxPerMm, raceText, sideLeft;
 
 /// A control the size of a hand's touch, as the test places it.
 const handPx = 40.0;
@@ -84,6 +84,23 @@ void main() {
       expect(free!.rect.left, PuzzleCamera.hudMarginPx);
     });
 
+    test('a control that is no ring (a wide strip) over the board leaves the mirror as it was: the same scale, spot and floor', () {
+      final world = PuzzleCamera.place(layout, sideLeft, phone169, PuzzleSide.left);
+      final centre = world.origin + layout.left.board.center * world.scale;
+      final strip = Rect.fromCenter(center: centre, width: 4 * handPx, height: handPx);
+      final free = mirrorWith(const []);
+      final held = mirrorWith([strip]);
+      expect(held?.scale, free?.scale);
+      expect(held?.rect, free?.rect);
+    });
+    test('with a ring the mirror takes the strip at a scale between the 1.5 mm floor and the cap', () {
+      final world = PuzzleCamera.place(layout, sideLeft, phone169, PuzzleSide.left);
+      final centre = world.origin + layout.left.board.center * world.scale;
+      final held = mirrorWith([Rect.fromCenter(center: centre, width: handPx, height: handPx)]);
+      final smallest = house.pieces.map((p) => p.shape.size).reduce(min);
+      expect(held!.scale * smallest / pxPerMm, greaterThanOrEqualTo(mirrorFloorPieceMm - 1e-9));
+      expect(held.scale, lessThanOrEqualTo(world.scale * PuzzleCamera.mirrorFraction + 1e-9));
+    });
     test('place() gives the same origin and scale before and after the mirror is fitted with a control', () {
       final before = PuzzleCamera.place(layout, sideLeft, phone169, PuzzleSide.left);
       final world = PuzzleCamera.place(layout, sideLeft, phone169, PuzzleSide.left);

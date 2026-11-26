@@ -227,31 +227,31 @@ void main() {
       ];
       // The D-pad leaves the corner free, so the mirror is the board's top left
       // as it is with no pad, and the clock area's room decides the rest (the
-      // table s11 pinned): the boat's world leaves no room on the 15, and only
-      // the tree's fits on the 16:9 phone.
+      // table s11 pinned). With the 1.5 mm floor (owner option a, Nov 26) the boat fits the 15 too, and the
+      // 16:9 phone keeps the house and the tree.
       expect(kept(iphone, PadMode.dpad), ['house', 'rocket', 'tree', 'boat']);
-      expect(kept(phone15, PadMode.dpad), ['house', 'rocket', 'tree']);
-      expect(kept(phone169, PadMode.dpad), ['tree']);
+      expect(kept(phone15, PadMode.dpad), ['house', 'rocket', 'tree', 'boat']);
+      expect(kept(phone169, PadMode.dpad), ['house', 'tree']);
       // The stick's disc takes the corner and the clock area keeps its place,
       // so the mirror must fit the gap under it: the boat's board is too close
       // to the disc on the 852 phone, and the tree's and the boat's on the 15.
-      expect(kept(iphone, PadMode.sticks), ['house', 'rocket', 'tree']);
-      expect(kept(phone15, PadMode.sticks), ['house', 'rocket']);
-      expect(kept(phone169, PadMode.sticks), ['rocket']);
+      expect(kept(iphone, PadMode.sticks), ['house', 'rocket', 'tree', 'boat']);
+      expect(kept(phone15, PadMode.sticks), ['house', 'rocket', 'tree', 'boat']);
+      expect(kept(phone169, PadMode.sticks), ['house', 'rocket', 'tree']);
       // The tilt view fills the left area, corner and gap alike.
       for (final box in const [iphone, phone15, phone169]) {
         expect(kept(box, PadMode.gyro), isEmpty, reason: 'the tilt view covers both places at $box');
       }
     });
 
-    test('the D-pad moves no mirror, and only the Medium car and butterfly lose one on this phone', () {
+    test('the D-pad moves no mirror, and none loses one on this phone (the car and butterfly kept theirs at the 1.5 mm floor)', () {
       // The D-pad is below both places, so the mirror it leaves is the one the
       // game draws with no pad at all. A picture whose bigger pieces (Medium's
       // redone car and butterfly, B-012b) leave no readable room beside it may
       // lose the mirror instead (rule 7: absent or clear), but it never gets
       // another place: the list below is exact, so another picture that lost
       // its mirror would fail here (b013).
-      const lost = ['car', 'butterfly'];
+      const lost = <String>[]; // the 1.5 mm floor (option a) keeps the car's and the butterfly's mirror here
       final without = [
         for (final MapEntry(key: id, value: puzzle) in puzzles.entries)
           if (mirrorOf(puzzle, iphone, PadMode.dpad) == null) id,
@@ -260,11 +260,13 @@ void main() {
       for (final MapEntry(key: id, value: puzzle) in puzzles.entries) {
         final withDpad = mirrorOf(puzzle, iphone, PadMode.dpad);
         if (withDpad == null) continue;
-        expect(
-          withDpad,
-          mirrorWith(puzzle, iphone, const []),
-          reason: '$id: the mirror stays where the padless game puts it',
-        );
+        final padless = mirrorWith(puzzle, iphone, const []);
+        if (const ['car', 'butterfly'].contains(id)) {
+          // Their 2.2 mm mirror fits no place with the D-pad, so the 1.5 mm floor shrinks it (option a).
+          expect(withDpad.scale, lessThanOrEqualTo(padless!.scale + 1e-9), reason: id);
+          continue;
+        }
+        expect(withDpad, padless, reason: '$id: the mirror stays where the padless game puts it');
       }
     });
 
@@ -297,11 +299,11 @@ void main() {
               final smallest = puzzle.pieces.map((p) => p.shape.size).reduce(min);
               expect(
                 mirror.scale * smallest / phonePxPerMm,
-                greaterThanOrEqualTo(mirrorMinPieceMm - 1e-9),
+                greaterThanOrEqualTo(mirrorFloorPieceMm - 1e-9),
                 reason: where,
               );
               final dot = 2 * mirrorDotRadius(puzzle) * mirror.scale / phonePxPerMm;
-              expect(dot, greaterThanOrEqualTo(mirrorMinPieceMm - 1e-9), reason: where);
+              expect(dot, greaterThanOrEqualTo(mirrorFloorPieceMm - 1e-9), reason: where);
               // ...and it is no bigger than the board fraction allows.
               final maxScale =
                   PuzzleCamera.place(layout, sideLeft, box, PuzzleSide.left).scale * PuzzleCamera.mirrorFraction;

@@ -36,6 +36,12 @@ const narrowestPhoneSafeArea = Size(640, 356);
 /// unit is its fraction of the board's, and the piece cancels out.
 const double mirrorMinPieceMm = 2.2;
 
+/// The smallest the mirror may shrink to where [mirrorMinPieceMm] does not
+/// fit (owner option a, Nov 26): its smallest piece draws at this many mm at
+/// the least. The cap stays at [mirrorMinPieceMm]; the mirror takes only as
+/// much below it as the free space asks for.
+const double mirrorFloorPieceMm = 1.5;
+
 /// The px per millimetre a phone's screen has, for the sizes above: the mirror
 /// is the one thing the game draws at a physical size of its own, so it needs
 /// one (m12-opponent-mirror rule 7). Android's dp is 1/160 inch and iPhone
