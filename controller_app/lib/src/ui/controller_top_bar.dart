@@ -65,12 +65,34 @@ class _GameTopBar extends ConsumerWidget {
           if (controls) ...[const CompactConnection(), const SizedBox(width: party.ToySizes.space8)],
           if (hosting) const HostChip(compact: true),
           const Spacer(),
+          if (controls) const _StartButton(),
           if (controls) const ModeMenuButton(),
           if (controls) const _MoreMenuButton() else const _DiagnosticsButton(),
         ],
       ),
     ),
   );
+}
+
+/// Start, which the game calls Pause, in the compact bar while a game shows
+/// (the pad drops its own pill then). The game's layout decides whether it is
+/// there: a phone that only watches and the menus hide it, so nobody can pause
+/// the TV for everyone.
+class _StartButton extends ConsumerWidget {
+  const _StartButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (ref.watch(gameLayoutProvider).hidden.contains(ControllerButton.start)) return const SizedBox.shrink();
+    return const Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // SmallButton's default size, 96 x 44 dp, fits the bar's 48 dp row.
+        SmallButton(key: Key('barStart'), button: ControllerButton.start, label: 'Start'),
+        SizedBox(width: party.ToySizes.space8),
+      ],
+    );
+  }
 }
 
 /// The full bar, as it is in controller mode: the connection (or, while this

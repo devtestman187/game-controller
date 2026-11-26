@@ -18,6 +18,7 @@ class PadModeView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final input = ref.watch(padProvider);
     final mm = ref.watch(pxPerMmProvider);
+    final showsGame = ref.watch(showsGameProvider);
     final text = Theme.of(context).textTheme;
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -35,10 +36,12 @@ class PadModeView extends ConsumerWidget {
               rect: layout.select,
               child: SmallButton(button: ControllerButton.select, label: 'Select', size: layout.select.size),
             ),
-            Positioned.fromRect(
-              rect: layout.start,
-              child: SmallButton(button: ControllerButton.start, label: 'Start', size: layout.start.size),
-            ),
+            // Over a game, Start (Pause) is in the bar.
+            if (!showsGame)
+              Positioned.fromRect(
+                rect: layout.start,
+                child: SmallButton(button: ControllerButton.start, label: 'Start', size: layout.start.size),
+              ),
             Positioned(
               left: layout.summary.left,
               top: layout.summary.top,

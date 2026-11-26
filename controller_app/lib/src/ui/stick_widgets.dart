@@ -23,6 +23,7 @@ class StickModeView extends ConsumerWidget {
     final floating = ref.watch(stickSettingsProvider.select((s) => s.floating));
     final buttonSize = ref.watch(stickSettingsProvider.select((s) => s.buttonSize));
     final mm = ref.watch(pxPerMmProvider);
+    final showsGame = ref.watch(showsGameProvider);
     return LayoutBuilder(
       builder: (context, constraints) {
         final layout = stickLayout(constraints.biggest, mm: mm, buttonSize: buttonSize);
@@ -63,10 +64,12 @@ class StickModeView extends ConsumerWidget {
               rect: layout.select,
               child: SmallButton(button: ControllerButton.select, label: 'Select', size: layout.select.size),
             ),
-            Positioned.fromRect(
-              rect: layout.start,
-              child: SmallButton(button: ControllerButton.start, label: 'Start', size: layout.start.size),
-            ),
+            // Over a game, Start (Pause) is in the bar.
+            if (!showsGame)
+              Positioned.fromRect(
+                rect: layout.start,
+                child: SmallButton(button: ControllerButton.start, label: 'Start', size: layout.start.size),
+              ),
           ],
         );
       },

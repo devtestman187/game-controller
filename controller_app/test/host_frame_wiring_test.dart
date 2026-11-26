@@ -1,11 +1,9 @@
 import 'dart:math' as math;
 
-import 'package:controller/src/ui/pad_widgets.dart';
 import 'package:controller/src/ui/top_bar_metrics.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart' as party;
-import 'package:protocol/protocol.dart';
 
 import 'support/host_app.dart';
 import 'support/pump_app.dart';
@@ -89,12 +87,13 @@ void main() {
 
     final face = find.byKey(const Key('faceButtons'));
     final dpad = find.byKey(const Key('dpad'));
-    final start = find.byWidgetPredicate((w) => w is SmallButton && w.button == ControllerButton.start);
+    // Start is in the compact bar over the round, not on the pad.
+    final start = find.byKey(const Key('barStart'));
     // The pad's rects recorded by this same pump before the frame was wired
     // (M16 phonehost2 wph): the frame's 0.63148 scale never reaches them.
     expect(tester.getRect(face), const Rect.fromLTRB(510, 60, 827, 377));
     expect(tester.getRect(dpad), const Rect.fromLTRB(25, 60, 342, 377));
-    expect(tester.getRect(start), const Rect.fromLTRB(378, 202.5, 474, 246.5));
+    expect(tester.getRect(start), const Rect.fromLTRB(644, 6, 740, 50));
     for (final pad in [face, dpad, start, find.byKey(const Key('hostChip'))]) {
       expect(find.ancestor(of: pad, matching: find.byType(party.HostFrameInfo)), findsNothing);
     }

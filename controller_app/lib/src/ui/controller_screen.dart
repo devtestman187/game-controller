@@ -4,6 +4,7 @@ import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:party_host/party_host.dart' as party;
+import 'package:protocol/protocol.dart' show ControllerButton;
 import 'package:test_game/test_game.dart' show ArenaCoinIcon;
 
 import '../controls_settings.dart';
@@ -20,6 +21,7 @@ import 'controls_layer.dart';
 import 'diagnostics_screen.dart';
 import 'host_chip.dart';
 import 'joined_view.dart';
+import 'pad_widgets.dart' show SmallButton;
 import 'rating_prompt.dart';
 import 'result_card.dart';
 import 'settings_screen.dart';

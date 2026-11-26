@@ -44,7 +44,8 @@ void main() {
     Map<String, Rect> controlRects(WidgetTester tester) => {
       for (final key in ['faceButtons', 'dpad', 'leftStick', 'rightStick', 'tiltView'])
         if (find.byKey(Key(key)).evaluate().isNotEmpty) key: tester.getRect(find.byKey(Key(key))),
-      for (final label in ['Select', 'Start', 'LB', 'RB'])
+      // Start is on the pad outside a game and in the bar over a game, so it is not a pad rect that holds still.
+      for (final label in ['Select', 'LB', 'RB'])
         if (find.text(label).evaluate().isNotEmpty) label: tester.getRect(find.text(label)),
     };
 
