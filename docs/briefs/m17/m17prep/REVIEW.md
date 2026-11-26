@@ -106,3 +106,8 @@ m17prep run review: done: 34 findings (2 must, 20 should, 12 could) in REVIEW.md
 ## Delete
 
 - none
+## Driver verdicts (Nov 26)
+- must 1 resume test second pump: verified. Cause: FakeDiscovery.restart emits the new startedAt on the stream in a microtask after the first frame; the second pump rebuilds. Test passes (run alone and in the full check); comment added. Closed. Still device-unverified (please check on a phone).
+- must 2 p0a-report Summary: added by hand, with the 0.6944 scale and the option C claim corrected. Closed.
+- should: Home doc comment (phone_home_screen.dart:55) fixed; FakeDiscovery.restart uses a fixed base time (fixed); home-report inconsistencies and e0f numbers filled in (load: 480.4 inputs/s, 2081.5 ms per 1000, max lag 8.13 ms; snapshot 773/796/817 bytes at 4/6/8 players) (fixed). Open question 2 (3 s anchor on each search start) kept as built, noted for the device check. Open questions 3, 4, 5, 7, 8, 9, 10: recorded, no owner call needed now (floor recorded not asserted; 4 a side; real time accepted as measuring exemption; Q10 uses the arithmetic 25-29 min).
+- Everything else (test-file duplication, long functions, magic numbers, ci.yml comments, load8.sh missing line, first-host log test, chip test sizes): minor, in docs/code-health.md (m17prep entries). No fix job: nothing blocks B2.

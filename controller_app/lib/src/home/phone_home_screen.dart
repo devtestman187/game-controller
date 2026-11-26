@@ -52,7 +52,7 @@ class _PhoneHomeScreenState extends ConsumerState<PhoneHomeScreen> {
   final _anchors = HomeAnchors();
   Timer? _searchTimer;
 
-  /// True once [homeSearchWait] passed since the first frame.
+  /// True once [homeSearchWait] passed since the latest search started.
   bool _searchWaited = false;
 
   /// True from the first build until this screen's launch prompts are answered: a

@@ -237,7 +237,7 @@ class FakeDiscovery implements HostDiscovery {
     restarts++;
     emit(
       _state.copyWith(
-        startedAt: DateTime.now().add(Duration(microseconds: restarts)),
+        startedAt: DateTime(2026).add(Duration(seconds: restarts)),
         hosts: const [],
       ),
     );

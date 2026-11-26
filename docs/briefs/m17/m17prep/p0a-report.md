@@ -1,12 +1,19 @@
 # p0a report: night cards at 360x640 and 667x375
 
+## Summary
+- Measured the three host night cards (start, scoreboard, reveal) and the phone result card at 360x640 and 667x375, 4 and 6 players. No overflow in any case; data in p0a-fit.json (written only with NIGHT_FIT=1).
+- Thumby's 56 dp corner head does not fit on any host card at either size; the 2-line strip fits on none. On the phone card the head fits at 667x375; at 360 dp wide the phone draws no card.
+- Text floor (20 frame px) is missed by the start and scoreboard cards (recorded, not asserted: the layout fix is later work).
+- Answer for Q3: the setup screen and Thumby do not fit at 360x640 as the cards are today; whether phone-fit option C fixes it was not measured.
+
+
 ## Files changed
 - `packages/party_host/test/night_cards_fit_test.dart`: new; measures start, scoreboard (mid-night) and reveal at both sizes with 4 and 6 players, plus a deliberate-overflow case for the measurer. Writes section `nightCards` of p0a-fit.json only when NIGHT_FIT=1.
 - `controller_app/test/night_result_fit_test.dart`: new; the phone's night result card (round 2 of 5, and round 5 of 5 with the night's end) at both sizes, 4 and 6 standings, plus the overflow stub. Section `nightResult`.
 - `docs/briefs/m17/m17prep/p0a-fit.json`: the measured data (both sections).
 
 ## Setup and how the numbers are taken
-- Host cards: option C's setup. The host is laid out in frame px (device / min(w/960, h/540)) and measured in dp (x scale). 360x640: scale 0.375, layout 960x1707. 667x375: scale 0.6948, layout 960x540. Same content at 4 and 6 players, so the bands are the same.
+- Host cards: option C's setup. The host is laid out in frame px (device / min(w/960, h/540)) and measured in dp (x scale). 360x640: scale 0.375, layout 960x1707. 667x375: scale 0.6944, layout 960x540. Same content at 4 and 6 players, so the bands are the same.
 - Content = every paragraph plus every decorated box that is not a backdrop (a box covering at least half the view each way is the card or page). Free band = view height less the lowest content bottom. Corner free width = view width less the right edge of the content touching the top 56 dp. Strip need = 2 x one line of the look's body type (dp). Head needs 56 dp.
 - Phone card: no frame, dp are real. At 360 dp wide the phone app draws only "Make the window bigger" (`minWindowWidth` 540, controller_screen.dart:221), so the card is not drawn.
 - No overflow and no exception in any case (13 + 9 tests pass). The overflow stub is reported by the measurer.
@@ -38,7 +45,7 @@ The card shrinks as a whole to fit (FittedBox), so its text is under 15 dp from 
 ## Conclusion (owner's Q3)
 1. At 360x640 a host's card (portrait, 960x1707 frame px) has no corner room for a 56 dp head: the free width is 7.9 to 9 dp, and no strip room: 3 dp below the footer.
 2. At 667x375 the head does not fit on any host card (14.6 to 27.8 dp free of 56) and the 2-line strip does not fit (5.56 dp of 27.78).
-3. Without a reserved strip or a corner given up by the card, neither fits on the host cards at either size; option C's strip (reserving room under the layout) is the setup that gives it.
+3. Without a reserved strip or a corner given up by the card, neither fits on the host cards at either size; one of these is needed (option C was not measured here).
 4. On the phone card the head fits at 667x375 in all four cases; the strip fits only mid-night with 4 players. At 360 dp wide the phone shows no card.
 5. So: setup screen and Thumby do not fit at 360x640 without something like option C; the measure is of the cards as they are today, with nothing moved.
 

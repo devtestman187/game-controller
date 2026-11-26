@@ -30,11 +30,11 @@
 6. Looks: no UI, so no look or size tests.
 
 ## Numbers (to fill in)
-- inputs/s: not measured
-- wall ms per 1000 inputs: not measured
-- max host lag: not measured
-- snapshot bytes at 4 / 6 / 8 players: not measured. The 4-player value must be under 2048 (asserted in the plain run, which passes).
-- Whether 8 players fit 2048 bytes: unknown until the numbers are measured.
+- inputs/s: 480.4 (14408 inputs in 29990 ms, 8 phones, in-process, LOAD8=1 run by the driver)
+- wall ms per 1000 inputs: 2081.5
+- max host lag: 8.13 ms
+- snapshot bytes at 4 / 6 / 8 players: 773 / 796 / 817 (max 2048). 8 players (4 a side) fit the 2 KB budget with room.
+- Whether 8 players fit 2048 bytes: yes, 817 bytes for the worst-case night frame. Note: tools/load8.sh printed only the load line in the driver run (the night frame line was missing from its output); the line shows with `LOAD8=1 flutter test packages/puzzle_game/test/snapshot_eight_players_test.dart` (code-health item).
 
 ## How to run
 - `bash tools/load8.sh` from the repo root. It takes about 30 s of load in the connection test plus the snapshot frames. Output: the `8 phones:` line and the `night frame` line.

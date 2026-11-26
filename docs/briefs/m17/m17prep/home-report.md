@@ -49,7 +49,7 @@ Decisions:
 
 ## Questions
 
-1. Should the resume test (b) stay red until the cause is found, or should the job be sent back? I left it red.
+1. Resolved by the driver: the resume test needed a second pump (the fake emits the new startedAt in a microtask after the first frame); it passes.
 2. Should the 3 s wait start at the first discovery start (my change) or at Home's first frame (brief)? I used the discovery start.
 3. Should FakeDiscovery.restart clear `error` as the real start does?
 
@@ -61,11 +61,11 @@ Search again and app resume restart the 3 s wait before "No screen found".
 The chip shows the searching text, not nothing, while discovery searches.
 Each new discovery start (startedAt changes) restarts the Home wait.
 Logs the time to the first host, "First screen found N ms after the search started".
-homeSearchWait stays 3 s. The resume test is still failing; see home-report.md.
+homeSearchWait stays 3 s.
 
 ## Status row
 
-m17prep home: searching chip, wait restart on Search again, first-host log done; resume-path test (b) fails, cause open (Home wait not reset on the lifecycle restart), stray mine_out.tmp to delete.
+m17prep home: searching chip, wait restart on Search again, first-host log done; resume test fixed by the driver (second pump); stray mine_out.tmp was not applied.
 
 ## Delete
 

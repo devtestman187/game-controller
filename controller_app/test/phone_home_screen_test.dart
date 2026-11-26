@@ -180,6 +180,7 @@ void main() {
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
       await tester.pump();
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      // Two pumps: the fake discovery emits the new startedAt on the stream in a microtask after the first frame, so the Home listener resets the wait and rebuilds on the second pump.
       await tester.pump();
       await tester.pump();
       expect(app.discovery.restarts, 1);

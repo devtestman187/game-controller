@@ -1,6 +1,7 @@
 # M17 status
 
 ## Resume here (Nov 26, 2026)
+- **B1 m17prep done (Nov 26):** home search-wait fix, 8-phone load tool, night-card fit measure (head and strip fit nowhere on host cards; phone card at 667x375 yes), stale plan text, CI timeout 45 + tests once (ships with the next tag). Next: B2 night1a (and board-1 / B5 on a side line); read docs/briefs/m17/m17prep/REPORT.md first. iOS HOLD stays (see Next).
 - **Owner go:** "Build, 1A 2A" on Nov 26, using the fast track.
   - 1A = toolchain checks, then the upgrade-only build.
   - 2A = the board line runs alongside M17a in its own copy and with its own review.
@@ -23,6 +24,9 @@
   - Nov 26 evening: the m16.6 iOS build never started. Codemagic answered all four GitHub webhook deliveries for the tag (18:43-18:44Z) with HTTP 402 (most likely build minutes or billing; manual build 1718 ran in between). m16.5's got 202. The owner was asked to check Codemagic billing/usage, then start exactly one manual build (Tag m16.6, ios-testflight), with no webhook redelivery. Fable recommends starting B1 now rather than waiting (owner to pick).
   - main CI analyze-test-android times out at 30 min (4 of the last 6 runs). It is slower (Coverage 15m vs 11m40), not hung. Proposed: a B1 job replacing p0d that raises ci.yml:35 to 45 min, checks whether Coverage re-runs the Test steps, checks windows-desktop's margin (ci.yml:110) and why it got 25-30% slower. It ships with the next tag (owner to pick).
   - **Owner, Nov 26: "I confirmed I ran out of build minutes. Go ahead with a B1 and 2A. Let's discuss the iOS builds separately".** So B1 starts now, and the CI timeout job replaces p0d in B1 and ships with the next tag. The m16.6 iOS build and Codemagic minutes are a separate discussion; nothing iOS until then.
+  - Owner picked "A" on Nov 26 (Fable-reviewed): after B1, remove the push-to-main trigger from Codemagic's ios-check-main (codemagic.yaml, around lines 75-83) and keep the manual start. It goes on whichever branch releases next. Reason: in November it used 203 of 488 minutes (42%), and it repeats a subset of the TestFlight tag build on the same commit. The owner is moving to Codemagic pay-as-you-go ($0.095/min, 500 free minutes a month). Condition: after any codemagic.yaml, ios/ or Flutter-version change that reaches main without a tag, start the check by hand.
+  - **iOS build HOLD (owner, Nov 26):** "I have setup pay-as-you-go in codemagic. I want to try the next iOS build only when the check builds have been disabled. Do not start a new iOS build until that's happened." So: no manual Codemagic build and no tag push (a tag starts ios-testflight automatically) until the trigger removal is on main. m16.6 iOS stays unbuilt until then. How the yaml change reaches main (with the next release, or a separate untagged fast-forward) is decided then, with Fable first.
+  - **When to run the iOS check by hand** (Codemagic > Start new build > iOS check): (1) a change reaches main without a release tag and touches codemagic.yaml, controller_app/ios/, the Flutter or Xcode version, or native plugins in controller_app/pubspec.yaml; (2) optionally, before tagging a release that contains such a change, on the release branch, to find iOS breakage before the tag. Otherwise the tag's TestFlight build is the iOS test.
 - **Driver cost plan (owner picked "A" on Nov 26, Fable-reviewed):**
   - **Why:** on Nov 25 Sonnet cost $35.54 of $63.54. Batch drivers were $22.29 of it: 117-168 calls each, re-reading 165k-230k of context per call (about 60% of driver cost), plus inline wait loops and cache expiry on waits over 5 minutes (about $0.5 per wake-up at 230k). Measure with `bash tools/agent-cost.sh --since <time>`.
   - **Step 1, trim every driver (still Sonnet), from B1 on:**
@@ -43,3 +47,28 @@
   - O5, Vote defaults: at B7 start.
   - Q5, the kid playtest: needed before B11, so the owner was asked to line up a date.
 - **Internal builds BP1 (after B6) and BP2 (after B8)** each need the owner's word.
+
+## M17 job list (p0c, Nov 26; source E:\AI\m17-scoping\M17a-batches.md, its adopted sections override the table)
+| Batch | Jobs | Needs |
+|---|---|---|
+| B1 m17prep | p0a night-card fit at 360x640 and 667x375; p0b stale plan text; p0c this hand-over; e0f 8-phone load tool; home search-wait fix; ci timeout 45 min and tests once (replaces p0d) | m16.6 tip |
+| B2 night1a | n1a NightFlow/NightEvent; n1b caption consumer + flow test; e0a Arena placing; e0b Champion type; n1e fix | B1 |
+| B3 night1b | n1c 5-round cap; n1d scoring v2; e0c autosave/resume; e0e "Game full"; e0g fix | B2 |
+| B4 night1c | n1f auto-advance; n1g skip/reroll/pause/join/leave; n1h settings + Kids preset; n1i round-start hook; e0d players 7-8; n1j fix | B3 |
+| B5 phone1a | y0a choices contract; y0b host side; y0c old-phone fallback; y0g fix | B1 only (side line) |
+| B6 phone1b | y0d choices screen; y0e lobby names old phones; y0f "Try the shop" demo; y0h fix. Ends at BP1 | B5 |
+| B7 night2a | d2a-d2e difficulty, rate maps, Variant, NightDirector, pickers; fix | B4 |
+| B8 night2b | d2f Vote picker; d2g setup screen; d2h caption; d2i pool honesty; d2j fix. Ends at BP2 | B4, B6, B7 |
+| B9 race1a | f1a-f1d 3v3/4v4, maxPerSide, side panel, 2-pieces rule; f1e fix | B7 (d2a merged), e0e, e0f |
+| B10 race1b | r3a-r3d present state, rules, cat preset wiring, painter; | B9 |
+| B11 race1c | r3e golden slot; r3f host UI; r3g fuse values; r3h fix. Ends at BP3 (M17a tester build) | B10 |
+Board line (branch board-line, own worktree, 11 jobs, new directories only): board-1 board3a (g3a, g3s, g3b, g3f); board-2 board3b (g3d1, g3d2, g3d3, g3g); board-3 board3m (g3m, g3n, g3h). board-1/2 any time after B1; board-3 and the merge after B3, suggested after B4 and before B7. g3c moved to M17b.
+Lines: at most two at once (main m17, one side line m17side); full checks never on both at once.
+
+## Owner decisions, Nov 26 (record)
+- "Build, 1A 2A": fast track; 1A toolchain checks then the upgrade-only build (done: Xcode 27.2, build 1718); 2A board line alongside M17a in its own copy with its own review.
+- Home search wait: "A": show "Looking for a screen…", fix Search again and resume, log time-to-first-host, keep 3 s.
+- "Go ahead with a B1 and 2A": B1 starts now; the CI timeout job replaces p0d; it ships with the next tag. iOS builds and Codemagic minutes are a separate discussion (out of build minutes): nothing iOS in B1.
+- "Let's do A": driver cost plan step 1 (above) from B1 on; Haiku-driver trial on board-1 after B1's baseline.
+- City Rush: full City Rush + Shape Race 3-4 a side; build stop is a phone shop (choices screen, y-jobs in M17a); one fixed road per district; 6 colours plus badges; Option-B policy research is M18 (p0d dropped).
+- Standing: every recommendation goes through the fable-review agent before the owner sees it.

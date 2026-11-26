@@ -1,1 +1,3 @@
 - 14:10 briefs+release notes written (home, ci, p0a, e0f); p0b/p0c by hand, outside the runner. next: dry-run, commit, start runner
+- 14:13 p0b (sonnet helper, plan files outside git, report in REPORT) and p0c (STATUS job list + decisions) done; runner started since=1795723860
+- 14:42 wave1: e0f,p0a committed by runner; home over cap (73/60 turns, class capability: resume test needed a 2nd pump), hand-fixed 2 lines via apply-job, committed 20032489. STATUS got 3 codemagic lines. next: restart runner for ci (wave 2)
