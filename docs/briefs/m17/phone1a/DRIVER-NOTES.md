@@ -1,0 +1,1 @@
+- 15:26 briefs: y0a y0b(sonnet) y0c written, brief-check + probe-deps ok. probe (pad debounce): none, taps are exact. next: dry-run, commit, start runner

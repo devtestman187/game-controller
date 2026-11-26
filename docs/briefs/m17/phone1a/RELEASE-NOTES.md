@@ -1,0 +1,1 @@
+In progress: a new choices screen for phones, used by the build stop in City Rush. Phones on an older app keep playing with simple buttons (A builds, B saves, X roadworks, Y clears). Nothing changes on screen yet, so keep your phone app updated. Also: Home says "Looking for a screen…" while it searches, and "Search again" restarts the search.
