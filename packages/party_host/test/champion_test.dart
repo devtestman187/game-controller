@@ -75,6 +75,14 @@ void main() {
     expect(ChampionChain.quickNight.champions(const []), isEmpty);
   });
 
+  test('the chain keeps its own copy of the steps: a change to the caller\'s list does not reach it', () {
+    final callerSteps = [ChampionStep.points, ChampionStep.shared];
+    final chain = ChampionChain(callerSteps);
+    callerSteps.insert(0, ChampionStep.plazaDistance);
+    expect(chain.steps, [ChampionStep.points, ChampionStep.shared]);
+    expect(() => chain.steps.add(ChampionStep.bolts), throwsUnsupportedError);
+  });
+
   test('a chain with no steps is refused', () {
     expect(() => ChampionChain([]), throwsAssertionError);
   });

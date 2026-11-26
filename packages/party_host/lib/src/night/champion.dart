@@ -59,8 +59,9 @@ final class ChampionChain {
   /// A chain of [steps]; it must not be empty, and [ChampionStep.shared] must
   /// be its last step and the only one. Not `const`: Dart cannot check a list's
   /// length or contents in a constant expression, so the checks run as asserts
-  /// in debug builds when the chain is made.
-  ChampionChain(this.steps) {
+  /// in debug builds when the chain is made. The chain keeps its own unmodifiable
+  /// copy of [steps], so a later change to the caller's list cannot reach it.
+  ChampionChain(List<ChampionStep> steps) : steps = List.unmodifiable(steps) {
     assert(steps.isNotEmpty, 'a champion chain needs at least one step');
     assert(
       steps.last == ChampionStep.shared && steps.where(_isShared).length == 1,

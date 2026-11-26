@@ -85,9 +85,12 @@ void main() {
   });
 
   test('a skip at the scoreboard is illegal', () {
-    final flow = step(_scoreboardOfRound1Of3(), const NightHowTo(2));
     expect(_scoreboardOfRound1Of3().apply(const NightRoundSkipped(1, NightReason.host)), isNull);
-    expect(flow.stage, NightStage.howTo);
+  });
+
+  test('a how-to card after the scoreboard opens the next round at its how-to stage', () {
+    final flow = step(_scoreboardOfRound1Of3(), const NightHowTo(2));
+    expect([flow.stage, flow.round], [NightStage.howTo, 2]);
   });
 
   test('pause is illegal outside a round and when already paused', () {
@@ -96,6 +99,21 @@ void main() {
     final paused = step(_roundOfRound1Of3(), const NightPaused(1));
     expect(paused.apply(const NightPaused(1)), isNull, reason: 'a second pause is illegal');
     expect(_roundOfRound1Of3().apply(const NightResumed(1)), isNull, reason: 'resume needs a pause');
+  });
+
+  test('a round can end while paused, and the round-end stage is not paused', () {
+    final paused = step(_roundOfRound1Of3(), const NightPaused(1));
+    expect(paused.paused, isTrue);
+    final ended = step(paused, const NightRoundEnded(1, false));
+    expect([ended.stage, ended.paused], [NightStage.roundEnd, false]);
+  });
+
+  test('a skip and a reroll during a pause are legal and leave the round paused', () {
+    final paused = step(_roundOfRound1Of3(), const NightPaused(1));
+    final skipped = step(paused, const NightRoundSkipped(1, NightReason.host));
+    expect([skipped.stage, skipped.round, skipped.paused], [NightStage.round, 1, true]);
+    final rerolled = step(paused, const NightRoundRerolled(1, NightReason.timeUp));
+    expect([rerolled.stage, rerolled.round, rerolled.paused], [NightStage.round, 1, true]);
   });
 
   test('a round start out of order is illegal', () {
