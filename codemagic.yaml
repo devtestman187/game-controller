@@ -25,7 +25,7 @@ definitions:
     groups:
       - firestore # FIRESTORE_PROJECT and FIRESTORE_API_KEY, added in Codemagic's Environment variables (docs/release.md step 7)
     flutter: 3.47.8 # pinned to the GitHub builds' FLUTTER_VERSION: "stable" moved on Nov 12, 2026 and its new deprecations failed Analyze (m14.2)
-    xcode: latest # latest stable Xcode on the image ("edge" would be the newest beta)
+    xcode: 27.2 # pinned: Xcode 27 for the iOS 27 SDK (Apple requires it for uploads from April 2027); 27.3 is edge on Codemagic
   cache: &cache
     cache_paths:
       - $FLUTTER_ROOT/.pub-cache
