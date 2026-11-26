@@ -38,6 +38,9 @@ class MessageCodec {
     PlayersMessage.wireType: PlayersMessage.fromPayload,
     SetCharacterMessage.wireType: SetCharacterMessage.fromPayload,
     NightEndMessage.wireType: NightEndMessage.fromPayload,
+    ChoicesMessage.wireType: ChoicesMessage.fromPayload,
+    ChoicePickMessage.wireType: ChoicePickMessage.fromPayload,
+    ChoicesEndMessage.wireType: ChoicesEndMessage.fromPayload,
   };
 
   String encode(Message message) => jsonEncode({'v': protocolVersion, 't': message.type, ...message.toPayload()});

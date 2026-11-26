@@ -2,6 +2,7 @@ import 'dart:convert';
 
 part 'capabilities.dart';
 part 'character.dart';
+part 'choices.dart';
 part 'game_controls.dart';
 part 'haptic.dart';
 part 'identity.dart';

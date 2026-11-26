@@ -61,13 +61,17 @@ final class ClientMessages {
       case NightEndMessage():
         // Only while paired, as the players list is: a TV we are not paired with says nothing about the night.
         if (_host.snapshot.isConnected) _controls.addNightEnd(message);
+      // The choice messages are routed by B6 (y0d); until then a phone ignores them.
       case HelloMessage() ||
           PairRequestMessage() ||
           InputStateMessage() ||
           MetricsMessage() ||
           RatingMessage() ||
           StatsShareMessage() ||
-          SetCharacterMessage():
+          SetCharacterMessage() ||
+          ChoicesMessage() ||
+          ChoicesEndMessage() ||
+          ChoicePickMessage():
         _host.log('Ignoring unexpected ${message.type} from the screen');
     }
   }

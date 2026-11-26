@@ -33,6 +33,10 @@ abstract final class Capability {
 
   /// The night's final awards and standings ([NightEndMessage]). M16 bugs4.
   static const night = 'night';
+
+  /// The choice rounds: a host sends [ChoicesMessage] and [ChoicesEndMessage],
+  /// and a controller that lists it sends a [ChoicePickMessage]. M17 phone1a.
+  static const choices = 'choices';
 }
 
 /// What a device is for (PRD v2 S3), in [HelloMessage.role]. A role is
