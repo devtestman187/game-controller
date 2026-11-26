@@ -15,6 +15,8 @@ final class ClientControls {
   final _statuses = StreamController<StatusMessage>.broadcast();
   final _views = StreamController<ViewEvent>.broadcast();
   final _nightEnds = StreamController<NightEndMessage>.broadcast();
+  final _choices = StreamController<ChoicesMessage>.broadcast();
+  final _choicesEnds = StreamController<ChoicesEndMessage>.broadcast();
   GameLayoutMessage _layout = GameLayoutMessage.standard();
   StatusMessage _status = StatusMessage.hidden();
   int _hapticsReceived = 0;
@@ -47,6 +49,12 @@ final class ClientControls {
   /// paired and only to a phone that listed [Capability.night].
   Stream<NightEndMessage> get nightEnds => _nightEnds.stream;
 
+  /// Choice rounds from the TV (M17), only while paired and only to a phone that listed [Capability.choices].
+  Stream<ChoicesMessage> get choices => _choices.stream;
+
+  /// The end of a choice round from the TV (M17), with the same limits as [choices].
+  Stream<ChoicesEndMessage> get choicesEnds => _choicesEnds.stream;
+
   /// Hands [event] to the haptic listeners and counts it.
   void addHaptic(HapticEventMessage event) {
     _hapticsReceived++;
@@ -73,6 +81,16 @@ final class ClientControls {
   /// Hands [end] to the night listeners.
   void addNightEnd(NightEndMessage end) {
     if (!_nightEnds.isClosed) _nightEnds.add(end);
+  }
+
+  /// Hands [round] to the choice listeners.
+  void addChoices(ChoicesMessage round) {
+    if (!_choices.isClosed) _choices.add(round);
+  }
+
+  /// Hands [end] to the choice-end listeners.
+  void addChoicesEnd(ChoicesEndMessage end) {
+    if (!_choicesEnds.isClosed) _choicesEnds.add(end);
   }
 
   /// Hands [start] to the view listeners.
@@ -131,6 +149,8 @@ final class ClientControls {
     await _statuses.close();
     await _views.close();
     await _nightEnds.close();
+    await _choices.close();
+    await _choicesEnds.close();
   }
 }
 
