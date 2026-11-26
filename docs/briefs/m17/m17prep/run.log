@@ -26,3 +26,10 @@
 2026-11-26 14:40:47 finding: p0a's report has no Summary block in its first 40 lines
 2026-11-26 14:40:48 committed p0a: 2d6b34ff m17prep p0a: measure night cards for Thumby head and strip fit
 2026-11-26 14:40:48 phase: review (apply took 3s)
+2026-11-26 14:40:49 STOPPED: jobs that failed or passed their limit (parked, not committed): home (their logs: docs/briefs/m17/m17prep/flash-<job>.log)
+HAND-FIX home: apply-job.sh applied 10 files: controller_app/lib/src/discovery.dart, controller_app/lib/src/home/home_contract.dart, controller_app/lib/src/home/home_text.dart, controller_app/lib/src/home/home_view.dart, controller_app/lib/src/home/phone_home_screen.dart, controller_app/test/discovery_first_host_test.dart, controller_app/test/home_view_test.dart, controller_app/test/phone_home_screen_test.dart, controller_app/test/support/fakes.dart, docs/briefs/m17/m17prep/home-report.md
+HAND-FIX-EVENT home: 702 lines changed, replaced ladder level ?
+HAND-FIX-EVENT home: 2 lines changed, replaced ladder level 2 (test pump)
+2026-11-26 14:42:01 RUN_MAX_MIN=45 min (computed backstop of the jobs still to do)
+2026-11-26 14:44:43 reviewed wave1: 19 finding(s)
+RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): home (their logs: docs/briefs/m17/m17prep/flash-<job>.log)
