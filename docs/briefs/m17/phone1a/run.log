@@ -102,3 +102,16 @@ RESULT: DONE: 4 jobs, 24 min
 2026-11-26 16:37:13 phase: apply (check took 271s)
 2026-11-26 16:37:15 committed f1a: b0495d07 connection: group ChoiceRound's constructor into setup and timing
 2026-11-26 16:37:15 phase: review (apply took 2s)
+2026-11-26 16:40:45 phase: worker (review took 210s)
+2026-11-26 16:40:46 start f1b
+2026-11-26 16:45:50 start f3
+2026-11-26 16:45:51 f1b finished: result 0 (28 turns, 2 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 20/267220/26717/14829
+2026-11-26 16:45:51 WARN: f1b logged 28 turns, 2 min but ran 5 min wall: a resumed session's usage row covers its last resume only, its real turns are unknown
+2026-11-26 16:48:11 f3 finished: result 0 (25 turns, 2 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 26/401352/41111/21011
+2026-11-26 16:48:12 phase: tests-first (worker took 447s)
+2026-11-26 16:48:21 phase: check (tests-first took 9s)
+2026-11-26 16:48:28 combined check: skips protocol metrics look tools (no job's change reaches them)
+2026-11-26 17:06:59 phase: apply (check took 1118s)
+2026-11-26 17:07:00 committed f1b: 7fc981ce Cut ChoiceRound card titles to 24 and tidy its timers and tests
+2026-11-26 17:07:02 committed f3: 311db0d6 Old-phone fallback: set up late phones and clear held buttons on drop
+2026-11-26 17:07:02 phase: review (apply took 3s)
