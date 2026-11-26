@@ -23,11 +23,10 @@ const _grace = Duration(seconds: 30);
 final _longTitle = List.filled(40, 'x').join();
 
 final class _Setup {
-  _Setup(this.host, this.round, this.choices, this.input);
+  _Setup(this.host, this.round, this.input);
 
   final MemoryGameHost host;
   final ChoiceRound round;
-  final OldPhoneChoices choices;
   final StreamController<ControllerMessage> input;
 }
 
@@ -45,7 +44,9 @@ Future<void> _send(
   await _settle();
 }
 
-Future<_Setup> _setup(TestTransport t, {List<ChoiceCard> cards = _cards}) async {
+/// The round with phone-1 (capable) and phone-2 (old) in it. With [oldPhoneIn] false, phone-2 has not
+/// connected yet when the round starts.
+Future<_Setup> _setup(TestTransport t, {List<ChoiceCard> cards = _cards, bool oldPhoneIn = true}) async {
   final server = await startHost(t);
   await WirePhone.open(
     server,
@@ -54,7 +55,7 @@ Future<_Setup> _setup(TestTransport t, {List<ChoiceCard> cards = _cards}) async 
     capabilities: const [Capability.choices],
     code: server.pairingCode,
   );
-  await WirePhone.open(server, t, controllerId: 'phone-2', code: server.pairingCode);
+  if (oldPhoneIn) await WirePhone.open(server, t, controllerId: 'phone-2', code: server.pairingCode);
   final host = MemoryGameHost();
   final round = ChoiceRound(
     server: server,
@@ -69,7 +70,7 @@ Future<_Setup> _setup(TestTransport t, {List<ChoiceCard> cards = _cards}) async 
   addTearDown(choices.dispose);
   round.start();
   choices.start();
-  return _Setup(host, round, choices, input);
+  return _Setup(host, round, input);
 }
 
 void main() {
@@ -103,9 +104,9 @@ void main() {
       ]);
     });
 
-    test('a 40-character title is cut to 12 characters on the label', () {
+    test('a 40-character title is cut to the label limit', () {
       final buttons = oldPhoneButtons([ChoiceCard(id: 'long', title: _longTitle)]);
-      expect(buttons.first.label, _longTitle.substring(0, 12));
+      expect(buttons.first.label, _longTitle.substring(0, GameLayoutMessage.maxLabelLength));
       expect(buttons.first.label.length, lessThanOrEqualTo(GameLayoutMessage.maxLabelLength));
     });
   });
@@ -122,10 +123,13 @@ void main() {
       expect(oldPhoneStatus().isHidden, isTrue);
     });
 
-    test('a 40-character title stays within 24 characters', () {
+    test('a 40-character title stays within the status limit', () {
       final long = ChoiceCard(id: 'long', title: _longTitle, cost: 3, maxCount: 3);
-      expect(oldPhoneStatus(card: long, count: 3, currency: 'Bolts').text!.length, lessThanOrEqualTo(24));
-      expect(oldPhoneStatus(defaultTitle: _longTitle).text!.length, lessThanOrEqualTo(24));
+      expect(
+        oldPhoneStatus(card: long, count: 3, currency: 'Bolts').text!.length,
+        lessThanOrEqualTo(StatusMessage.maxTextLength),
+      );
+      expect(oldPhoneStatus(defaultTitle: _longTitle).text!.length, lessThanOrEqualTo(StatusMessage.maxTextLength));
     });
   });
 
@@ -214,6 +218,44 @@ void main() {
         await _settle();
         expect(s.host.layouts['phone-2']?.isStandard, isTrue);
         expect(s.host.statuses['phone-2']?.isHidden, isTrue);
+      });
+
+      test('a phone that connects after start gets its labels and status, and its presses count', () async {
+        final s = await _setup(t, oldPhoneIn: false);
+        expect(s.host.layouts.containsKey('phone-2'), isFalse);
+        expect(s.host.statuses.containsKey('phone-2'), isFalse);
+        final server = s.round.server;
+        await WirePhone.open(server, t, controllerId: 'phone-2', code: server.pairingCode);
+        await hostUntil(server, (h) => stateOf(h, 'phone-2') == ControllerState.connected);
+        await _settle();
+        expect(s.host.layouts['phone-2']?.labels, {
+          ControllerButton.a: 'Save +2',
+          ControllerButton.b: 'Build',
+          ControllerButton.x: 'Roadworks',
+          ControllerButton.y: 'Clear',
+        });
+        expect(s.host.statuses['phone-2']?.text, 'Default: Save +2');
+        await _send(s.input, 'phone-2', 1, {ControllerButton.b});
+        await _send(s.input, 'phone-2', 2, {});
+        await _send(s.input, 'phone-2', 3, {ControllerButton.b});
+        expect(s.host.statuses['phone-2']?.text, 'Build 2 = 6 Bolts');
+        expect(s.round.close()['phone-2']?.count, 2);
+      });
+
+      test('a phone that drops forgets its held button, so its next press after it is back counts', () async {
+        final s = await _setup(t);
+        final server = s.round.server;
+        await _send(s.input, 'phone-2', 1, {ControllerButton.b});
+        expect(s.host.statuses['phone-2']?.text, 'Build 1 = 3 Bolts');
+        server.dropAllConnections();
+        await hostUntil(server, (h) => stateOf(h, 'phone-2') == ControllerState.disconnected);
+        await _settle();
+        await WirePhone.open(server, t, controllerId: 'phone-2', code: server.pairingCode);
+        await hostUntil(server, (h) => stateOf(h, 'phone-2') == ControllerState.connected);
+        await _settle();
+        await _send(s.input, 'phone-2', 2, {ControllerButton.b});
+        expect(s.host.statuses['phone-2']?.text, 'Build 2 = 6 Bolts');
+        expect(s.round.close()['phone-2']?.count, 2);
       });
 
       test('a phone with the capability is left alone', () async {

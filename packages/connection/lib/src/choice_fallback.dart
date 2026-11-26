@@ -14,6 +14,7 @@ const _yButton = ControllerButton.y;
 
 /// One button of an old phone, as the round's cards map onto it.
 final class OldPhoneButton {
+  /// The button of one card, or of Clear (no [cardId]), with its label and whether its presses count.
   const OldPhoneButton({required this.button, required this.label, this.cardId, required this.counted});
 
   /// The phone button.
@@ -68,6 +69,7 @@ StatusMessage oldPhoneStatus({ChoiceCard? card, int count = 1, String? currency,
 /// and the status. When the round closes, or on [dispose], each old phone goes back to its usual
 /// buttons and no status.
 final class OldPhoneChoices {
+  /// Plays the old phones of [round] on [host], counting the presses on [input]; nothing is sent until [start].
   OldPhoneChoices({required this.round, required this.host, required this.input});
 
   /// The round the old phones pick in.
@@ -81,26 +83,20 @@ final class OldPhoneChoices {
 
   final _phones = <String, _OldPhone>{};
   StreamSubscription<ControllerMessage>? _inputSub;
+  StreamSubscription<HostSnapshot>? _serverSub;
   StreamSubscription<void>? _roundSub;
   bool _started = false;
   bool _finished = false;
 
   /// Sets the labels and the status of each old phone in the round and starts counting its
-  /// presses. A phone with the capability is left alone.
+  /// presses. An old phone that appears later is set up when it does. A phone with the capability
+  /// is left alone.
   void start() {
     if (_started || round.isClosed) return;
     _started = true;
-    final controllers = round.server.snapshot.controllers;
-    for (final id in round.players) {
-      final controller = controllers.where((c) => c.controllerId == id).firstOrNull;
-      if (controller == null || controller.supports(Capability.choices)) continue;
-      final buttons = oldPhoneButtons(round.cardsFor(id));
-      final phone = _OldPhone(buttons);
-      _phones[id] = phone;
-      host.setLayout(id, _layoutFor(buttons));
-      _showStatus(id, phone);
-    }
+    _syncPhones(round.server.snapshot);
     _inputSub = input.listen(_onInput);
+    _serverSub = round.server.changes.listen(_syncPhones);
     _roundSub = round.changes.listen((_) {
       if (round.isClosed) unawaited(_finish());
     }, onDone: () => unawaited(_finish()));
@@ -109,6 +105,29 @@ final class OldPhoneChoices {
   /// Puts the old phones back to their usual buttons and no status, and stops counting. Safe to
   /// call more than once.
   Future<void> dispose() => _finish();
+
+  /// Sets up each old phone of the round that the snapshot lists and that is not set up yet, and
+  /// clears the held buttons of a set-up phone that is not connected: its release is never
+  /// received, so the buttons would look held once the phone is back.
+  void _syncPhones(HostSnapshot snapshot) {
+    if (_finished || round.isClosed) return;
+    for (final id in round.players) {
+      if (_phones.containsKey(id) || !_isOldPhone(snapshot, id)) continue;
+      _setUp(id);
+    }
+    final connected = {for (final c in snapshot.connected) c.controllerId};
+    for (final entry in _phones.entries) {
+      if (!connected.contains(entry.key)) entry.value.held = const {};
+    }
+  }
+
+  void _setUp(String playerId) {
+    final buttons = oldPhoneButtons(round.cardsFor(playerId));
+    final phone = _OldPhone(buttons);
+    _phones[playerId] = phone;
+    host.setLayout(playerId, _layoutFor(buttons));
+    _showStatus(playerId, phone);
+  }
 
   void _onInput(ControllerMessage m) {
     final phone = _phones[m.controllerId];
@@ -160,6 +179,7 @@ final class OldPhoneChoices {
       host.setStatus(id, StatusMessage.hidden());
     }
     await _inputSub?.cancel();
+    await _serverSub?.cancel();
     await _roundSub?.cancel();
   }
 }
@@ -172,6 +192,11 @@ final class _OldPhone {
   Set<ControllerButton> held = const {};
   String? pickId;
   int count = 0;
+}
+
+bool _isOldPhone(HostSnapshot snapshot, String playerId) {
+  final controller = snapshot.controllers.where((c) => c.controllerId == playerId).firstOrNull;
+  return controller != null && !controller.supports(Capability.choices);
 }
 
 OldPhoneButton _cardButton(ControllerButton button, ChoiceCard card) => OldPhoneButton(
