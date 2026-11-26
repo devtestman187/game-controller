@@ -46,3 +46,10 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-26 11:32:33 committed s1: 36778118 m16 tail s1: Start/Pause moves into the compact game bar
 2026-11-26 11:32:33 phase: review (apply took 2s)
 2026-11-26 11:32:33 wave review skipped: wave 1 is the whole run, the run review covers it
+2026-11-26 11:32:34 start the run's review
+METRICS m1 worker=claude model=claude-haiku-5-5 turns=16 in=26 out=29886 cache=502864 min=4.4 wall=5.2 result=0
+METRICS run-review worker=claude model=claude-haiku-5-5 turns=34 in=44 out=38440 cache=1118547 min=3.1 wall=- result=0
+METRICS s1 worker=claude model=claude-sonnet-5-5 turns=47 in=50 out=12046 cache=1037964 min=4.9 wall=7.7 result=0
+METRICS s2 worker=claude model=claude-haiku-5-5 turns=29 in=50 out=16103 cache=789498 min=5.0 wall=7.8 result=0
+2026-11-26 11:36:05 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/tail/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 3 jobs, 15 min
