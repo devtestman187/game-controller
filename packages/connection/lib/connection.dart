@@ -5,6 +5,7 @@
 /// command-line simulated controller and in `dart test` on Windows and CI.
 library;
 
+export 'src/choice_fallback.dart' show OldPhoneButton, OldPhoneChoices, oldPhoneButtons, oldPhoneStatus;
 export 'src/choice_round.dart' show ChoiceOutcome, ChoiceRound;
 export 'src/client_controls.dart'
     show HostAway, HostBack, PlayerAway, PlayerBack, ViewEnded, ViewEvent, ViewFrame, ViewStarted;
