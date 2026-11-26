@@ -34,15 +34,18 @@ class _JoinCode extends ConsumerWidget {
 
 /// The players who haven't picked a side yet.
 class _NotJoined extends StatelessWidget {
-  const _NotJoined({required this.watching});
+  const _NotJoined({required this.watching, required this.full});
 
   final List<GamePlayer> watching;
+
+  /// Both sides are full: the line says "Game full" (e0e).
+  final bool full;
 
   @override
   Widget build(BuildContext context) {
     final look = ToyLookScope.of(context);
     return Text(
-      HostText.notJoined(watching.map((p) => p.label).join(', ')),
+      HostText.notJoined(watching.map((p) => p.label).join(', '), full: full),
       key: const Key('notJoined'),
       style: look.type.body.copyWith(color: look.colors.onBackground),
     );
@@ -166,6 +169,7 @@ class _JoinBody extends StatelessWidget {
     required this.onPick,
     required this.watching,
     required this.ownHere,
+    required this.full,
   });
 
   final String hint;
@@ -177,6 +181,9 @@ class _JoinBody extends StatelessWidget {
   final List<GamePlayer> watching;
   final String? ownHere;
 
+  /// Both sides are full, so the watching line says "Game full" (e0e).
+  final bool full;
+
   @override
   Widget build(BuildContext context) {
     final content = Column(
@@ -187,7 +194,7 @@ class _JoinBody extends StatelessWidget {
         Expanded(
           child: _Sides(players: players, teams: teams, ownPlayerId: ownPlayerId, onPick: onPick),
         ),
-        if (watching.isNotEmpty) ...[const SizedBox(height: _lineGapPx), _NotJoined(watching: watching)],
+        if (watching.isNotEmpty) ...[const SizedBox(height: _lineGapPx), _NotJoined(watching: watching, full: full)],
         const SizedBox(height: _lineGapPx),
         _FormatLine(teams: teams, ownPlayerId: ownHere),
       ],

@@ -333,6 +333,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
     ];
     final own = _ownPlayer;
     final ownHere = own != null && players.any((p) => p.id == own) ? own : null;
+    final full = sideForNewPlayer(_teams) == null;
     return ControlsClaim(
       controls: const Controls.game(),
       child: Focus(
@@ -351,6 +352,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
             onPick: ownHere == null ? null : (side) => _pickSide(ownHere, side),
             watching: watching,
             ownHere: ownHere,
+            full: full,
           ),
           footer: [_JoinButtons(startFocus: _startFocus, onStart: _start)],
         ),

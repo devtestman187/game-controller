@@ -75,8 +75,9 @@ abstract final class HostText {
   /// How many more players a side has room for.
   static String roomFor(int count) => 'Room for $count more';
 
-  /// The players who haven't picked a side yet.
-  static String notJoined(String names) => 'Not joined: $names';
+  /// The players who haven't picked a side yet; "Game full" once both sides are full (e0e).
+  static String notJoined(String names, {bool full = false}) =>
+      full ? 'Game full, watching: $names' : 'Not joined: $names';
 
   /// A player whose phone dropped, while the join screen holds their side
   /// (M16 item 2): "Mia is away".
