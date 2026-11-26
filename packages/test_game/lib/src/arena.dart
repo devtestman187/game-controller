@@ -125,11 +125,12 @@ abstract class ArenaGame extends ArenaFieldRules {
   /// Whether the round had no single winner (a tie on coins, G9).
   bool get draw => _draw;
 
-  /// The Bumper Round's result once its clock runs out (G9): the night's
-  /// points (a coin for each coin, [bumperWinBonus] for each winner, times
-  /// [pointsScale]), the winners, the counters the awards need and each
-  /// player's line. Null while it plays, and always in the race, whose results
-  /// card comes with M14 b2.
+  /// The round's result (G9): the Bumper Round's once its clock runs out, the
+  /// night's points (a coin for each coin, [bumperWinBonus] for each winner,
+  /// times [pointsScale]), the winners, the counters the awards need and each
+  /// player's line. The race's once someone reaches the goal: the winner
+  /// first, the others by distance, with no points yet. Null while the round
+  /// plays.
   RoundResult? get roundResult => _result;
 
   /// Seconds left on the Bumper Round's clock, or null in the race.
@@ -198,9 +199,32 @@ final class _RaceGame extends ArenaGame {
         bestId = p.id;
       }
       _breakLeft = ArenaGame.roundBreakS;
+      _result = _resultFor(p.id);
       stopDashes();
       events.add(GameEvent(p.id, HapticEvent.success, GameEventCause.goal));
     }
+  }
+
+  /// The race's result for [winnerId]: the winner is first and alone, the
+  /// others follow by straight-line distance to the goal's centre, nearest
+  /// first, ties by player id. Points stay empty on purpose: the night's
+  /// scoring turns the placing into points later (n1d).
+  RoundResult _resultFor(String winnerId) {
+    final goal = goalRect.center;
+    final others = players.where((o) => o.id != winnerId).toList()
+      ..sort((a, b) {
+        final byDistance = (a.position - goal).distance.compareTo((b.position - goal).distance);
+        return byDistance != 0 ? byDistance : a.id.compareTo(b.id);
+      });
+    final order = [winnerId, for (final o in others) o.id];
+    return RoundResult(
+      game: arenaGame,
+      winners: {winnerId},
+      stats: {
+        for (final (i, id) in order.indexed) id: {'place': i + 1},
+      },
+      lines: {for (final id in order) id: RoundLine(outcome: id == winnerId ? RoundOutcome.win : RoundOutcome.loss)},
+    );
   }
 
   void _newRound() {
@@ -208,6 +232,7 @@ final class _RaceGame extends ArenaGame {
     mirrored = !mirrored;
     round++;
     winnerId = null;
+    _result = null;
     _roundTime = 0;
     resetMarbles();
   }
