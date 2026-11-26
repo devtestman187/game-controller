@@ -1,0 +1,6 @@
+# wave 1: round cap and Game full (no shared files)
+n1c e0e
+# wave 2: scoring pins and the champion getter (night_state.dart)
+n1d
+# wave 3: autosave and resume (night_state.dart, party_night.dart)
+e0c

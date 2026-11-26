@@ -1,0 +1,19 @@
+job: night1b e0c — autosave the night after each change and resume it when the host restarts
+stop: no new screen, no hall of fame, no change to NightFlow; a corrupt or unknown save is dropped silently (the night starts fresh); only the night is saved, not the game in progress
+read: docs/briefs/templates/COMMON.md · packages/party_host/lib/src/night/night_state.dart:20-23 (NightPlayer), :105-210 (constructor, start, fields), :212-240 (usedMap, remember) · packages/party_host/lib/src/night/party_night.dart:48-125 (PartyNight; its doc says "Nothing is saved") · packages/party_host/lib/src/night/night_award_results.dart:12-33 (NightAwardOutcome) · packages/party_host/lib/src/prefs.dart (prefsProvider) · packages/party_host/lib/src/best_times.dart:120-195 (a prefs-backed notifier: the pattern) · packages/protocol/lib/src/character.dart:95-105 (PlayerCharacter toJson/fromJson) · packages/party_host/test/support/host_harness.dart:60-90 · plan, quoted (city-rush e0c): "Autosave the night after each round and resume on host restart"; its test: "restart resumes".
+changes: NightSave · nightSaveProvider · NightState.toJson · NightState.tryRestore · PartyNight.build
+probe: docs/briefs/m17/night1b/probe-e0c.patch
+model: haiku
+turns: 60
+expected-min: 35
+tests-first: exempt none; the restart test fails on the base (a new container starts with no night)
+do:
+1 night_state.dart: add `Map<String, Object?> toJson()` and `static NightState? tryRestore(Object? json)` (null on any malformed input, never throws). Keep: length (3 or 5), round, awards (enum names), totals, counters, roundsWon, played, lastRoundPoints, seen (number, nickname, character via PlayerCharacter toJson/fromJson), outcomes (award name, winners, value), maps, isEndedEarly. The file must stay at 380 lines or fewer (it is 343; other jobs add about 20): keep both compact; if they do not fit, put the JSON helpers as top-level functions in night_save.dart reading the public fields, with only a small restoring factory in night_state.dart.
+2 NEW night_save.dart (under 120 lines): `final class NightSave` over SharedPreferences key `party_night_v1` (JSON string) with `NightState? load()`, `void save(NightState)`, `void clear()`; `final nightSaveProvider = Provider<NightSave>((ref) => NightSave(ref.watch(prefsProvider)));`. A saved night that isOver is cleared, not loaded.
+3 party_night.dart: `build()` returns `ref.read(nightSaveProvider).load()` instead of null; `start`, `recordRound`, `endNow` and `usedMap` save the new state (one private setter helper that saves or clears); `end()` and `dropIfUnplayed()` clear the save. Update the doc line "Nothing is saved" (the night is saved after each change and resumes on restart).
+4 Tests: NEW packages/party_host/test/night_save_test.dart, written and run first (SharedPreferences.setMockInitialValues, a ProviderContainer with prefsProvider overridden; see host_harness.dart): toJson/tryRestore round-trips a night with 2 players, 2 rounds, an award outcome and a player who left; garbage, wrong types and an unknown award give null; one container plays start and one recordRound, a SECOND container on the same prefs resumes at round 1 with the same totals; end() then a new container has no night; an over night is not resumed. Existing party_host tests that read partyNightProvider must still pass: run `bash tools/check.sh host` once; fix a harness that lacks prefs only inside allow:.
+5 Report: the key, what is saved, what a corrupt save does.
+6 Before finishing run `dart analyze` on the files you changed and fix every info, warning and error.
+allow: packages/party_host/lib/src/night/night_state.dart · packages/party_host/lib/src/night/night_save.dart · packages/party_host/lib/src/night/party_night.dart · packages/party_host/test/night_save_test.dart · packages/party_host/test/support/host_harness.dart
+check: format analyze host
+report: docs/briefs/m17/night1b/e0c-report.md
