@@ -1,0 +1,4 @@
+# wave 1: contract and the two pure pieces (no shared files)
+n1a e0a e0b
+# wave 2: n1b needs n1a's types
+n1b

@@ -1,0 +1,11 @@
+diff --git a/packages/party_host/lib/src/night/night_flow.dart b/packages/party_host/lib/src/night/night_flow.dart
+new file mode 100644
+index 00000000..d4cd7b1c
+--- /dev/null
++++ b/packages/party_host/lib/src/night/night_flow.dart
+@@ -0,0 +1,5 @@
++// probe stub
++enum NightReason { host }
++enum NightStage { setup }
++sealed class NightEvent { const NightEvent(); }
++final class NightFlow { const NightFlow(); }
