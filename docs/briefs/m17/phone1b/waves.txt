@@ -1,0 +1,4 @@
+# wave 1: y0p (round pause, protocol paused field) and y0dc (client plumbing + docs): no shared files
+y0p y0dc
+# wave 2: phone screen (needs y0dc and y0p), lobby names, shop demo; the party_host files differ
+y0d y0e y0f
