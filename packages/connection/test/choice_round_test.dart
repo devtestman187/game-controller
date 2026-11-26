@@ -20,8 +20,8 @@ const _graceMs = 300;
 /// A round that lasts long enough for a test to close it by hand.
 const _longRound = Duration(seconds: 30);
 
-/// A round that the timer ends during the test; long enough that setup on a slow
-/// machine finishes before it ends.
+/// A round the timer ends during the test. A test that needs it to end after its own
+/// steps passes start: false, and calls start() once the phones have drained.
 const _shortRound = Duration(milliseconds: 300);
 
 /// How long a test waits past a round's end, so the end timer has surely fired.
@@ -53,6 +53,7 @@ Future<_Setup> _setup(
   String? defaultId = 'save',
   Duration duration = _longRound,
   bool start = true,
+  List<ChoiceCard> cards = _cards,
 }) async {
   final server = await startHost(t);
   final capable = await WirePhone.open(
@@ -67,7 +68,7 @@ Future<_Setup> _setup(
   final round = ChoiceRound(
     server: server,
     players: const ['phone-1', 'phone-2'],
-    setup: ChoiceRoundSetup(round: 7, title: 'Shop', cardsFor: (_) => _cards, defaultId: defaultId, currency: 'Bolts'),
+    setup: ChoiceRoundSetup(round: 7, title: 'Shop', cardsFor: (_) => cards, defaultId: defaultId, currency: 'Bolts'),
     timing: ChoiceTiming(
       duration: duration,
       grace: const Duration(milliseconds: _graceMs),
@@ -75,6 +76,8 @@ Future<_Setup> _setup(
     ),
   );
   addTearDown(round.dispose);
+  await capable.drain();
+  await old.drain();
   if (start) round.start();
   await capable.drain();
   await old.drain();
@@ -237,9 +240,11 @@ void main() {
       });
 
       test('the timer ends the round', () async {
-        final s = await _setup(t, duration: _shortRound);
+        final s = await _setup(t, duration: _shortRound, start: false);
 
-        await s.round.changes.first.timeout(_waitLimit);
+        final ended = s.round.changes.first;
+        s.round.start();
+        await ended.timeout(_waitLimit);
 
         expect(s.round.isClosed, isTrue);
         await s.capable.drain();
@@ -247,7 +252,8 @@ void main() {
       });
 
       test('dispose before the end timer: no ChoicesEnd arrives, and pick, close and start change nothing', () async {
-        final s = await _setup(t, duration: _shortRound);
+        final s = await _setup(t, duration: _shortRound, start: false);
+        s.round.start();
         await s.round.dispose();
 
         s.round.pick('phone-1', pickId: 'build');
@@ -261,7 +267,7 @@ void main() {
         expect(s.capable.fromHost.whereType<ChoicesEndMessage>(), isEmpty);
       });
 
-      test('dispose while a player is away: the grace never sets a default', () async {
+      test('dispose while a player is away: dispose sets nothing and closes nothing', () async {
         final s = await _setup(t);
         s.server.dropAllConnections();
         await hostUntil(s.server, (h) => stateOf(h, 'phone-1') == ControllerState.disconnected);
@@ -284,6 +290,19 @@ void main() {
 
         expect(s.round.isClosed, isFalse);
         expect(s.capable.fromHost.whereType<ChoicesMessage>(), isEmpty);
+      });
+
+      test('a card title of 40 characters reaches the phone cut to 24', () async {
+        const long = 'abcdefghijklmnopqrstuvwxyz0123456789ABCD';
+        final s = await _setup(
+          t,
+          cards: [const ChoiceCard(id: 'long', title: long)],
+        );
+
+        final sent = s.capable.fromHost.whereType<ChoicesMessage>().single;
+        expect(long.length, 40);
+        expect(ChoiceRound.maxTitleLength, 24);
+        expect(sent.cards.single.title, 'abcdefghijklmnopqrstuvwx');
       });
     });
   }

@@ -14,11 +14,14 @@ part 'choice_round_state.dart';
 /// player away for [ChoiceTiming.grace], gets [defaultId].
 ///
 /// Only a phone that lists [Capability.choices] is sent the round. The others
-/// ("legacy" phones) still get an outcome, and their picks come in through
+/// (old phones) still get an outcome, and their picks come in through
 /// [pick] (the old-phone fallback).
 final class ChoiceRound {
   /// Builds a round for [players]; nothing is sent or timed until [start].
   ChoiceRound({required this.server, required this.players, required this.setup, required this.timing});
+
+  /// The longest card title a phone is sent; the host cuts a longer one to this many characters.
+  static const int maxTitleLength = 24;
 
   /// The host the round sends through and listens to for picks and connections.
   final HostServer server;
@@ -76,9 +79,7 @@ final class ChoiceRound {
     _endsAtMs = timing.nowMs() + timing.duration.inMilliseconds;
     _messageSub = server.messages.listen(_onMessage);
     _serverSub = server.changes.listen(_onServerChange);
-    _endTimer = Timer(timing.duration, () {
-      if (!_isDisposed) close();
-    });
+    _endTimer = Timer(timing.duration, close);
     final live = _connectedPlayers(server.snapshot);
     for (final id in players) {
       if (live.contains(id)) {
@@ -187,7 +188,7 @@ final class ChoiceRound {
     _awayTimers[playerId]?.cancel();
     _awayTimers[playerId] = Timer(timing.grace, () {
       _awayTimers.remove(playerId);
-      if (_isDisposed || isClosed) return;
+      if (isClosed) return;
       final card = defaultId;
       if (card == null) {
         _picks.remove(playerId);
@@ -205,7 +206,7 @@ final class ChoiceRound {
       ChoicesMessage(
         round: setup.round,
         title: setup.title,
-        cards: cardsFor(playerId),
+        cards: [for (final card in cardsFor(playerId)) _shownCard(card)],
         endsInMs: (_endsAtMs - timing.nowMs()).clamp(0, timing.duration.inMilliseconds),
         defaultId: defaultId,
         currency: currency,
@@ -213,6 +214,19 @@ final class ChoiceRound {
         pickedCount: held?.count ?? 1,
         locked: held?.locked ?? false,
       ),
+    );
+  }
+
+  /// The card as the phone shows it: the same card with its title cut to [maxTitleLength].
+  ChoiceCard _shownCard(ChoiceCard card) {
+    final title = card.title.length <= maxTitleLength ? card.title : card.title.substring(0, maxTitleLength);
+    return ChoiceCard(
+      id: card.id,
+      title: title,
+      detail: card.detail,
+      cost: card.cost,
+      maxCount: card.maxCount,
+      enabled: card.enabled,
     );
   }
 }
