@@ -115,3 +115,12 @@ RESULT: DONE: 4 jobs, 24 min
 2026-11-26 17:07:00 committed f1b: 7fc981ce Cut ChoiceRound card titles to 24 and tidy its timers and tests
 2026-11-26 17:07:02 committed f3: 311db0d6 Old-phone fallback: set up late phones and clear held buttons on drop
 2026-11-26 17:07:02 phase: review (apply took 3s)
+2026-11-26 17:07:04 reviewed wave4: 2 finding(s)
+2026-11-26 17:10:29 reviewed wave5: 7 finding(s)
+METRICS f1a worker=claude model=claude-haiku-5-5 turns=25 in=28 out=12860 cache=375614 min=1.9 wall=2.4 result=0
+METRICS f1b worker=claude model=claude-haiku-5-5 turns=28 in=20 out=14829 cache=293937 min=1.7 wall=5.1 result=0
+METRICS f3 worker=claude model=claude-haiku-5-5 turns=25 in=26 out=21011 cache=442463 min=1.9 wall=2.4 result=0
+METRICS wave4-review worker=claude model=claude-haiku-5-5 turns=23 in=22 out=13804 cache=340559 min=1.1 wall=- result=0
+METRICS wave5-review worker=claude model=claude-haiku-5-5 turns=39 in=46 out=37976 cache=1269765 min=3.1 wall=- result=0
+2026-11-26 17:10:36 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/phone1a/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 7 jobs, 41 min
