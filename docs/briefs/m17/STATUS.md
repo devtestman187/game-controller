@@ -1,7 +1,7 @@
 # M17 status
 
 ## Resume here (Nov 26, 2026)
-- **B2 night1a done (Nov 26, see docs/briefs/m17/night1a/REPORT.md):** NightFlow/NightEvent contract, captionFor stub, Arena race roundResult with placing, ChampionChain (pure, not wired). Owner pick O1 (Nov 26): "I am good with the defaults suggested": Quick night champion = most points, ties share; City Rush = Plaza distance, then Bolts, then shared; the "best place in the last game" step stays an optional added step. Next: B3 night1b (n1c, n1d, e0c, e0e, e0g); open: pause rules, "place" meaning (REVIEW.md). iOS HOLD stays.
+- **B2 night1a done (Nov 26, batch tip 067e3b2f, see docs/briefs/m17/night1a/REPORT.md):** NightFlow/NightEvent contract, captionFor stub, Arena race roundResult with placing, ChampionChain (pure, not wired). Owner pick O1 (Nov 26): "I am good with the defaults suggested": Quick night champion = most points, ties share; City Rush = Plaza distance, then Bolts, then shared; the "best place in the last game" step stays an optional added step. Next: B3 night1b (n1c, n1d, e0c, e0e, e0g); open: pause rules, "place" meaning (REVIEW.md). iOS HOLD stays.
 - **B1 m17prep done (Nov 26, batch tip 048af4d5):** home search-wait fix, 8-phone load tool, night-card fit measure (head and strip fit nowhere on host cards; phone card at 667x375 yes), stale plan text, CI timeout 45 + tests once (ships with the next tag). Next: B2 night1a (and board-1 / B5 on a side line); read docs/briefs/m17/m17prep/REPORT.md first. iOS HOLD stays (see Next).
 - **Owner go:** "Build, 1A 2A" on Nov 26, using the fast track.
   - 1A = toolchain checks, then the upgrade-only build.

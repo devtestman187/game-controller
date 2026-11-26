@@ -106,3 +106,4 @@ METRICS f3 worker=claude model=claude-haiku-5-5 turns=1 in=4 out=108 cache=31154
 METRICS wave3-review worker=claude model=claude-haiku-5-5 turns=28 in=30 out=26983 cache=796494 min=2.2 wall=- result=0
 2026-11-26 16:47:54 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/night1a/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 7 jobs, 26 min
+2026-11-26 17:07:25 full check: All checks passed (bash tools/check.sh on 067e3b2f by the driver, 803s, 0 cached; added to run.log at verify, see REPORT.md:24)
