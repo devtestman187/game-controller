@@ -17,7 +17,7 @@ Decisions:
 
 Self-check (docs/review-rules.md part A):
 1. Host setups: TV and PC host both run through `TestTransport.values` (webSocket and inProcess); phone-1 is the capable phone, phone-2 the old phone; a late phone is covered by the new test under both transports.
-2. Kept state: `_phones` and `held` start empty, are set at `start()`, and are cleared in `_finish`, which also cancels `_serverSub`. With nothing going on (no old phones), `_syncPhones` does nothing. Test: "start sets the labels and the status of an old phone only".
+2. Kept state: `_phones` and `held` start empty, are set at `start()`,; `_finish` resets the layouts and statuses and cancels `_serverSub` (it does not clear `_phones`; the object is done after it). With nothing going on (no old phones), `_syncPhones` does nothing. Test: "start sets the labels and the status of an old phone only".
 3. Combinations: the `_finished` and `round.isClosed` guards stop the listener after close or dispose. Test: "the layout and the status go back to standard and hidden at close" (existing, unchanged).
 4. Only the two allowed files were changed (plus this report).
 5. No stop needed.

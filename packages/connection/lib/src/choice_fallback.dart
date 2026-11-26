@@ -92,7 +92,7 @@ final class OldPhoneChoices {
   /// presses. An old phone that appears later is set up when it does. A phone with the capability
   /// is left alone.
   void start() {
-    if (_started || round.isClosed) return;
+    if (_started || _finished || round.isClosed) return;
     _started = true;
     _syncPhones(round.server.snapshot);
     _inputSub = input.listen(_onInput);

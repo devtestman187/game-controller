@@ -124,3 +124,5 @@ METRICS wave4-review worker=claude model=claude-haiku-5-5 turns=23 in=22 out=138
 METRICS wave5-review worker=claude model=claude-haiku-5-5 turns=39 in=46 out=37976 cache=1269765 min=3.1 wall=- result=0
 2026-11-26 17:10:36 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/phone1a/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 7 jobs, 41 min
+2026-11-26 17:10:56 HAND-FIX f3: 1 line changed (choice_fallback.dart:95 start() guard adds _finished) + f3-report wording, driver, wave5 should finding
+2026-11-26 17:10:56 HAND-FIX-EVENT f3: 1 lines changed, replaced ladder level 1
