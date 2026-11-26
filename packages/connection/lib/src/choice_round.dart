@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:protocol/protocol.dart';
 
+import 'choice_round_setup.dart';
 import 'host_server.dart';
 import 'host_types.dart';
 
@@ -10,55 +11,35 @@ part 'choice_round_state.dart';
 /// One choice round on the phones (M17 phone1a): the host offers each player a
 /// list of cards, takes their picks until the timer ends, and settles each
 /// player's outcome. A pick can be changed until then; nothing chosen, or a
-/// player away for [grace], gets [defaultId].
+/// player away for [ChoiceTiming.grace], gets [defaultId].
 ///
 /// Only a phone that lists [Capability.choices] is sent the round. The others
 /// ("legacy" phones) still get an outcome, and their picks come in through
 /// [pick] (the old-phone fallback).
 final class ChoiceRound {
   /// Builds a round for [players]; nothing is sent or timed until [start].
-  ChoiceRound({
-    required this.server,
-    required this.round,
-    required this.title,
-    required this.cardsFor,
-    required this.players,
-    required this.duration,
-    required this.grace,
-    required this.nowMs,
-    this.defaultId,
-    this.currency,
-  });
+  ChoiceRound({required this.server, required this.players, required this.setup, required this.timing});
 
   /// The host the round sends through and listens to for picks and connections.
   final HostServer server;
 
-  /// The round's number, which a phone's pick must name.
-  final int round;
-
-  /// The question the phones show.
-  final String title;
-
-  /// The cards one player may pick from, asked each time so a list may change.
-  final List<ChoiceCard> Function(String playerId) cardsFor;
-
   /// The IDs of the players who take part.
   final List<String> players;
 
-  /// How long the round lasts, from [start].
-  final Duration duration;
+  /// What the round shows and settles with: the title, the cards, the default and the currency.
+  final ChoiceRoundSetup setup;
 
-  /// How long a player may stay away before getting the default.
-  final Duration grace;
+  /// How long the round lasts, how long a player may stay away, and the clock.
+  final ChoiceTiming timing;
 
-  /// The clock the time left in each message comes from, in ms.
-  final int Function() nowMs;
+  /// The cards one player may pick from, asked each time so a list may change.
+  List<ChoiceCard> Function(String playerId) get cardsFor => setup.cardsFor;
 
   /// The card that applies when nothing is chosen, or null when nothing does.
-  final String? defaultId;
+  String? get defaultId => setup.defaultId;
 
   /// The unit the costs are in, or null when there are none.
-  final String? currency;
+  String? get currency => setup.currency;
 
   final _picks = <String, _Pick>{};
   final _awayTimers = <String, Timer>{};
@@ -92,10 +73,10 @@ final class ChoiceRound {
   void start() {
     if (_isStarted || _isDisposed || isClosed) return;
     _isStarted = true;
-    _endsAtMs = nowMs() + duration.inMilliseconds;
+    _endsAtMs = timing.nowMs() + timing.duration.inMilliseconds;
     _messageSub = server.messages.listen(_onMessage);
     _serverSub = server.changes.listen(_onServerChange);
-    _endTimer = Timer(duration, () {
+    _endTimer = Timer(timing.duration, () {
       if (!_isDisposed) close();
     });
     final live = _connectedPlayers(server.snapshot);
@@ -138,7 +119,10 @@ final class ChoiceRound {
     _outcomes = outcomes;
     for (final entry in outcomes.entries) {
       final o = entry.value;
-      server.send(entry.key, ChoicesEndMessage(round: round, result: o.cardId, count: o.count, byDefault: o.byDefault));
+      server.send(
+        entry.key,
+        ChoicesEndMessage(round: setup.round, result: o.cardId, count: o.count, byDefault: o.byDefault),
+      );
     }
     _changes.add(null);
     return outcomes;
@@ -177,7 +161,7 @@ final class ChoiceRound {
   void _onMessage(ControllerMessage m) {
     if (_isDisposed) return;
     final message = m.message;
-    if (message is! ChoicePickMessage || message.round != round) return;
+    if (message is! ChoicePickMessage || message.round != setup.round) return;
     final sender = server.snapshot.controllers.where((c) => c.controllerId == m.controllerId).firstOrNull;
     if (sender == null || !sender.supports(Capability.choices)) return;
     pick(m.controllerId, pickId: message.pick, count: message.count, locked: message.locked);
@@ -201,7 +185,7 @@ final class ChoiceRound {
 
   void _startAwayTimer(String playerId) {
     _awayTimers[playerId]?.cancel();
-    _awayTimers[playerId] = Timer(grace, () {
+    _awayTimers[playerId] = Timer(timing.grace, () {
       _awayTimers.remove(playerId);
       if (_isDisposed || isClosed) return;
       final card = defaultId;
@@ -219,10 +203,10 @@ final class ChoiceRound {
     server.send(
       playerId,
       ChoicesMessage(
-        round: round,
-        title: title,
+        round: setup.round,
+        title: setup.title,
         cards: cardsFor(playerId),
-        endsInMs: (_endsAtMs - nowMs()).clamp(0, duration.inMilliseconds),
+        endsInMs: (_endsAtMs - timing.nowMs()).clamp(0, timing.duration.inMilliseconds),
         defaultId: defaultId,
         currency: currency,
         picked: held?.cardId,

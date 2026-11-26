@@ -58,15 +58,9 @@ Future<_Setup> _setup(TestTransport t, {List<ChoiceCard> cards = _cards}) async 
   final host = MemoryGameHost();
   final round = ChoiceRound(
     server: server,
-    round: 7,
-    title: 'Shop',
-    cardsFor: (_) => cards,
     players: const ['phone-1', 'phone-2'],
-    duration: _longRound,
-    grace: _grace,
-    defaultId: 'save',
-    currency: 'Bolts',
-    nowMs: () => 0,
+    setup: ChoiceRoundSetup(round: 7, title: 'Shop', cardsFor: (_) => cards, defaultId: 'save', currency: 'Bolts'),
+    timing: ChoiceTiming(duration: _longRound, grace: _grace, nowMs: () => 0),
   );
   addTearDown(round.dispose);
   final input = StreamController<ControllerMessage>();

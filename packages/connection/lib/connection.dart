@@ -7,6 +7,7 @@ library;
 
 export 'src/choice_fallback.dart' show OldPhoneButton, OldPhoneChoices, oldPhoneButtons, oldPhoneStatus;
 export 'src/choice_round.dart' show ChoiceOutcome, ChoiceRound;
+export 'src/choice_round_setup.dart' show ChoiceRoundSetup, ChoiceTiming;
 export 'src/client_controls.dart'
     show HostAway, HostBack, PlayerAway, PlayerBack, ViewEnded, ViewEvent, ViewFrame, ViewStarted;
 export 'src/client_types.dart' hide sameStrings;

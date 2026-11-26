@@ -66,15 +66,13 @@ Future<_Setup> _setup(
   final clock = _Clock();
   final round = ChoiceRound(
     server: server,
-    round: 7,
-    title: 'Shop',
-    cardsFor: (_) => _cards,
     players: const ['phone-1', 'phone-2'],
-    duration: duration,
-    grace: const Duration(milliseconds: _graceMs),
-    defaultId: defaultId,
-    currency: 'Bolts',
-    nowMs: () => clock.ms,
+    setup: ChoiceRoundSetup(round: 7, title: 'Shop', cardsFor: (_) => _cards, defaultId: defaultId, currency: 'Bolts'),
+    timing: ChoiceTiming(
+      duration: duration,
+      grace: const Duration(milliseconds: _graceMs),
+      nowMs: () => clock.ms,
+    ),
   );
   addTearDown(round.dispose);
   if (start) round.start();
