@@ -53,3 +53,4 @@ METRICS s1 worker=claude model=claude-sonnet-5-5 turns=47 in=50 out=12046 cache=
 METRICS s2 worker=claude model=claude-haiku-5-5 turns=29 in=50 out=16103 cache=789498 min=5.0 wall=7.8 result=0
 2026-11-26 11:36:05 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/tail/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 3 jobs, 15 min
+full check: All checks passed (104s, 10 cached). Logs: C:\Users\mrman\AppData\Local\Temp/thumbparty-check-20261126-113634 2026-11-26 383246fd

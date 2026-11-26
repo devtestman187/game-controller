@@ -30,3 +30,6 @@ m16 tail s1: Start/Pause is in the compact game bar and off the pad over a game;
 
 ## Delete
 - none
+
+## Summary
+Start/Pause now lives in the compact game bar (follows the host layout: label, hidden for watchers, menus and the away card); the pad drops its Start pill while a game shows; lobby/join pad unchanged. 14 new tests, pins updated. Part A self-check: hosting phone in the lobby has no pad (controller_parts.dart:32, phase none), so no Start is lost there (driver verified, Nov 26); "Show on this device", pause menu, dropped link and "Get ready" pairs are not tested (code-health).

@@ -1,0 +1,6 @@
+- 1 hosting lobby loses Start - invalid (controller_parts.dart:32 builds no pad in RoundPhase.none; verified by driver)
+- 2 no test for Show on this device / hosting branch - minor - docs/code-health.md
+- 3 no test for Start over pause menu, dropped link, Get ready - minor - docs/code-health.md
+- 4 s1-report has no Summary - trivial - fixed by hand
+- 5 mirror_corner_proof_test uses stdout (same as the committed m165 proof tests) - minor - docs/code-health.md
+- 6-12 could items - minor - docs/code-health.md (comment date wording, explicit 96x44, derived pin, shared test helper, puzzles path const, fixed pump, controller_screen.dart 367/380 lines)
