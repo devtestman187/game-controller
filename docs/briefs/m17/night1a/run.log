@@ -56,3 +56,5 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-26 16:13:13 finding: n1b's report has no Summary block in its first 40 lines
 2026-11-26 16:13:15 committed n1b: 2571fed2 Add stub captionFor for NightEvent (night1a n1b)
 2026-11-26 16:13:15 phase: review (apply took 2s)
+2026-11-26 16:13:17 reviewed wave1: 7 finding(s)
+2026-11-26 16:15:22 reviewed wave2: 6 finding(s)
