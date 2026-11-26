@@ -38,7 +38,7 @@ iLoader asks for your Apple ID password and 2-factor code. To keep your main acc
 What runs automatically:
 | Event | Workflow | Result |
 | --- | --- | --- |
-| Push to `main` touching `controller_app/` or `packages/protocol/` | `ios-check-main` | Analyze, tests, unsigned build. No download. |
+| Manual start only (no push trigger since Nov 26; run it per docs/briefs/m17/STATUS.md "When to run the iOS check by hand") | `ios-check-main` | Analyze, tests, unsigned build. No download. |
 | Pull request into `main` touching those paths | `ios-check-pr` | Same |
 | Any **tag** (e.g. `m0`, `m1`) | `ios-ipa` | Builds and publishes `controller-unsigned-<tag>.ipa` |
 | **Start new build** in the Codemagic UI → workflow `ios-ipa` | `ios-ipa` | Same, named `controller-unsigned-manual-<n>.ipa` |
