@@ -104,3 +104,11 @@ night1a run review: done, needs Claude (1 must: a standalone race ends on its fi
 ## Delete
 
 - none
+
+## Driver verdicts (Claude, after wave 3)
+- must game_screen.dart:239 / arena_view.dart:142: REAL, fixed by f1 (onFinished only when phase is over; test arena_view_race_test.dart). Decision confirmed: a standalone race has no results card until M14 b2.
+- should champion list mutable, race tie test, pause tests, join after scoreboard: fixed (f1, f2, f3).
+- wave3 must "new tests pass on old code" (arena_race_result tie test, three NightFlow pins): ACCEPTED, they pin existing behaviour on purpose.
+- Pause rules (Q4/Q5): pinned as built (round may end while paused; skip and reroll legal while paused). Open for owner or n1c/n1d design; not changed.
+- Shared "they went away" phrase: accepted. Reports' part A self-check gap (n1b, e0b), e0a-report Q2 premise, f1-report Summary: could, left as is.
+- Deferred (could): night_flow.dart 309 lines (split into night_event.dart in B3 if touched), lastRound/higherWins naming, plazaDistance unit (decide with city board), champion vs scoreboard place-1 duplicate (wire in B3/n1d), "place" meaning (decide before n1d).
