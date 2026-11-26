@@ -1,0 +1,18 @@
+2026-11-26 15:26:10 RUN_MAX_MIN=132 min (computed backstop of the jobs still to do)
+2026-11-26 15:26:10 start at bbce55c3 on m17side
+2026-11-26 15:26:11 worker: claude
+2026-11-26 15:26:12 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-26 15:26:12 run-base bbce55c3cfb22ccac0808308756a66378bb24eb9
+2026-11-26 15:26:23 phase: preflight
+2026-11-26 15:26:29 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-26 15:27:04 phase: worker (preflight took 41s)
+2026-11-26 15:27:05 start y0a
+2026-11-26 15:31:36 y0a finished: result 0 (41 turns, 4 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 44/1070384/58741/35682
+2026-11-26 15:31:36 phase: tests-first (worker took 272s)
+2026-11-26 15:31:50 tests-first ok: packages/connection/test/choices_gate_test.dart fails on the old code
+2026-11-26 15:31:54 tests-first ok: packages/protocol/test/choices_codec_test.dart fails on the old code
+2026-11-26 15:32:32 phase: check (tests-first took 56s)
+2026-11-26 15:32:47 combined check: the tools suite is skipped (no job changed a file under tools/)
+2026-11-26 15:38:55 phase: apply (check took 383s)
+2026-11-26 15:38:57 committed y0a: 6843f4f9 Add the choice-round messages and the choices capability (M17 phone1a y0a)
+2026-11-26 15:38:57 phase: review (apply took 2s)
