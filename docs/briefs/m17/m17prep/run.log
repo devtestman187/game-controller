@@ -47,3 +47,13 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-26 14:48:58 hand-fixed home: tests-first proof and worker review done (marked in done.txt)
 2026-11-26 14:48:58 skip home (already done)
 2026-11-26 14:48:58 wave 1 review: wave1-review-report.md does not cover home, so its review is wave1-home
+2026-11-26 14:49:20 phase: worker (worker took 97s)
+2026-11-26 14:49:21 start ci
+2026-11-26 14:50:13 ci finished: result 0 (7 turns, 0 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 14/116216/8825/3662
+2026-11-26 14:50:13 phase: tests-first (worker took 54s)
+2026-11-26 14:50:14 phase: check (tests-first took 1s)
+2026-11-26 14:50:15 combined check: skips protocol connection metrics kit look arena puzzle host phone tv tools (no job's change reaches them)
+2026-11-26 14:50:37 ci-patch applied for ci: docs/briefs/m17/m17prep/ci-timeout.patch (.github/workflows/ci.yml )
+2026-11-26 14:50:37 phase: apply (check took 23s)
+2026-11-26 14:50:39 committed ci: 509eaea0 ci: raise analyze-test-android to 45 min; run tests once with coverage
+2026-11-26 14:50:39 phase: review (apply took 2s)
