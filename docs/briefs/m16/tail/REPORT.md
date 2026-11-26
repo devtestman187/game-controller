@@ -31,3 +31,4 @@
 - Shots (docs/briefs/m16/tail/shots/): dragon_667x375.png (mirror 52x47 px, smallest piece 1.57 mm), dragon_800x360.png (1.73 mm), dragon_956x440.png (2.55 mm, today's corner spot). Dragon is the puzzle with the smallest mirror at 667x375. Controls drawn as plain grey shapes; the test font draws the HUD text as blocks. Source: controller_app/test/mirror_floor_shots_test.dart.
 - Batch review of 7427ff1f..tip: must-fix 1 (the painter's missing hudRects, fixed in 99eef25c); other: none must-fix (strip fit monotone in scale so the bisect holds; square hudRects treated as circles is an assumption a non-round square control would break, minor).
 - check.sh after (a): see the final line of the hand-back.
+Owner accepted option (a), the shrinking mini board (Nov 26); Xcode 27.2 confirmed in Codemagic build 1718 log ("Xcode 27.2, Build version 27B52"); 1718 device check pending; m16.6 not tagged.
