@@ -188,13 +188,24 @@ def read_waits(root, since, until):
     return counts
 
 
-def agent_label(path):
-    meta = path[:-len(".jsonl")] + ".meta.json"
+def agent_meta(path):
     try:
-        with open(meta, encoding="utf-8") as fh:
-            return json.load(fh).get("description") or os.path.basename(path)
-    except (OSError, ValueError, AttributeError):
-        return os.path.basename(path)
+        with open(path[:-len(".jsonl")] + ".meta.json", encoding="utf-8") as fh:
+            m = json.load(fh)
+        return m if isinstance(m, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def agent_label(path):
+    return agent_meta(path).get("description") or os.path.basename(path)
+
+
+def is_waiter(path):
+    """An agent whose job is waiting: thumb-wait, or thumb-haiku described as a wait."""
+    m = agent_meta(path)
+    return m.get("agentType") == "thumb-wait" or (
+        m.get("agentType") == "thumb-haiku" and "wait" in str(m.get("description", "")).lower())
 
 
 def main(argv):
@@ -259,7 +270,7 @@ def main(argv):
 
     waits = read_waits(a.root, since, until)
     flagged = sorted(((agent_label(p), n) for p, n in waits.items()
-                      if n > 1 and (not a.match or a.match in p.replace(os.sep, "/"))), key=lambda x: -x[1])
+                      if n > 1 and not is_waiter(p) and (not a.match or a.match in p.replace(os.sep, "/"))), key=lambda x: -x[1])
     wait_txt = "inline waits >1: " + (", ".join(f"{k} {n}" for k, n in flagged) or "none")
 
     total = sum(r["cost"] for r in rows.values())

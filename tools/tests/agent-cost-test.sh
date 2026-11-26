@@ -65,6 +65,13 @@ line() { # line <id> <ts> <model> <usage json>
   done
 } > "$root/sess/subagents/agent-w.jsonl"
 echo '{"description":"Waity driver"}' > "$root/sess/subagents/agent-w.meta.json"
+# waiters are not flagged: a thumb-wait agent, and a thumb-haiku agent whose description says wait
+sed "s/\"tu/\"tw/" "$root/sess/subagents/agent-w.jsonl" > "$root/sess/subagents/agent-tw.jsonl"
+echo '{"agentType":"thumb-wait","description":"Wait for wave 1"}' > "$root/sess/subagents/agent-tw.meta.json"
+sed "s/\"tu/\"hw/" "$root/sess/subagents/agent-w.jsonl" > "$root/sess/subagents/agent-hw.jsonl"
+echo '{"agentType":"thumb-haiku","description":"Wait for check"}' > "$root/sess/subagents/agent-hw.meta.json"
+sed "s/\"tu/\"hp/" "$root/sess/subagents/agent-w.jsonl" > "$root/sess/subagents/agent-hp.jsonl"
+echo '{"agentType":"thumb-haiku","description":"Evidence pack"}' > "$root/sess/subagents/agent-hp.meta.json"
 
 since=2026-11-23T09:30:00Z
 bash tools/agent-cost.sh --root "$tmp/projects" --since "$since" --line > "$out" 2>&1
@@ -74,12 +81,14 @@ check line-haiku 'haiku $0.01'
 check line-fable 'fable $0.17 (cw5m 0.01M cw1h 0.00M)'
 check line-total 'total $0.59'
 check line-gaps 'sonnet resumes >5m 2 (0.05M written), >60m 1 (0.03M written)'
-check line-waits '; inline waits >1: 1 agents'
+check line-waits '; inline waits >1: 2 agents'
 
 bash tools/agent-cost.sh --root "$tmp/projects" --since "$since" > "$out" 2>&1
 check table-opus-dedup 'opus     main       1      1000      2000       10000          0       4000     0.08'
 check table-sonnet-sub 'sonnet   sub        3        20       200           0      50000      50000     0.33'
-check table-waits 'inline waits >1: Waity driver 3'
+check table-waits-driver 'Waity driver 3'
+check table-waits-pack 'Evidence pack 3'
+if grep -q 'Wait for' "$out"; then echo "FAIL waiters-skipped"; fails=$((fails + 1)); else echo "PASS waiters-skipped"; fi
 check table-long 'haiku calls over 100K prompt (5x price): 1'
 if grep -q synthetic "$out"; then echo "FAIL synthetic-skipped"; fails=$((fails + 1)); else echo "PASS synthetic-skipped"; fi
 
