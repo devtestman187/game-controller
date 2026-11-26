@@ -1,3 +1,4 @@
 - 15:26 briefs: y0a y0b(sonnet) y0c written, brief-check + probe-deps ok. probe (pad debounce): none, taps are exact. next: dry-run, commit, start runner
 - 15:39 wave1 y0a committed 6843f4f9 (41 turns, 4 min, haiku, ladder 1), no findings. next: restart for y0b
 - 16:02 wave2 y0b 62aa448c (31 turns, 5 min, sonnet). review 1 must + fixes -> y0g in wave 3 with y0c. NOTE: runner writes the review after the STOPPED line; wait for 'reviewed waveN' in run.log before restart
+- 16:28 waves 1-3 done (y0a y0b y0c y0g). run review: reopened params/one-type rule; fix round: f1a (wave 4), f1b+f3 (wave 5). restart without pause
