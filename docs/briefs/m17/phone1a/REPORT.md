@@ -51,3 +51,6 @@ y0g          claude claude-haiku-5-5     20 26 21161  461624     2.3  4.0 0 (sub
 - Calls: driver about 50 tool calls; waiters: thumb-wait 4 runs (5, 2, 7 and 17 wait-run calls), thumb-haiku probe 10 calls. Wall time about 2 h (15:09 to 17:25).
 - Improvement analysis: (a) one-job waves each pay a full review plus check (about 7 min of 25); (b) the runner's wave review misses what a rule grep finds, so read the guideline text before verdicts; (c) Haiku handled protocol and fallback work cleanly in 2-5 minutes each, Sonnet for y0b was fine; (d) the first heredoc-heavy shell calls failed to parse twice; use the Write tool for brief files; (e) fix jobs that change a constructor must carry both test call sites (f1a did).
 - No iOS files touched. Nothing pushed, tagged or merged.
+
+proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart) 
+no background command of mine is still running
