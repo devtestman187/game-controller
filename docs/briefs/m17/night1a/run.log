@@ -99,3 +99,10 @@ RESULT: DONE: 4 jobs, 42 min
 2026-11-26 16:45:16 committed f2: e0a37c02 night1a f2: ChampionChain keeps its own list; pin NightFlow pause rules
 2026-11-26 16:45:18 committed f3: 1d1e5cc8 Captions: say "round" for one round and "before round 1" for a round-0 join or leave
 2026-11-26 16:45:18 phase: review (apply took 16s)
+2026-11-26 16:47:49 reviewed wave3: 6 finding(s)
+METRICS f1 worker=claude model=claude-haiku-5-5 turns=29 in=56 out=17771 cache=1002464 min=2.5 wall=4.0 result=0
+METRICS f2 worker=claude model=claude-haiku-5-5 turns=22 in=26 out=11514 cache=331068 min=2.5 wall=6.0 result=0
+METRICS f3 worker=claude model=claude-haiku-5-5 turns=1 in=4 out=108 cache=31154 min=0.0 wall=13.9 result=0
+METRICS wave3-review worker=claude model=claude-haiku-5-5 turns=28 in=30 out=26983 cache=796494 min=2.2 wall=- result=0
+2026-11-26 16:47:54 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/night1a/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 7 jobs, 26 min
