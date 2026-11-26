@@ -12,5 +12,5 @@ do:
 3 Report: any event the flow could not express, and the caption list.
 4 Before finishing run `dart analyze` on the files you changed and fix every info, warning and error.
 allow: packages/party_host/lib/src/night/night_captions.dart · packages/party_host/test/night_captions_test.dart
-check: format analyze party_host
+check: format analyze host
 report: docs/briefs/m17/night1a/n1b-report.md

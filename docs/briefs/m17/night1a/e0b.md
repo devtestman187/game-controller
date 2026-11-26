@@ -13,5 +13,5 @@ do:
 4 Report: the final constructors, and where the extra step goes.
 5 Before finishing run `dart analyze` on the files you changed and fix every info, warning and error.
 allow: packages/party_host/lib/src/night/champion.dart · packages/party_host/test/champion_test.dart
-check: format analyze party_host
+check: format analyze host
 report: docs/briefs/m17/night1a/e0b-report.md
