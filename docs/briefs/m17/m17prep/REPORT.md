@@ -39,3 +39,14 @@ wave2-review      claude claude-haiku-5-5     20 24 20240  399437     1.6    - 0
 - Proposed lessons: 0 added. Candidates: (1) tools/check.sh run twice at once collides on .dart_tool/selftest.lock: never start a second check while an earlier one's tools suite runs; (2) a killed driver-side `( ... ; echo exit )` subshell loses its exit line: run checks with run_in_background instead.
 - Calls: driver about 55; waiters: thumb-wait 3 agents (11, 2, 4 wait-run calls), thumb-haiku 4 agents (2 to 11 calls each).
 - Wall time about 1 h 10 min (14:07 to 15:15 local).
+
+## p0a results
+- Thumby's 56 dp corner head and the 2-line strip fit on no host night card at 360x640 or 667x375. On the phone result card the head fits at 667x375; the strip fits only mid-night with 4 players. At 360 dp wide the phone draws no card. So the setup screen and Thumby do not fit at 360x640 as the cards are today; phone-fit option C was not measured.
+- Measuring tests the batch added: packages/party_host/test/night_cards_fit_test.dart, packages/party_host/test/night_labels_fit_test.dart, controller_app/test/night_result_fit_test.dart (numbers in docs/briefs/m17/m17prep/p0a-fit.json, report p0a-report.md).
+
+## e0f results
+- 8 phones in-process: 480 inputs/s, 8.1 ms max host lag; worst-case night frame 773/796/817 bytes at 4/6/8 players against the 2048 budget. Test: packages/connection/test/load_eight_phones_test.dart (also packages/puzzle_game/test/snapshot_eight_players_test.dart).
+
+## Next-push checks
+- Coverage against 92.8% (REVIEW.md open question 11): coverage runs with no threshold, so check it by hand against the 92.8% in HANDOFF.
+- phone_home_screen.dart:150 restarts the 3 s wait on any new startedAt: check on a device.
