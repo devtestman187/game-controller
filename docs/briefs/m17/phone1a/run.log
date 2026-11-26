@@ -126,3 +126,4 @@ METRICS wave5-review worker=claude model=claude-haiku-5-5 turns=39 in=46 out=379
 RESULT: DONE: 7 jobs, 41 min
 2026-11-26 17:10:56 HAND-FIX f3: 1 line changed (choice_fallback.dart:95 start() guard adds _finished) + f3-report wording, driver, wave5 should finding
 2026-11-26 17:10:56 HAND-FIX-EVENT f3: 1 lines changed, replaced ladder level 1
+2026-11-26 17:24:42 full check: All checks passed (809s, 0 cached)
