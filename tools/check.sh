@@ -223,6 +223,8 @@ if [ -f "$root/tools/proc-lib.sh" ]; then
   . "$root/tools/proc-lib.sh"
   guard_script check.sh "${CHECK_MAX_S:-$((GUARD_MAX_MIN * 60))}"
 fi
+# Machine-wide heavy-step lock (L26, m17 two lines): wait while another line's check/smoke/verify-batch runs.
+if [ -f "$root/tools/machine-lock.sh" ]; then . "$root/tools/machine-lock.sh"; machine_lock check.sh || exit 1; fi
 
 # The lines worth showing from a failed run: test names that failed, the
 # expectation lines, compile and analyzer errors, files that need formatting.

@@ -104,6 +104,7 @@ sim_view_pid=""
 # repository's debug build; no other process is touched.
 cleanup() {
   trap - EXIT
+  declare -F machine_lock_release > /dev/null && machine_lock_release
   for pid in "$sim_pid" "$sim2_pid" "$sim_view_pid"; do
     if [ -n "$pid" ]; then
       kill "$pid" 2> /dev/null
@@ -122,6 +123,8 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
+# Machine-wide heavy-step lock (L26, m17 two lines): the TV app and emulator are shared too.
+if [ -f tools/machine-lock.sh ]; then . tools/machine-lock.sh; machine_lock smoke.sh || exit 1; fi
 
 # A path as bash can open it (tv-dev.sh prints the Windows one).
 to_bash_path() {

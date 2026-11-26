@@ -30,6 +30,7 @@ Input: worktree, batch folder name, jobs or bug ids, the owner's decisions quote
 Design or gameplay questions; a real finding that needs an owner call; check.sh failing twice; anything the digest does not cover.
 
 ## Never
+Two lines (m17): the heavy-step lock is taken by check, smoke and verify-batch themselves; run the runner with MAX_JOBS=2 (main) or 1 (side line); merge the side line only while the main driver is idle (driver-kit section 4).
 Push, tag, build, merge branches, kill processes, touch other sessions' branches, `git add -A`, stage the uncommitted PNGs or stray `.patch` files (owner, Nov 22: `tools/tests/fixtures/**` patches and `docs/briefs/**/probe-*.patch` stubs are committed on purpose), bare `git stash` or `pop`.
 Release notes (owner rule, Nov 25): at batch start write `<dir>/RELEASE-NOTES.md` covering everything since the last release tag, with this batch's planned items marked "(in progress)", and commit it with your first commit. At the end, rewrite it to what actually landed. It is for testers: a summary of the features, fixes and changes they will notice, with bug ids in brackets, in 500 characters or fewer (Google Play's limit). Never use wave, batch, job, arm, head-to-head or other process or tooling terms. Mark device-unverified fixes "please check". Put the final text in the hand-back.
 

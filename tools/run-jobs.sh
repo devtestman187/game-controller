@@ -31,8 +31,8 @@
 #      tools/review.sh: any FAIL, or a touched lib file over SIZE_STOP lines, stops the run;
 #   5. each job is committed and pushed (tools/commit-job.sh --push);
 #   6. a reviewer job per committed job writes <job>-review-report.md. Reviews run
-#      in the background while the next wave works (at most 3 flash jobs in all,
-#      the review chain counting as one); their report files are committed at the
+#      in the background while the next wave works (at most MAX_JOBS, default 3, jobs in all,
+#      the review chain counting as one; m17 two lines: main MAX_JOBS=2, side MAX_JOBS=1); their report files are committed at the
 #      next serial point (after the next wave commit), staging only those files.
 #      A plan with a single wave skips this review: the run review covers it.
 # At the end one more worker job reads everything since the run's first commit

@@ -2,7 +2,7 @@
 # Sourced by tools/run-jobs.sh, after it has cd'd to the repo root:
 #   . "$dir/run-review.sh"   (dir: the folder holding run-jobs.sh)
 # The second cheap worker's review of each wave and of the run: the briefs, their
-# start and reports, and slot_wait's limit of 3 flash jobs. Not run on its own; it
+# start and reports, and slot_wait's limit of MAX_JOBS (default 3) jobs. Not run on its own; it
 # reads the runner's globals (B, LOGS, WORK, review, WAVES, CHURN_OUTSIDE, RV_NAMES,
 # RV_RANGES, PENDING, REVPIDS) and its note, save, finding, stop, check_stop, kill_tree,
 # committed, outside_files and unchurn helpers. A review waits at most RUN_REVIEW_MAX_MIN
@@ -88,8 +88,10 @@ flush_reviews() { # flush_reviews [wait]: commit the reports of reviews that hav
   done
   PENDING=("${keep[@]:-}")
 }
-slot_wait() { # at most 3 flash jobs at once, counting the background review chain as one
-  while [ "$(jobs -rp | wc -l)" -ge 3 ]; do sleep 5; done
+slot_wait() { # at most MAX_JOBS (default 3) jobs at once, counting the background review chain as one
+  local cap=${MAX_JOBS:-3}
+  case "$cap" in '' | *[!0-9]* | 0) cap=3 ;; esac
+  while [ "$(jobs -rp | wc -l)" -ge "$cap" ]; do sleep 5; done
 }
 # The run's own review, one worker job over everything since run-base. It runs in the
 # background under a RUN_POLL_S check_stop poll, like a wave's job, so the STOP file is seen,

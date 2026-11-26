@@ -46,6 +46,8 @@ tip="${range#*..}"
 git rev-parse --verify -q "${range%%..*}^{commit}" > /dev/null && git rev-parse --verify -q "$tip^{commit}" > /dev/null \
   || { echo "verify-batch: bad range $range" >&2; exit 2; }
 tipsha="$(git rev-parse "$tip")"
+# Machine-wide heavy-step lock (L26, m17 two lines).
+if [ -f "$here/tools/machine-lock.sh" ]; then . "$here/tools/machine-lock.sh"; machine_lock verify-batch.sh || exit 1; fi
 fail=0
 say() { echo "$1 $2: $3"; [ "$1" != FAIL ] || fail=1; }
 

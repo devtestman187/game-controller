@@ -46,6 +46,7 @@ guard_script() {
 guard_exit() { # guard_exit <EXIT|INT|TERM>: kill the children's trees; a timeout exits 1 naming the limit
   local sig=$1 rc=$?
   trap - EXIT INT TERM
+  declare -F machine_lock_release > /dev/null && machine_lock_release # heavy-step lock (tools/machine-lock.sh)
   # A normal exit has no children left but the watchdog: kill only that (a walk of every child here once killed the
   # script's own MSYS twin and turned exit 1 into 143, tune4); a signal or the timeout kills every child tree.
   if [ "$sig" = EXIT ] && [ ! -f "$GUARD_FLAG" ]; then
