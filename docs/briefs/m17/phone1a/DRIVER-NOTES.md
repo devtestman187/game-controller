@@ -1,1 +1,2 @@
 - 15:26 briefs: y0a y0b(sonnet) y0c written, brief-check + probe-deps ok. probe (pad debounce): none, taps are exact. next: dry-run, commit, start runner
+- 15:39 wave1 y0a committed 6843f4f9 (41 turns, 4 min, haiku, ladder 1), no findings. next: restart for y0b

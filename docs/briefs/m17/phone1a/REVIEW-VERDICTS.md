@@ -1,0 +1,1 @@
+wave 1 (y0a): the runner wrote no review report (review phase 1 s). Driver spot-check of 6843f4f9: wire rules, gate, switches match the contract; no findings. Trivial: host_server.dart comment reflowed by format, ignored.
