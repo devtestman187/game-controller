@@ -15,6 +15,7 @@ void main() {
       NightRoundEnded(1, false),
       NightPlayerLeft('a1', 1, NightReason.playerLeft),
       NightScoreboard(1, false),
+      NightPlayerJoined('a2', 1),
       NightHowTo(2),
       NightRoundStarted(2, false),
       NightRoundRerolled(2, NightReason.timeUp),
@@ -39,15 +40,16 @@ void main() {
     expect(flow.stage, NightStage.ended);
     expect(captions, [
       'Tonight: 3 rounds',
-      'Avatar a1 joined at round 0',
+      'Avatar a1 joined before round 1',
       'How to play round 1',
       'Round 1 skipped: the host chose it',
       'Round 1 starts',
       'Round 1 paused',
       'Round 1 resumed',
       'Round 1 is over',
-      'Avatar a1 left at round 1: a player left',
+      'Avatar a1 left at round 1: they went away',
       'Scoreboard after round 1',
+      'Avatar a2 joined at round 1',
       'How to play round 2',
       'Round 2 starts',
       'Round 2 rerolled: time ran out',
@@ -89,6 +91,26 @@ void main() {
   test('a caption holds the avatar id and no other personal field', () {
     expect(captionFor(const NightPlayerJoined('a1', 2)), 'Avatar a1 joined at round 2');
     expect(captionFor(const NightPlayerLeft('a7', 2, NightReason.timeUp)), 'Avatar a7 left at round 2: time ran out');
+  });
+
+  test('a join or leave at round 0 says before round 1', () {
+    expect(captionFor(const NightPlayerJoined('a1', 0)), 'Avatar a1 joined before round 1');
+    expect(
+      captionFor(const NightPlayerLeft('a1', 0, NightReason.host)),
+      'Avatar a1 left before round 1: the host chose it',
+    );
+  });
+
+  test('a player who left during a round says they went away', () {
+    expect(
+      captionFor(const NightPlayerLeft('a1', 1, NightReason.playerLeft)),
+      'Avatar a1 left at round 1: they went away',
+    );
+  });
+
+  test('one round says round in the setup caption, and more than one says rounds', () {
+    expect(captionFor(const NightSetup(1)), 'Tonight: 1 round');
+    expect(captionFor(const NightSetup(3)), 'Tonight: 3 rounds');
   });
 
   test('last-round captions say last round and the doubling caption says double', () {
