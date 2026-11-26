@@ -58,4 +58,24 @@ void main() {
     }
     expect([g.phase, g.roundResult], [ArenaPhase.playing, null]);
   });
+
+  test('two others at equal distance from the goal centre are placed by player id, lower id first', () {
+    // b and c stand mirrored about the goal's centre line, the same distance from its centre; c joined first.
+    final g = race(['a', 'c', 'b']);
+    final goal = g.goalRect.center;
+    final byId = {for (final p in g.players) p.id: p};
+    byId['b']!.place(goal + const Offset(-200, -80));
+    byId['c']!.place(goal + const Offset(-200, 80));
+    expect(
+      (byId['b']!.position - goal).distance,
+      (byId['c']!.position - goal).distance,
+      reason: 'the setup must put b and c at exactly the same distance',
+    );
+    playToGoal(g);
+    expect(
+      {for (final e in g.roundResult!.stats.entries) e.key: e.value['place']},
+      {'a': 1, 'b': 2, 'c': 3},
+      reason: 'b and c are equally far from the goal; the lower id is placed first',
+    );
+  });
 }

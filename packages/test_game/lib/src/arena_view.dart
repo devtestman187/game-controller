@@ -140,7 +140,9 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
     SchedulerBinding.instance.addPostFrameCallback((_) => _session.drawn());
     if (_snapshot.timeLeftMs case final left?) widget.onClock?.call(left);
     if (widget.onFinished case final finished? when !_finished) {
-      if (_session.game.roundResult case final result?) {
+      // A race round has a result at its goal too, but only the Bumper Round's end finishes the view: the race
+      // keeps playing round after round.
+      if (_session.game.roundResult case final result? when _session.game.phase == ArenaPhase.over) {
         _finished = true;
         finished(result);
       }

@@ -7,7 +7,7 @@
 - The stale doc on `roundResult` is updated (it said the race never sets it).
 - The Bumper Round, scoring, the race's play, timing and snapshot are unchanged.
 - Tests: 3 new tests in `arena_race_result_test.dart`. `tools/mine.sh` ran them: 4 tests passed in the touched files, format and analyze clean for `packages/test_game`.
-- Step 2 finding: a race round in a night now finishes on this result (see Hand-over).
+- Step 2 finding: a standalone race would reach the Bumper results card at its first goal; f1 stops that (see Hand-over).
 
 ## Files changed
 
@@ -38,14 +38,14 @@ Two players `a, b`: winner a, b is loss, no draw. Break is `ArenaGame.roundBreak
 
 - `packages/test_game/lib/src/arena_view.dart:142-146`: when `roundResult` is non-null and `onFinished` is set (once, guarded by `_finished`), it calls `onFinished(result)`.
 - `packages/party_host/lib/src/ui/game_field.dart:72-83` passes `onFinished` to `ArenaView`; `game_screen.dart:339` supplies `_finished`.
-- Effect: in a night, a race round now finishes on the first goal, because the result is non-null from that moment. Before this change the race never finished a round through `roundResult`. I did not read `_finished` in `game_screen.dart` and did not change either file.
+- Effect: a standalone race now reaches `_finished` at its first goal, because the result is non-null from that moment, and the host would show the Bumper results card. A night does not reach this path: it forces the Bumper Round (`game_screen.dart:178`). f1 adds the `ArenaPhase.over` check so only the Bumper Round's end calls `onFinished`. I did not change `game_screen.dart`.
 
 ## Hand-over
 
 Checks run:
 - `tools/mine.sh` — first run: `dart analyze` error (`RoundOutcome` not imported in the test) and one info (redundant `points: const {}` in `arena.dart`); fixed both. Second run: one warning (unused `protocol` import in the test); fixed. Final run: `ok: 2 file(s) formatted, 1 package(s) analyzed, 1 package(s) tested`, 4 tests OK.
 
-Not verified: I did not see the new tests fail on the old code. The runner's churn revert reported OK, which I read as the fail-on-old check passing, but I did not run it separately. Expected on old code: the first and second tests fail (`roundResult` is null after the goal).
+Not verified: I did not see the new tests fail on the old code. The runner's churn revert reported OK, which I read as the fail-on-old check passing, but I did not run it separately. Expected on old code (before e0a, `roundResult` is always null in a race): all three new tests fail — the first and second at the `roundResult` expectations after the goal, and the third at its `isNotNull` check after `playToGoal`. The earlier note that only two fail was wrong. f1 adds a placing test to the same file; see f1-report.md.
 
 Questions:
 1. The placing's tie-break (ties by id) is covered by the c/d pair, which are exactly equal in distance up to float rounding. If that pair ever stops being exactly equal, the test could flip without a rule change. Should the test assert the tie explicitly, or use distinct distances?
