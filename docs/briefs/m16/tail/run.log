@@ -25,3 +25,24 @@
 2026-11-26 11:20:21 wave review skipped: wave 1 is the whole run, the run review covers it
 2026-11-26 11:20:22 STOPPED: jobs that failed or passed their limit (parked, not committed): s1 (their logs: docs/briefs/m16/tail/flash-<job>.log)
 RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): s1 (their logs: docs/briefs/m16/tail/flash-<job>.log)
+2026-11-26 11:20:52 RUN_MAX_MIN=50 min (computed backstop of the jobs still to do)
+2026-11-26 11:20:53 start at 8e60aff1 on m16
+2026-11-26 11:20:53 worker: claude
+2026-11-26 11:20:53 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-26 11:20:53 removed the last stop's STOP.md
+2026-11-26 11:20:59 phase: preflight
+2026-11-26 11:21:06 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-26 11:21:21 phase: worker (preflight took 22s)
+2026-11-26 11:21:22 skip m1 (already done)
+2026-11-26 11:21:22 start s1
+2026-11-26 11:21:23 skip s2 (already done)
+2026-11-26 11:29:03 s1 finished: result 0 (47 turns, 5 min) model claude-sonnet-5-5, ladder 2, tokens in/read/write/out 50/991302/46662/12046
+2026-11-26 11:29:03 phase: tests-first (worker took 462s)
+2026-11-26 11:30:19 tests-first ok: controller_app/test/bar_start_test.dart fails on the old code
+2026-11-26 11:30:30 phase: check (tests-first took 87s)
+2026-11-26 11:30:50 combined check: skips protocol connection metrics kit look arena puzzle host tv tools (no job's change reaches them)
+2026-11-26 11:32:31 phase: apply (check took 121s)
+2026-11-26 11:32:31 finding: s1's report has no Summary block in its first 40 lines
+2026-11-26 11:32:33 committed s1: 36778118 m16 tail s1: Start/Pause moves into the compact game bar
+2026-11-26 11:32:33 phase: review (apply took 2s)
+2026-11-26 11:32:33 wave review skipped: wave 1 is the whole run, the run review covers it
