@@ -5,6 +5,7 @@
   - 1A = toolchain checks, then the upgrade-only build.
   - 2A = the board line runs alongside M17a in its own copy and with its own review.
   - Standing: "Remember to run questions and recommendations by fable. Stop and ask me in case there is a major change to the plan above".
+  - Standing (Nov 26): "Make sure going forward to remember to check all your recommendations with fable agent." Every recommendation goes to the fable-review agent before the owner sees it: lettered picks, go/wait calls and next steps as well as design questions. Each message to the owner says Fable reviewed it.
 - **Plans (read these first, in E:\AI\m17-scoping\):**
   - `M17a-batches.md` is the build order: 11 batches B1-B11 (52 jobs) plus the 3-batch board line. Its "Fable review — adopted" and "Home search wait" sections at the end override the table where they differ.
   - `city-rush-plan.md` covers the City Rush rules and the owner's answers. The end of the file has the build stop as a phone shop, one fixed road per district, 6 colours plus badges, and the choices screen in M17a.
