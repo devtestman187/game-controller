@@ -1,4 +1,4 @@
-# one job per wave: each needs the one before it
+# one job per wave: each needs the one before it; y0g (fix of wave 2) shares wave 3 with y0c: y0c allows no choice_round file
 y0a
 y0b
-y0c
+y0c y0g
