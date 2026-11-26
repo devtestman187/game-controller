@@ -1,72 +1,27 @@
-# M17 — AI Host/Commentator ("Thumby"): status
+# M17 status
 
-## Where it stands (Nov 20, 2026)
-
-**`ux-review/PROPOSAL-v2.md` is the settled plan** (owner accepted all ten answers, Nov 20).
-`ux-review/PROPOSAL.md` (v1) is **superseded**; the sections below describe v1 and are kept for
-history (v2 drops run-time LLM text, cloud TTS and the adult opt-in). No code written. **Next:** the M16
-Thumby hooks (`docs/briefs/m16/ux-review/PROPOSAL.md` "Thumby integration (M17)"), then M17 Phase 0
-(decisions + measure the night cards at ~360x640 dp). PRD-v2.md has "Milestone 17".
-
-Status (v1, superseded): **UX design complete and owner-approved (Nov 20, 2026). No code written.** Resume
-implementation from here. Seed thinking: `AI-HostCommentator-Investigation.md` (this folder).
-Evidence + proposal: `ux-review/` (same template as M16's `docs/briefs/m16/ux-review/`).
-
-## What this is
-
-An "AI host/commentator": a named host character — **Thumby**, a cute cartoony thumb — who
-narrates the party night with a short line at each beat. **Template-first**: today's deterministic
-strings stay as the offline fallback; the LLM line is an async *upgrade* that renders only on
-success within a latency budget. Backend / provider / consent / safety / eval design lives in
-`AI-HostCommentator-Investigation.md` (Cloudflare Workers AI default, adult opt-in default OFF,
-sanitized nickname only, ≤140-char plain text).
-
-## Decisions (owner, Nov 19–20)
-
-- **Concept:** a dedicated host character (not Robo, not the players), named **Thumby**.
-- **Final look:** Rally's tall leaning thumb body + Cheer's grinning face (brows, small nose, wide
-  grin) set high under the pad + a **small handheld mic** + a **smooth lower body (no joint folds)**
-  + a **bright six-stripe rainbow nail**.
-- **Voice:** V1 — text + a canned voice pack (captions always on; a separate host-voice channel).
-- **Cadence:** L1 — ceremony (round result · award reveal · final crown) + between-rounds
-  (scoreboard quip · round intro "get ready").
-- **Scope:** host screen only (TV / Windows / phone-host). No phone-client change in this cut.
-
-## Surfaces (the seams commentary swaps into)
-
-| Moment | Seam (file:line) | Today's string |
-|---|---|---|
-| Round-result headline | `party_host` `lib/src/ui/arena_results.dart:88-90` (header); `puzzle_screen_widgets.dart:7-19` | "Robo wins!" / "Done!" / "Draw" / "Left wins!" / "Right wins!" |
-| Award-reveal narration | `party_host` `lib/src/ui/night_reveal_widgets.dart:94` (`outcome.reason ?? outcome.award.line`); missed branch `:74-85` | "Most carries home together" / "Not won tonight" |
-| Award catalogue | `party_host` `lib/src/night/night_awards.dart:28-111` | 12 awards × title + line, 3 per night |
-| Reveal pacing | `party_host` `lib/src/ui/night_reveal_screen.dart:25,29` | won 4000 ms, missed 2000 ms |
-
-## Deliverables (all under `docs/briefs/m17/`)
-
-- `ux-review/PROPOSAL.md` — ranked shortlist, the decision, the Thumby design, voice/cadence, guardrails, M16 fit.
-- `ux-review/research/host-commentator-synthesis.md` — six-peer host/announcer synthesis.
-- `ux-review/research/tts-voice.md` — TTS cost/latency/safety + the tier recommendation.
-- `ux-review/findings/night-reveal-capture.md` — live capture of the reveal + exact placements.
-- `ux-review/mockups/` — Thumby flow frames (round result, scoreboard, round intro, award won/missed,
-  final crown) + the final character sheet, Sunny + Night, with HTML sources.
-
-## Next (Claude drives; Flash workers do the work)
-
-1. Port the final Thumby drawing into the app (a host-side widget/painter, reusing the toy_look
-   character pipeline).
-2. Implement `CommentarySource` (Template + Remote) per the investigation file §5.2; wire the two
-   swap points above; register the client at both shells' provider overrides
-   (`controller_app/main.dart:47`, `tv_test_app/main.dart:43`).
-3. New consent key + prompt, default OFF (investigation file §6).
-4. Canned voice pack (build-time) per V1; optional cloud TTS after.
-5. Responsible-AI eval suite (investigation file §9).
-Build order: land **after M16 item 6** (end-of-night awards) is stable — the reveal already exists
-in code; commentary layers on top.
-
-## How we work with the Flash agents
-
-Claude Code drives (per `docs/HANDOFF.md` §10 Claude side + `docs/agent-workflow.md`); Flash workers
-(`deepseek-account/deepseek-flash`) do the mechanical work via `tools/flash.sh`. Slice before
-dispatch; one bounded change per worker; the driver reads the diff and re-runs
-`tools/check.sh`/`review.sh` — never take a child's word as evidence. (This M17 UX work itself was
-done in DeepSeek Harness with pinned `subagent` calls; the artifacts above are the handoff.)
+## Resume here (Nov 26, 2026)
+- **Owner go:** "Build, 1A 2A" on Nov 26, using the fast track.
+  - 1A = toolchain checks, then the upgrade-only build.
+  - 2A = the board line runs alongside M17a in its own copy and with its own review.
+  - Standing: "Remember to run questions and recommendations by fable. Stop and ask me in case there is a major change to the plan above".
+- **Plans (read these first, in E:\AI\m17-scoping\):**
+  - `M17a-batches.md` is the build order: 11 batches B1-B11 (52 jobs) plus the 3-batch board line. Its "Fable review — adopted" and "Home search wait" sections at the end override the table where they differ.
+  - `city-rush-plan.md` covers the City Rush rules and the owner's answers. The end of the file has the build stop as a phone shop, one fixed road per district, 6 colours plus badges, and the choices screen in M17a.
+  - `M17-dev-plan.md` is the original M17 job list. It has stale parts, listed in M17a-batches.md section 5; job p0b fixes them.
+  - The mock-up page is https://claude.ai/artifact/Qesc8AcF6qow8qK9MuP3e1 (panel 3 is the build stop as a phone shop). The review deck is https://claude.ai/artifact/Xtq5f2xLCfe99aUZZnc1H5.
+- **Worktrees:**
+  - Main line: E:\AI\game-controller-m17, branch m17, from 18a95647 (the m16.6 tip).
+  - Side line (to create): E:\AI\game-controller-m17side, branch m17side.
+  - Board line: branch board-line.
+- **Done before M17a:**
+  - Xcode 27.2 is pinned (codemagic.yaml:28). Build 1718 passed and the owner's part-1 device checks passed. Flutter stays 3.47.8.
+  - m16.6 holds Pause in the compact game bar and the B-042 mini board (strip/corner, 1.5 mm floor). The owner said "Go for the tag on m16.6", and thumb-release was running when this was written. Check `git tag -l m16.6` and the GitHub/Codemagic runs.
+- **Next:** start B1 (m17prep) once the m16.6 release's check has finished; only one full check runs on the machine at a time.
+  - B1 now also holds the home search-wait job (owner picked A): show "Looking for a screen…", fix "Search again" and resume, log time-to-first-host, keep 3 s.
+- **Owner questions to send at batch start, each with a default:**
+  - O1, the champion chain: before B2 ends.
+  - O2/O3, choices screen states and the old-phone mapping: at B5 start.
+  - O5, Vote defaults: at B7 start.
+  - Q5, the kid playtest: needed before B11, so the owner was asked to line up a date.
+- **Internal builds BP1 (after B6) and BP2 (after B8)** each need the owner's word.
