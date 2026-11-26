@@ -20,3 +20,27 @@
 2026-11-26 15:36:56 job e0b parked: its files are saved in .dart_tool/run-jobs/docs_briefs_m17_night1a/parked-e0b.patch and out of the tree (the siblings' check does not see them)
 2026-11-26 15:36:56 STOPPED: jobs that failed or passed their limit (parked, not committed): e0a n1a e0b (their logs: docs/briefs/m17/night1a/flash-<job>.log)
 RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): e0a n1a e0b (their logs: docs/briefs/m17/night1a/flash-<job>.log)
+2026-11-26 15:38:06 RUN_MAX_MIN=113 min (computed backstop of the jobs still to do)
+2026-11-26 15:38:07 start at fd4f5fdd on m17
+2026-11-26 15:38:07 worker: claude
+2026-11-26 15:38:09 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-26 15:38:32 phase: preflight
+2026-11-26 15:38:45 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-26 15:39:15 phase: worker (preflight took 43s)
+2026-11-26 15:39:16 start n1a
+2026-11-26 15:39:41 start e0a
+2026-11-26 15:43:56 start e0b
+2026-11-26 15:43:57 e0a finished: result 0 (27 turns, 3 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 48/889923/43219/21877
+2026-11-26 15:47:12 n1a finished: result 0 (21 turns, 4 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 42/781682/45649/35790
+2026-11-26 15:51:58 e0b finished: result 0 (20 turns, 5 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 40/517172/26944/15956
+2026-11-26 15:51:58 phase: tests-first (worker took 763s)
+2026-11-26 15:53:25 tests-first ok: packages/party_host/test/champion_test.dart fails on the old code
+2026-11-26 15:53:36 tests-first ok: packages/party_host/test/night_flow_test.dart fails on the old code
+2026-11-26 15:53:47 tests-first ok: packages/test_game/test/arena_race_result_test.dart fails on the old code
+2026-11-26 15:54:43 phase: check (tests-first took 165s)
+2026-11-26 15:54:54 combined check: skips protocol connection metrics look tools (no job's change reaches them)
+2026-11-26 16:02:27 phase: apply (check took 464s)
+2026-11-26 16:02:29 committed e0a: 09fe76ec test_game: the Arena race sets roundResult with its placing
+2026-11-26 16:02:31 committed n1a: 06d8e2de party_host: NightFlow stage machine and NightEvent contract (night1a)
+2026-11-26 16:02:33 committed e0b: 7606176b Add the champion chain as a pure Champion type (night1a e0b)
+2026-11-26 16:02:33 phase: review (apply took 6s)
