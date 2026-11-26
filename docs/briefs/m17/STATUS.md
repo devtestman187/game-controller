@@ -20,6 +20,19 @@
   - m16.6 holds Pause in the compact game bar and the B-042 mini board (strip/corner, 1.5 mm floor). The owner said "Go for the tag on m16.6", and thumb-release was running when this was written. Check `git tag -l m16.6` and the GitHub/Codemagic runs.
 - **Next:** start B1 (m17prep) once the m16.6 release's check has finished; only one full check runs on the machine at a time.
   - Nov 26 owner pick "B": wait until the m16.6 TestFlight build (Codemagic, Xcode 27.2) is confirmed before starting B1. The GitHub release (build 1737, Android and Windows) passed. If TestFlight fails, an m16.7 check has priority over B1's check.
+- **Driver cost plan (owner picked "A" on Nov 26, Fable-reviewed):**
+  - **Why:** on Nov 25 Sonnet cost $35.54 of $63.54. Batch drivers were $22.29 of it: 117-168 calls each, re-reading 165k-230k of context per call (about 60% of driver cost), plus inline wait loops and cache expiry on waits over 5 minutes (about $0.5 per wake-up at 230k). Measure with `bash tools/agent-cost.sh --since <time>`.
+  - **Step 1, trim every driver (still Sonnet), from B1 on:**
+    - At most one short inline wait per run, then thumb-wait. agent-cost flags repeated inline waits.
+    - Cap the call count rather than banning short reads (a 20-line sed inline is fine).
+    - Hand off to a fresh driver at stage boundaries only (after a run and its repairs, before review wrap-up, before a long run), never mid-repair, when the prompt nears 100k. DRIVER-NOTES carries the ladder state and repair classes.
+    - B1's agent-cost line is the new Sonnet baseline (estimate about $1-1.5 per batch, not yet measured).
+  - **Step 2, Haiku-driver trial on board-1 (board3a, branch board-line), after B1's baseline:**
+    - Run thumb-batch with a per-call `model: haiku` override. Don't edit thumb-batch.md's model line; the Sonnet path stays for B2-B4.
+    - A short Sonnet judge is called on fixed triggers only: every brief, every STOPPED, every ladder step 3 or later, every REVIEW finding, every tracker note. At most about 6 judge spawns, each with a pack of 30 lines or fewer, all counted in the cost.
+    - The Haiku driver writes the tracker (ArtifactData with if_version) from the judge's text.
+    - Pass gates: thumb-verify PASS, no missed design stop, no extra ladder step against the judge's advice, total cost below the B1 Sonnet baseline, driver prompt under 100k throughout.
+    - Spec: docs/design/haiku-driver-trial.md. Expect about $1 per batch more saving; step 1 is the bigger lever.
   - B1 now also holds the home search-wait job (owner picked A): show "Looking for a screen…", fix "Search again" and resume, log time-to-first-host, keep 3 s.
 - **Owner questions to send at batch start, each with a default:**
   - O1, the champion chain: before B2 ends.

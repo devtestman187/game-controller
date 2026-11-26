@@ -141,6 +141,61 @@ def cost(fam, c):
     return (c["in"] * pi + c["out"] * po + c["cr"] * READ_MULT.get(fam, 0.1) * pi
             + c["cw5"] * 1.25 * pi + c["cw1"] * 2.0 * pi) / 1e6
 
+TIMEOUT_RE = re.compile(r"\btimeout\s+(?:-\S+\s+)*(\d+)")
+
+
+def is_wait(cmd):
+    """An inline wait in a driver's own Bash call: wait-run.sh, an until loop, sleep, or timeout N >= 60."""
+    if "wait-run.sh" in cmd or "until " in cmd or "sleep " in cmd:
+        return True
+    return any(int(n) >= 60 for n in TIMEOUT_RE.findall(cmd))
+
+
+def read_waits(root, since, until):
+    """Returns {subagent transcript path: inline wait count} for the window (tool_use ids counted once)."""
+    seen, counts = set(), collections.Counter()
+    for d, _, files in os.walk(root):
+        if "subagents" not in d.replace(os.sep, "/"):
+            continue
+        for f in files:
+            if not f.endswith(".jsonl"):
+                continue
+            path = os.path.join(d, f)
+            try:
+                if os.path.getmtime(path) < since:
+                    continue
+                fh = open(path, encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            with fh:
+                for line in fh:
+                    if '"tool_use"' not in line:
+                        continue
+                    try:
+                        j = json.loads(line)
+                        t = parse_time(j.get("timestamp", ""))
+                        content = j["message"]["content"]
+                    except (ValueError, KeyError, TypeError):
+                        continue
+                    if t < since or (until is not None and t >= until) or not isinstance(content, list):
+                        continue
+                    for b in content:
+                        if (isinstance(b, dict) and b.get("type") == "tool_use" and b.get("name") == "Bash"
+                                and isinstance(b.get("input"), dict) and b["id"] not in seen
+                                and is_wait(str(b["input"].get("command", "")))):
+                            seen.add(b["id"])
+                            counts[path] += 1
+    return counts
+
+
+def agent_label(path):
+    meta = path[:-len(".jsonl")] + ".meta.json"
+    try:
+        with open(meta, encoding="utf-8") as fh:
+            return json.load(fh).get("description") or os.path.basename(path)
+    except (OSError, ValueError, AttributeError):
+        return os.path.basename(path)
+
 
 def main(argv):
     ap = argparse.ArgumentParser(prog="agent-cost.sh", add_help=False)
@@ -202,6 +257,11 @@ def main(argv):
                     gaps[i][0] += 1
                     gaps[i][1] += c["cw5"] + c["cw1"]
 
+    waits = read_waits(a.root, since, until)
+    flagged = sorted(((agent_label(p), n) for p, n in waits.items()
+                      if n > 1 and (not a.match or a.match in p.replace(os.sep, "/"))), key=lambda x: -x[1])
+    wait_txt = "inline waits >1: " + (", ".join(f"{k} {n}" for k, n in flagged) or "none")
+
     total = sum(r["cost"] for r in rows.values())
     fams = collections.OrderedDict()
     for (fam, _), r in sorted(rows.items()):
@@ -215,7 +275,7 @@ def main(argv):
         parts = [f"{fam} ${f['cost']:.2f} (cw5m {f['cw5'] / 1e6:.2f}M cw1h {f['cw1'] / 1e6:.2f}M)"
                  for fam, f in fams.items()]
         print(f"agent-cost since {since_txt}: " + ", ".join(parts or ["no calls"])
-              + f"; total ${total:.2f}; {gap_txt}")
+              + f"; total ${total:.2f}; {gap_txt}; inline waits >1: {len(flagged)} agents")
     else:
         print(f"since {since_txt}" + (f", match {a.match}" if a.match else ""))
         print(f"{'MODEL':8} {'WHO':5} {'CALLS':>6} {'IN':>9} {'OUT':>9} {'CREAD':>11} "
@@ -225,6 +285,7 @@ def main(argv):
                   f"{r['cw5']:10} {r['cw1']:10} {r['cost']:8.2f}")
         print(f"total ${total:.2f}")
         print(gap_txt)
+        print(wait_txt)
         long_calls = fams.get("haiku", {}).get("long", 0)
         if long_calls:
             print(f"haiku calls over {LONG_PROMPT // 1000}K prompt (5x price): {long_calls}")

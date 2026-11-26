@@ -61,9 +61,10 @@ report: docs/briefs/<milestone>/<batch>/<job>-report.md
 ## 5. Waiting
 Your own calls while the runner works are the main cost. Make no polling calls.
 - Waits over about 3 min: the `thumb-wait` agent in the FOREGROUND with worktree, run dir, max wait (default 60 min); it returns the exit code and the last run.log lines. Make no other calls meanwhile. If the type is missing: a general-purpose agent on `haiku` told to read and follow `.claude/agents/thumb-wait.md`.
-- Short waits: `bash tools/wait-run.sh <dir> --max 150` yourself (timeout 170000).
-- Mechanical steps (git status, churn restore, evidence pack, a background check and its wait, log extracts) can go to `thumb-haiku`; its report is data. Run any script whose output is 30 lines or fewer yourself (L10).
+- Short waits: at most ONE per run, `bash tools/wait-run.sh <dir> --max 150` yourself (timeout 170000); after that use `thumb-wait` for anything longer. No chained `timeout`/`until`/sleep loops in your own context (agent-cost flags repeated inline waits). Before a long run consider the Handoff rule first: a wait over 5 minutes expires your cache and the wake-up rewrites the whole context.
+- Mechanical steps (git status, churn restore, evidence pack, a background check and its wait, log extracts) can go to `thumb-haiku`; its report is data. Run any script whose output is 30 lines or fewer yourself (L10); short inline reads (a 20-line sed) are fine. The cost is calls times context size, so batch shell steps into one call and aim for 60 calls or fewer per batch. Longer reads and evidence packs go to `thumb-haiku`.
 - Trust a STALLED only after the worker log has been still longer than the job's expected-min; a STOPPED only if newer than your restart (L10).
+- Handoff: when your prompt nears 100k, hand off to a fresh driver at a stage boundary only (after a run and its repairs, before the review wrap-up, or before a long run), never mid-repair. Write `DRIVER-NOTES.md` in the batch folder with the ladder state, the repair classes tried and the next step, so the fresh driver does not repeat attempts. The hand-back says `handoff` and names the notes file.
 - Never end your turn while the run is going, unless the main session told you to hand back after starting it (it then waits).
 
 ## 6. Tiering and escalation ladder (per job)

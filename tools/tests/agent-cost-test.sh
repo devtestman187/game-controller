@@ -55,6 +55,17 @@ line() { # line <id> <ts> <model> <usage json>
   line f1 2026-11-23T10:30:00Z claude-fable-5-2 '{"input_tokens":1000,"output_tokens":1000,"cache_read_input_tokens":100000,"cache_creation_input_tokens":10000}'
 } > "$root/sess/subagents/agent-f.jsonl"
 
+# inline waits: agent-w has 3 Bash calls that wait (wait-run.sh, sleep, timeout 170) and 2 that do not
+# (timeout 30, a plain ls); agent-a has none. The meta file names the agent.
+{
+  for i in 1 2 3 4 5; do
+    case $i in 1) c='bash tools/wait-run.sh d --max 150';; 2) c='sleep 20';; 3) c='timeout 170 bash x';; 4) c='timeout 30 bash x';; *) c='ls';; esac
+    printf '{"type":"assistant","timestamp":"2026-11-23T10:0%s:00Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"tu%s","name":"Bash","input":{"command":"%s"}}]}}
+' "$i" "$i" "$c"
+  done
+} > "$root/sess/subagents/agent-w.jsonl"
+echo '{"description":"Waity driver"}' > "$root/sess/subagents/agent-w.meta.json"
+
 since=2026-11-23T09:30:00Z
 bash tools/agent-cost.sh --root "$tmp/projects" --since "$since" --line > "$out" 2>&1
 check line-opus 'opus $0.08 (cw5m 0.00M cw1h 0.00M)'
@@ -63,10 +74,12 @@ check line-haiku 'haiku $0.01'
 check line-fable 'fable $0.17 (cw5m 0.01M cw1h 0.00M)'
 check line-total 'total $0.59'
 check line-gaps 'sonnet resumes >5m 2 (0.05M written), >60m 1 (0.03M written)'
+check line-waits '; inline waits >1: 1 agents'
 
 bash tools/agent-cost.sh --root "$tmp/projects" --since "$since" > "$out" 2>&1
 check table-opus-dedup 'opus     main       1      1000      2000       10000          0       4000     0.08'
 check table-sonnet-sub 'sonnet   sub        3        20       200           0      50000      50000     0.33'
+check table-waits 'inline waits >1: Waity driver 3'
 check table-long 'haiku calls over 100K prompt (5x price): 1'
 if grep -q synthetic "$out"; then echo "FAIL synthetic-skipped"; fails=$((fails + 1)); else echo "PASS synthetic-skipped"; fi
 
