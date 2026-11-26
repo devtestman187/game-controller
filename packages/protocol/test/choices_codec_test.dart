@@ -91,6 +91,30 @@ void main() {
       expect(Capability.choices, 'choices');
     });
 
+    test('a paused round round-trips with paused true, and a payload without the key reads paused false', () {
+      const paused = ChoicesMessage(
+        round: 3,
+        title: 'Vote',
+        cards: [ChoiceCard(id: 'yes', title: 'Yes')],
+        endsInMs: 1200,
+        paused: true,
+      );
+      final decoded = codec.decode(codec.encode(paused)) as ChoicesMessage;
+      expect(decoded.paused, isTrue);
+      expect(decoded, paused);
+      const running1 = ChoicesMessage(
+        round: 3,
+        title: 'Vote',
+        cards: [ChoiceCard(id: 'yes', title: 'Yes')],
+        endsInMs: 1200,
+      );
+      expect(decoded, isNot(running1));
+      expect(decoded.hashCode, isNot(running1.hashCode));
+      final running = jsonDecode(codec.encode(shop)) as Map<String, Object?>;
+      expect(running.containsKey('paused'), isFalse);
+      expect(ChoicesMessage.fromPayload(running).paused, isFalse);
+    });
+
     test('extra fields a newer host adds are ignored', () {
       final json = jsonDecode(codec.encode(shop)) as Map<String, Object?>;
       json['futureField'] = 'x';

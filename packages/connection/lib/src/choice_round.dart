@@ -53,6 +53,7 @@ final class ChoiceRound {
   StreamSubscription<ControllerMessage>? _messageSub;
   StreamSubscription<HostSnapshot>? _serverSub;
   int _endsAtMs = 0;
+  int? _pausedLeftMs;
   bool _isStarted = false;
   bool _isDisposed = false;
 
@@ -91,6 +92,38 @@ final class ChoiceRound {
     }
   }
 
+  /// Whether the round is paused: its timers are frozen and the phones are told.
+  bool get isPaused => _pausedLeftMs != null;
+
+  /// Freezes the end timer and every away timer, keeping the time left, and
+  /// tells each connected phone (paused true, [ChoicesMessage.endsInMs] the time
+  /// left). While paused no player is defaulted and no end comes by timer; picks
+  /// are still stored and [close] still works. Does nothing unless the round is
+  /// started, open, not disposed and not already paused.
+  void pause() {
+    if (!_isStarted || _isDisposed || isClosed || isPaused) return;
+    _pausedLeftMs = _timeLeftMs();
+    _endTimer?.cancel();
+    _endTimer = null;
+    _cancelAwayTimers();
+    _sendToConnected();
+  }
+
+  /// Ends a pause: the end timer runs for the time left, every player who is
+  /// not connected gets a full grace again, and the phones are told. Does
+  /// nothing unless the round is paused.
+  void resume() {
+    final left = _pausedLeftMs;
+    if (left == null || _isDisposed || isClosed) return;
+    _pausedLeftMs = null;
+    _endsAtMs = timing.nowMs() + left;
+    _endTimer = Timer(Duration(milliseconds: left), close);
+    for (final id in players) {
+      if (!_connected.contains(id)) _startAwayTimer(id);
+    }
+    _sendToConnected();
+  }
+
   /// Stores [pickId] for [playerId]; null, or an unlocked pick, is an undo.
   /// Ignores a player not in the round, a card the player's list lacks or that
   /// is disabled, and any pick once the round is closed or disposed. [count] is
@@ -116,6 +149,7 @@ final class ChoiceRound {
     if (done != null) return done;
     if (_isDisposed) return const {};
     _cancelWatching();
+    _pausedLeftMs = null;
     final outcomes = {for (final id in players) id: _outcomeFor(id)};
     _outcomes = outcomes;
     for (final entry in outcomes.entries) {
@@ -147,10 +181,22 @@ final class ChoiceRound {
     _messageSub = null;
     unawaited(_serverSub?.cancel());
     _serverSub = null;
+    _cancelAwayTimers();
+  }
+
+  void _cancelAwayTimers() {
     for (final t in _awayTimers.values) {
       t.cancel();
     }
     _awayTimers.clear();
+  }
+
+  int _timeLeftMs() => (_endsAtMs - timing.nowMs()).clamp(0, timing.duration.inMilliseconds);
+
+  void _sendToConnected() {
+    for (final id in players) {
+      if (_connected.contains(id)) _sendState(id);
+    }
   }
 
   ChoiceOutcome _outcomeFor(String playerId) {
@@ -177,7 +223,7 @@ final class ChoiceRound {
         _awayTimers.remove(id)?.cancel();
         _sendState(id);
       } else if (!isLive && _connected.remove(id)) {
-        _startAwayTimer(id);
+        if (!isPaused) _startAwayTimer(id);
       }
     }
   }
@@ -207,12 +253,13 @@ final class ChoiceRound {
         round: setup.round,
         title: setup.title,
         cards: [for (final card in cardsFor(playerId)) _shownCard(card)],
-        endsInMs: (_endsAtMs - timing.nowMs()).clamp(0, timing.duration.inMilliseconds),
+        endsInMs: _pausedLeftMs ?? _timeLeftMs(),
         defaultId: defaultId,
         currency: currency,
         picked: held?.cardId,
         pickedCount: held?.count ?? 1,
         locked: held?.locked ?? false,
+        paused: isPaused,
       ),
     );
   }

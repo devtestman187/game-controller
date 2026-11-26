@@ -97,6 +97,7 @@ final class ChoicesMessage extends Message {
     this.picked,
     this.pickedCount = 1,
     this.locked = false,
+    this.paused = false,
   });
 
   static const String wireType = 'choices';
@@ -131,6 +132,10 @@ final class ChoicesMessage extends Message {
   /// Whether the host has locked [picked] in.
   final bool locked;
 
+  /// Whether the host has paused the round: [endsInMs] is then the time left, and it stands still
+  /// until a later message says paused is false. Written only when true, so an older phone never sees it.
+  final bool paused;
+
   @override
   String get type => wireType;
 
@@ -145,6 +150,7 @@ final class ChoicesMessage extends Message {
     'picked': ?picked,
     'pickedCount': pickedCount,
     'locked': locked,
+    if (paused) 'paused': true,
   };
 
   static ChoicesMessage fromPayload(Map<String, Object?> p) {
@@ -165,6 +171,7 @@ final class ChoicesMessage extends Message {
       picked: optionalString(p, 'picked'),
       pickedCount: optionalInt(p, 'pickedCount') ?? 1,
       locked: p['locked'] == null ? false : requireBool(p, 'locked'),
+      paused: p['paused'] == null ? false : requireBool(p, 'paused'),
     );
   }
 
@@ -179,11 +186,22 @@ final class ChoicesMessage extends Message {
       other.currency == currency &&
       other.picked == picked &&
       other.pickedCount == pickedCount &&
-      other.locked == locked;
+      other.locked == locked &&
+      other.paused == paused;
 
   @override
-  int get hashCode =>
-      Object.hash(round, title, Object.hashAll(cards), endsInMs, defaultId, currency, picked, pickedCount, locked);
+  int get hashCode => Object.hash(
+    round,
+    title,
+    Object.hashAll(cards),
+    endsInMs,
+    defaultId,
+    currency,
+    picked,
+    pickedCount,
+    locked,
+    paused,
+  );
 }
 
 /// Controller → host (M17 phone1a, needs [Capability.choices]): the player's
