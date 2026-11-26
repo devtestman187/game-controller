@@ -43,3 +43,28 @@ RESULT: STOPPED: PAUSED after wave 1 (RUN_PAUSE_AFTER_WAVE=1): its review is com
 2026-11-26 15:58:26 STOPPED: PAUSED after wave 2 (RUN_PAUSE_AFTER_WAVE=1): its review is committed; verdict it, add fix jobs to the next wave of waves.txt, commit, restart
 2026-11-26 16:01:36 reviewed wave2: 13 finding(s)
 RESULT: STOPPED: PAUSED after wave 2 (RUN_PAUSE_AFTER_WAVE=1): its review is committed; verdict it, add fix jobs to the next wave of waves.txt, commit, restart
+2026-11-26 16:02:19 RUN_MAX_MIN=75 min (computed backstop of the jobs still to do)
+2026-11-26 16:02:19 start at fbd56de3 on m17side
+2026-11-26 16:02:19 worker: claude
+2026-11-26 16:02:20 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-26 16:02:20 removed the last stop's STOP.md
+2026-11-26 16:02:27 phase: preflight
+2026-11-26 16:02:34 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-26 16:03:10 phase: worker (preflight took 43s)
+2026-11-26 16:03:11 skip y0a (already done)
+2026-11-26 16:03:32 phase: worker (worker took 22s)
+2026-11-26 16:03:32 skip y0b (already done)
+2026-11-26 16:03:58 phase: worker (worker took 26s)
+2026-11-26 16:04:00 start y0c
+2026-11-26 16:09:28 start y0g
+2026-11-26 16:09:29 y0c finished: result 0 (28 turns, 4 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 40/1044349/61801/41150
+2026-11-26 16:13:25 y0g finished: result 0 (20 turns, 2 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 26/425901/35723/21161
+2026-11-26 16:13:25 phase: tests-first (worker took 567s)
+2026-11-26 16:13:39 tests-first ok: packages/connection/test/choice_fallback_test.dart fails on the old code
+2026-11-26 16:14:15 phase: check (tests-first took 50s)
+2026-11-26 16:14:24 combined check: skips protocol metrics look tools (no job's change reaches them)
+2026-11-26 16:18:27 checks failed; fetching packages and trying once more
+2026-11-26 16:20:27 phase: apply (check took 372s)
+2026-11-26 16:20:28 committed y0c: 40c11c06 connection: old phones play the choice round on A/B/X/Y
+2026-11-26 16:20:30 committed y0g: 861a7311 ChoiceRound: ignore calls and timers after dispose
+2026-11-26 16:20:30 phase: review (apply took 3s)
