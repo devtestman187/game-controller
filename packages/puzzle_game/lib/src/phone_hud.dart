@@ -101,6 +101,7 @@ extension _PhoneHudPaint on MatchPainter {
       text: scores,
       pxPerMm: pxPerMm,
       padRects: padRects,
+      hudRects: hudRects,
     );
     final shown = mirror == null ? text : phoneHud(s, camera.side, mirrored: true);
     // Measured on the sides' names, the widest the short form gets ("Right 3/6"
