@@ -44,3 +44,15 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-26 16:02:31 committed n1a: 06d8e2de party_host: NightFlow stage machine and NightEvent contract (night1a)
 2026-11-26 16:02:33 committed e0b: 7606176b Add the champion chain as a pure Champion type (night1a e0b)
 2026-11-26 16:02:33 phase: review (apply took 6s)
+2026-11-26 16:02:55 phase: worker (review took 22s)
+2026-11-26 16:02:56 start n1b
+2026-11-26 16:08:31 n1b finished: result 0 (8 turns, 2 min) model claude-sonnet-5-5, ladder 1, tokens in/read/write/out 12/106938/13958/4537
+2026-11-26 16:08:31 WARN: n1b logged 8 turns, 2 min but ran 5 min wall: a resumed session's usage row covers its last resume only, its real turns are unknown
+2026-11-26 16:08:32 phase: tests-first (worker took 337s)
+2026-11-26 16:09:48 tests-first ok: packages/party_host/test/night_captions_test.dart fails on the old code
+2026-11-26 16:10:00 phase: check (tests-first took 88s)
+2026-11-26 16:10:05 combined check: skips protocol connection metrics kit look arena puzzle tools (no job's change reaches them)
+2026-11-26 16:13:13 phase: apply (check took 193s)
+2026-11-26 16:13:13 finding: n1b's report has no Summary block in its first 40 lines
+2026-11-26 16:13:15 committed n1b: 2571fed2 Add stub captionFor for NightEvent (night1a n1b)
+2026-11-26 16:13:15 phase: review (apply took 2s)
