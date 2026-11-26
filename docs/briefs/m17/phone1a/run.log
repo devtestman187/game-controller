@@ -69,3 +69,14 @@ RESULT: STOPPED: PAUSED after wave 2 (RUN_PAUSE_AFTER_WAVE=1): its review is com
 2026-11-26 16:20:30 committed y0g: 861a7311 ChoiceRound: ignore calls and timers after dispose
 2026-11-26 16:20:30 phase: review (apply took 3s)
 2026-11-26 16:23:25 reviewed wave3: 11 finding(s)
+2026-11-26 16:23:26 start the run's review
+METRICS run-review worker=claude model=claude-haiku-5-5 turns=41 in=28 out=43669 cache=817789 min=3.3 wall=- result=0
+METRICS wave1-review worker=claude model=claude-haiku-5-5 turns=34 in=34 out=32742 cache=824068 min=2.6 wall=- result=0
+METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=20 in=16 out=34094 cache=266755 min=2.7 wall=- result=0
+METRICS wave3-review worker=claude model=claude-haiku-5-5 turns=24 in=26 out=31855 cache=584899 min=2.5 wall=- result=0
+METRICS y0a worker=claude model=claude-haiku-5-5 turns=41 in=44 out=35682 cache=1129125 min=4.0 wall=4.5 result=0
+METRICS y0b worker=claude model=claude-sonnet-5-5 turns=31 in=38 out=15730 cache=708041 min=4.8 wall=5.5 result=0
+METRICS y0c worker=claude model=claude-haiku-5-5 turns=28 in=40 out=41150 cache=1106150 min=4.4 wall=5.5 result=0
+METRICS y0g worker=claude model=claude-haiku-5-5 turns=20 in=26 out=21161 cache=461624 min=2.3 wall=4.0 result=0
+2026-11-26 16:27:11 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/phone1a/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 4 jobs, 24 min
