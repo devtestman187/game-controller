@@ -87,3 +87,24 @@ METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=15 in=20 out=158
 2026-11-26 22:49:27 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/board3a/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 3 jobs, 14 min
 full check: All checks passed (182s, 8 cached). Logs: C:\Users\mrman\AppData\Local\Temp/thumbparty-check-20261126-225018
+2026-11-26 22:59:14 RUN_MAX_MIN=45 min (computed backstop of the jobs still to do)
+2026-11-26 22:59:15 start at 605099c0 on board-line
+2026-11-26 22:59:15 worker: claude
+2026-11-26 22:59:17 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-26 22:59:22 phase: preflight
+2026-11-26 22:59:37 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-26 23:00:08 phase: worker (preflight took 46s)
+2026-11-26 23:00:09 skip g3a (already done)
+2026-11-26 23:00:09 skip g3s (already done)
+2026-11-26 23:00:25 phase: worker (worker took 17s)
+2026-11-26 23:00:25 skip f3a (already done)
+2026-11-26 23:00:41 phase: worker (worker took 16s)
+2026-11-26 23:00:41 start g3b
+2026-11-26 23:08:27 g3b finished: result 0 (12 turns, 4 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 24/325125/34337/26531
+2026-11-26 23:08:27 phase: tests-first (worker took 466s)
+2026-11-26 23:09:53 tests-first ok: packages/party_host/test/city/rules_test.dart fails on the old code
+2026-11-26 23:10:16 phase: check (tests-first took 109s)
+2026-11-26 23:10:20 combined check: skips protocol connection metrics kit look arena puzzle tools (no job's change reaches them)
+2026-11-26 23:13:49 phase: apply (check took 213s)
+2026-11-26 23:13:50 committed g3b: 50b963e3 board3a g3b: CityRules config and pure rule functions
+2026-11-26 23:13:51 phase: review (apply took 2s)
