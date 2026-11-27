@@ -6,11 +6,13 @@ model: haiku
 turns: 35
 expected-min: 15
 tests-first: exempt data rating; the test pins the table and fails on the base because no map has a tier yet
+repair: the first run failed the arena suite: packages/test_game/test/playroom_test.dart pins that maps/playroom.json parses to the const ArenaMap.playroom in packages/test_game/lib/src/arena_map.dart field for field (also its library-order test). Rating playroom in the JSON needs the same tier on the const: step 4.
 do:
 1 In each map file add `"tier": "<tier>"` on its own line right after "theme": playroom easy · pinball easy · toy-factory medium · spinning-tops medium · block-castle hard. Nothing else in the files changes.
 2 docs/levels.md: add a `tier` row after the `theme` row of the file-format table (about line 235; optional, easy, medium or hard), and in the maps part add a short "Tier" paragraph (at most 8 lines): what the field is (easy, medium or hard, used by the night director to keep a night inside the host's difficulty range), the first rating by obstacle count with the five numbers above and the table of the five maps, "provisional: the owner confirms and the Arena-map bots harden it (M17 P7)", and that `tools/level.sh new map` starts a map at easy.
 3 Tests: NEW packages/test_game/test/map_ratings_test.dart, written and run first: every id in maps/index.json loads (ArenaMap.parse of its file) with a tier in mapTiers; the table above is pinned exactly (a map's tier changes only on purpose); the tier counts are easy 2, medium 2, hard 1.
-4 Before finishing run `dart analyze` on the test file and `tools/check.sh arena`.
-allow: packages/test_game/maps/playroom.json · packages/test_game/maps/pinball.json · packages/test_game/maps/toy-factory.json · packages/test_game/maps/spinning-tops.json · packages/test_game/maps/block-castle.json · docs/levels.md · packages/test_game/test/map_ratings_test.dart
-check: format arena
+4 In arena_map.dart give the const ArenaMap.playroom the argument tier: 'easy' so it matches playroom.json (read playroom_test.dart first and make both of its failing tests pass; change playroom_test.dart only if it hard-codes the unrated state). arena_map.dart is 308 lines: stay under 380.
+5 Before finishing run `dart analyze` on the test file and `tools/check.sh arena`.
+allow: packages/test_game/maps/playroom.json · packages/test_game/maps/pinball.json · packages/test_game/maps/toy-factory.json · packages/test_game/maps/spinning-tops.json · packages/test_game/maps/block-castle.json · docs/levels.md · packages/test_game/test/map_ratings_test.dart · packages/test_game/lib/src/arena_map.dart · packages/test_game/test/playroom_test.dart
+check: format analyze arena puzzle
 report: docs/briefs/m17/night2a/d2b-report.md
