@@ -12,6 +12,10 @@ final class ChoiceRoundPausable implements NightPausable {
     _closeSub = round.changes.listen((_) {
       if (round.isClosed) detach();
     });
+    if (round.isClosed) {
+      detach();
+      return;
+    }
     if (controller.isPaused) round.pause();
   }
 

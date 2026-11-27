@@ -190,7 +190,6 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(s.controller.roundEnded, returnsNormally);
-    expect(s.controller.flow.stage, NightStage.round.index >= 0 ? s.controller.flow.stage : null);
     expect(s.controller.isPaused, isFalse);
   });
 

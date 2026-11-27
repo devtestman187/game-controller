@@ -23,3 +23,4 @@ METRICS pw1 worker=claude model=claude-sonnet-5-5 turns=31 in=48 out=11238 cache
 METRICS run-review worker=claude model=claude-haiku-5-5 turns=13 in=14 out=10935 cache=154819 min=0.9 wall=- result=0
 2026-11-26 22:12:42 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/pausewire/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 1 jobs, 22 min
+full check: All checks passed (131s, 9 cached). Logs: C:\Users\mrman\AppData\Local\Temp/thumbparty-check-20261126-221821 2026-11-26 f10154a9
