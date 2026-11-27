@@ -22,6 +22,14 @@ abstract final class NightText {
   static const bumperRound = 'Bumper Round';
   static const soon = 'Soon';
 
+  /// One player's phone is an old app, which plays the round with simple buttons:
+  /// "Bartholome has an old app and will play with simple buttons."
+  static String oldApp(String name) => '$name has an old app and will play with simple buttons.';
+
+  /// Two or more such phones, counted rather than named so the line stays one
+  /// line on the TV: "2 players have an old app and will play with simple buttons."
+  static String oldAppCount(int count) => '$count players have an old app and will play with simple buttons.';
+
   /// Which round the host is about to pick a game for: "Pick round 1".
   static String pickRound(int round) => 'Pick round $round';
 

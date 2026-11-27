@@ -25,6 +25,7 @@ abstract final class HostText {
   static const arenaLine = 'Race past walls and hazards to the goal.';
   static const puzzleSettings = 'Puzzle settings';
   static const playtestLine = 'For playtesting: tolerances, speeds and the time limit.';
+  static const tryShop = 'Try the shop';
   static const easy = 'Easy';
   static const medium = 'Medium';
   static const hard = 'Hard';

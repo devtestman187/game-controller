@@ -52,7 +52,14 @@ ControllerIdentity loadIdentity(
     character: saved.character,
     platform: platform,
     appVersion: appWithBuild(appVersion, build),
-    capabilities: const [Capability.metrics, Capability.rating, Capability.layout, Capability.status, Capability.view],
+    capabilities: const [
+      Capability.metrics,
+      Capability.rating,
+      Capability.layout,
+      Capability.status,
+      Capability.view,
+      Capability.choices,
+    ],
     device: DeviceInfo(
       kind: isTablet ? DeviceInfo.tablet : DeviceInfo.phone,
       // Landscape: the long side is the width.

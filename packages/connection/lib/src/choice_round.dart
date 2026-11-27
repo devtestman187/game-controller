@@ -20,9 +20,6 @@ final class ChoiceRound {
   /// Builds a round for [players]; nothing is sent or timed until [start].
   ChoiceRound({required this.server, required this.players, required this.setup, required this.timing});
 
-  /// The longest card title a phone is sent; the host cuts a longer one to this many characters.
-  static const int maxTitleLength = 24;
-
   /// The host the round sends through and listens to for picks and connections.
   final HostServer server;
 
@@ -38,7 +35,9 @@ final class ChoiceRound {
   /// The cards one player may pick from, asked each time so a list may change.
   List<ChoiceCard> Function(String playerId) get cardsFor => setup.cardsFor;
 
-  /// The card that applies when nothing is chosen, or null when nothing does.
+  /// The card that applies when nothing is chosen, or null when nothing does. The build stop must set it to
+  /// the build stop's default card; with null an away player's pick is removed and the player abstains (the
+  /// away timer).
   String? get defaultId => setup.defaultId;
 
   /// The unit the costs are in, or null when there are none.
@@ -47,12 +46,15 @@ final class ChoiceRound {
   final _picks = <String, _Pick>{};
   final _awayTimers = <String, Timer>{};
   final _connected = <String>{};
+  // Players whose pick was stored during a pause; resume() must not overwrite them with the default.
+  final _pickedWhilePaused = <String>{};
   final _changes = StreamController<void>.broadcast();
   Map<String, ChoiceOutcome>? _outcomes;
   Timer? _endTimer;
   StreamSubscription<ControllerMessage>? _messageSub;
   StreamSubscription<HostSnapshot>? _serverSub;
   int _endsAtMs = 0;
+  int? _pausedLeftMs;
   bool _isStarted = false;
   bool _isDisposed = false;
 
@@ -75,6 +77,7 @@ final class ChoiceRound {
   /// starts the timer. Does nothing once started, closed or disposed.
   void start() {
     if (_isStarted || _isDisposed || isClosed) return;
+    assert(_isDefaultOffered(), 'the default card must be in every player\'s list and enabled');
     _isStarted = true;
     _endsAtMs = timing.nowMs() + timing.duration.inMilliseconds;
     _messageSub = server.messages.listen(_onMessage);
@@ -91,20 +94,66 @@ final class ChoiceRound {
     }
   }
 
+  /// Whether the round is paused: its timers are frozen and the phones are told.
+  bool get isPaused => _pausedLeftMs != null;
+
+  /// Freezes the end timer and every away timer, keeping the time left, and
+  /// tells each connected phone (paused true, [ChoicesMessage.endsInMs] the time
+  /// left). While paused no player is defaulted and no end comes by timer; picks
+  /// are still stored and [close] still works. Does nothing unless the round is
+  /// started, open, not disposed and not already paused.
+  void pause() {
+    if (!_isStarted || _isDisposed || isClosed || isPaused) return;
+    _pausedLeftMs = _timeLeftMs();
+    _endTimer?.cancel();
+    _endTimer = null;
+    _cancelAwayTimers();
+    _sendToConnected();
+  }
+
+  /// Ends a pause: the end timer runs for the time left, every player who is
+  /// not connected, not already set to the default and not picked by pick()
+  /// during the pause (a phone's own message does not count) gets a full
+  /// grace again, and the phones are told. A pick made during the pause is
+  /// kept, not overwritten. Does nothing unless the round is paused.
+  void resume() {
+    final left = _pausedLeftMs;
+    if (left == null || _isDisposed || isClosed) return;
+    _pausedLeftMs = null;
+    _endsAtMs = timing.nowMs() + left;
+    _endTimer = Timer(Duration(milliseconds: left), close);
+    for (final id in players) {
+      if (!_connected.contains(id) && _picks[id]?.byDefault != true && !_pickedWhilePaused.contains(id)) {
+        _startAwayTimer(id);
+      }
+    }
+    _pickedWhilePaused.clear();
+    _sendToConnected();
+  }
+
   /// Stores [pickId] for [playerId]; null, or an unlocked pick, is an undo.
   /// Ignores a player not in the round, a card the player's list lacks or that
   /// is disabled, and any pick once the round is closed or disposed. [count] is
-  /// held to 1 up to the card's maxCount.
+  /// held to 1 up to the card's maxCount. A pick made here during a pause is kept over [resume]; a phone's
+  /// own pick, which comes in on its channel, is not, so its player is still defaulted after the pause.
   void pick(String playerId, {String? pickId, int count = 1, bool locked = false}) {
-    if (_isDisposed || isClosed || !players.contains(playerId)) return;
+    if (_storePick(playerId, pickId: pickId, count: count, locked: locked) && isPaused) {
+      _pickedWhilePaused.add(playerId);
+    }
+  }
+
+  /// Stores the pick and returns whether one was stored; an undo or a refused pick returns false.
+  bool _storePick(String playerId, {String? pickId, int count = 1, bool locked = false}) {
+    if (_isDisposed || isClosed || !players.contains(playerId)) return false;
     if (pickId == null) {
       if (_picks.remove(playerId) != null) _changes.add(null);
-      return;
+      return false;
     }
     final card = cardsFor(playerId).where((c) => c.id == pickId).firstOrNull;
-    if (card == null || !card.enabled) return;
+    if (card == null || !card.enabled) return false;
     _picks[playerId] = _Pick(cardId: pickId, count: count.clamp(1, card.maxCount), locked: locked);
     _changes.add(null);
+    return true;
   }
 
   /// Ends the round, now or at the timer: settles each player's outcome, sends
@@ -116,6 +165,7 @@ final class ChoiceRound {
     if (done != null) return done;
     if (_isDisposed) return const {};
     _cancelWatching();
+    _pausedLeftMs = null;
     final outcomes = {for (final id in players) id: _outcomeFor(id)};
     _outcomes = outcomes;
     for (final entry in outcomes.entries) {
@@ -129,15 +179,19 @@ final class ChoiceRound {
     return outcomes;
   }
 
-  /// Cancels the timers and listeners. The round sends nothing after it.
+  /// Cancels the timers and listeners and ends any pause. The round sends nothing after it.
   Future<void> dispose() async {
     _isDisposed = true;
+    _pausedLeftMs = null;
     _cancelWatching();
-    for (final t in _awayTimers.values) {
-      t.cancel();
-    }
-    _awayTimers.clear();
     await _changes.close();
+  }
+
+  /// Whether the default card, when there is one, is in every player's list and enabled.
+  bool _isDefaultOffered() {
+    final id = defaultId;
+    if (id == null) return true;
+    return players.every((p) => cardsFor(p).any((c) => c.id == id && c.enabled));
   }
 
   void _cancelWatching() {
@@ -147,10 +201,22 @@ final class ChoiceRound {
     _messageSub = null;
     unawaited(_serverSub?.cancel());
     _serverSub = null;
+    _cancelAwayTimers();
+  }
+
+  void _cancelAwayTimers() {
     for (final t in _awayTimers.values) {
       t.cancel();
     }
     _awayTimers.clear();
+  }
+
+  int _timeLeftMs() => (_endsAtMs - timing.nowMs()).clamp(0, timing.duration.inMilliseconds);
+
+  void _sendToConnected() {
+    for (final id in players) {
+      if (_connected.contains(id)) _sendState(id);
+    }
   }
 
   ChoiceOutcome _outcomeFor(String playerId) {
@@ -165,7 +231,7 @@ final class ChoiceRound {
     if (message is! ChoicePickMessage || message.round != setup.round) return;
     final sender = server.snapshot.controllers.where((c) => c.controllerId == m.controllerId).firstOrNull;
     if (sender == null || !sender.supports(Capability.choices)) return;
-    pick(m.controllerId, pickId: message.pick, count: message.count, locked: message.locked);
+    _storePick(m.controllerId, pickId: message.pick, count: message.count, locked: message.locked);
   }
 
   void _onServerChange(HostSnapshot snapshot) {
@@ -177,7 +243,7 @@ final class ChoiceRound {
         _awayTimers.remove(id)?.cancel();
         _sendState(id);
       } else if (!isLive && _connected.remove(id)) {
-        _startAwayTimer(id);
+        if (!isPaused) _startAwayTimer(id);
       }
     }
   }
@@ -207,26 +273,33 @@ final class ChoiceRound {
         round: setup.round,
         title: setup.title,
         cards: [for (final card in cardsFor(playerId)) _shownCard(card)],
-        endsInMs: (_endsAtMs - timing.nowMs()).clamp(0, timing.duration.inMilliseconds),
+        endsInMs: _pausedLeftMs ?? _timeLeftMs(),
         defaultId: defaultId,
         currency: currency,
         picked: held?.cardId,
         pickedCount: held?.count ?? 1,
         locked: held?.locked ?? false,
+        paused: isPaused,
       ),
     );
   }
 
-  /// The card as the phone shows it: the same card with its title cut to [maxTitleLength].
+  /// The card as the phone shows it: the same card with its title cut to [ChoiceCard.maxTitleLength].
   ChoiceCard _shownCard(ChoiceCard card) {
-    final title = card.title.length <= maxTitleLength ? card.title : card.title.substring(0, maxTitleLength);
     return ChoiceCard(
       id: card.id,
-      title: title,
+      title: _cutTitle(card.title),
       detail: card.detail,
       cost: card.cost,
       maxCount: card.maxCount,
       enabled: card.enabled,
     );
+  }
+
+  /// Cuts [title] to [ChoiceCard.maxTitleLength] code points, so a character outside the Basic Multilingual
+  /// Plane (an emoji) is never split in two.
+  String _cutTitle(String title) {
+    if (title.runes.length <= ChoiceCard.maxTitleLength) return title;
+    return String.fromCharCodes(title.runes.take(ChoiceCard.maxTitleLength));
   }
 }

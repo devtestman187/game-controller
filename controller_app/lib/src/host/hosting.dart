@@ -84,14 +84,15 @@ PhoneHostInputs _inputs(Ref ref) => (
 );
 
 /// The identity this phone's own player pairs with: the phone's, without
-/// [Capability.view] (m12 §0.1). The host phone draws its own game in
-/// `host/host_games.dart`, so the server must not send it frames, and a server
-/// rule on `isLocal` would also have caught the connection tests' in-process
-/// viewers.
+/// [Capability.view] (m12 §0.1) and [Capability.choices] (M17 phone1b). The host
+/// phone draws its own game in `host/host_games.dart`, so the server must not
+/// send it frames, and a server rule on `isLocal` would also have caught the
+/// connection tests' in-process viewers. Its own player plays a choice round
+/// through the old-phone buttons, as a phone without the capability does.
 ControllerIdentity ownPlayerIdentity(ControllerIdentity identity) => identity.copyWith(
   capabilities: [
     for (final capability in identity.capabilities)
-      if (capability != Capability.view) capability,
+      if (capability != Capability.view && capability != Capability.choices) capability,
   ],
 );
 

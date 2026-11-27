@@ -28,14 +28,22 @@ const nightStartNameGapPx = ToySizes.space12;
 /// a night holds five or six, so every nickname is drawn whole rather than
 /// ellipsised into a sixth of the stage.
 class NightStartNames extends StatelessWidget {
-  const NightStartNames({super.key, required this.players});
+  const NightStartNames({super.key, required this.players, this.oldAppIds = const {}});
 
   /// The players the host has joined, in their numbers' order.
   final List<GamePlayer> players;
 
+  /// The ids of the players whose phone is an old app, which plays with simple
+  /// buttons (M17 y0e): one line under the names says so, once.
+  final Set<String> oldAppIds;
+
   @override
   Widget build(BuildContext context) {
     final lines = _lines();
+    final oldApps = [
+      for (final player in players)
+        if (oldAppIds.contains(player.id)) player,
+    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -44,6 +52,7 @@ class NightStartNames extends StatelessWidget {
           if (i > 0) const SizedBox(height: ToySizes.space8),
           _NamesLine(players: line),
         ],
+        if (oldApps.isNotEmpty) ...[const SizedBox(height: ToySizes.space8), _OldAppLine(oldApps: oldApps)],
       ],
     );
   }
@@ -95,5 +104,26 @@ class _NamesLine extends StatelessWidget {
           ),
       ],
     );
+  }
+}
+
+/// The one line that says which phones are old apps: the player's own sentence
+/// for one, and a count for two or more, so the card never grows a line per
+/// player (M17 y0e). Ellipsised if the TV's width cannot hold it.
+class _OldAppLine extends StatelessWidget {
+  const _OldAppLine({required this.oldApps});
+
+  /// The players whose phones are old apps; never empty.
+  final List<GamePlayer> oldApps;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = ToyLookScope.of(context).colors;
+    final style = ToyType.frame.body.copyWith(color: colors.onBackground);
+    final only = oldApps.length == 1 ? oldApps.single : null;
+    final text = only == null
+        ? NightText.oldAppCount(oldApps.length)
+        : NightText.oldApp(NightText.playerName(only.nickname, only.number));
+    return Text(text, style: style, maxLines: 1, overflow: TextOverflow.ellipsis);
   }
 }

@@ -48,6 +48,8 @@ final class ClientMessages {
         _metrics.acknowledge(message);
       case HapticEventMessage() || PlayerMessage() || RatingAskMessage() || GameLayoutMessage() || StatusMessage():
         _onControlMessage(message);
+      case ChoicesMessage() || ChoicesEndMessage():
+        _onControlMessage(message);
       case ViewStartMessage() ||
           FrameMessage() ||
           ViewEndMessage() ||
@@ -61,7 +63,7 @@ final class ClientMessages {
       case NightEndMessage():
         // Only while paired, as the players list is: a TV we are not paired with says nothing about the night.
         if (_host.snapshot.isConnected) _controls.addNightEnd(message);
-      // The choice messages are routed by B6 (y0d); until then a phone ignores them.
+      // Messages a phone sends itself (a TV never sends them to a phone): a phone ignores them if they come back.
       case HelloMessage() ||
           PairRequestMessage() ||
           InputStateMessage() ||
@@ -69,8 +71,6 @@ final class ClientMessages {
           RatingMessage() ||
           StatsShareMessage() ||
           SetCharacterMessage() ||
-          ChoicesMessage() ||
-          ChoicesEndMessage() ||
           ChoicePickMessage():
         _host.log('Ignoring unexpected ${message.type} from the screen');
     }
@@ -105,6 +105,14 @@ final class ClientMessages {
       case StatusMessage():
         if (snapshot.isConnected && _host.identity.capabilities.contains(Capability.status)) {
           _controls.setStatus(message);
+        }
+      case ChoicesMessage():
+        if (snapshot.isConnected && _host.identity.capabilities.contains(Capability.choices)) {
+          _controls.addChoices(message);
+        }
+      case ChoicesEndMessage():
+        if (snapshot.isConnected && _host.identity.capabilities.contains(Capability.choices)) {
+          _controls.addChoicesEnd(message);
         }
       default:
     }

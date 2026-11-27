@@ -57,6 +57,7 @@ The version number changes only for a breaking change. Everything else is additi
 | `view` | `view_start`, `frame`, `view_end`, `host_away`, `host_back`, `player_away` and `player_back` (host → controller): the game itself, for a controller that shows it (§10a) | M12 |
 | `identity` | `players` (host → controller), `set_character` (controller → host) and a `frame`'s `chars` field: every player's character (§8d) | M16 |
 | `night` | `night_end` (host → controller): the night's final awards and standings (§8e) | M16 bugs4 |
+| `choices` | `choices` (host → controller, with `choice_pick` back and `choices_end`) (§8f) | M17 phone1a |
 
 Peers without capabilities (apps before 0.9.0) send no `caps`; treat that as an empty list. The v1 messages (§6 to §9) need no capability.
 
@@ -252,6 +253,32 @@ Both lists are optional on read: a missing one is empty.
 
 **A peer one build older.** A host never sends `night_end` to a controller that did not list `night`. A controller that lists `night` on an older host simply never gets it, and it shows no awards or final standings until the next night. A host without `night` sends no `night_end`, and a controller one build older ignores it as an unknown type (§2).
 
+## 8f. Choices (capability `choices`, M17)
+
+`choices` (host → controller, sent only to a controller that listed `choices`): a choice round, such as the shop's cards, with a timer. The host sends it when the round starts and again after a reconnect, with the player's pick so far.
+
+Fields:
+
+- `round` int, the round's number; `title` the round's name.
+- `cards`: one to six cards, each `{"id", "title", "detail", "cost", "maxCount", "enabled"}`: `id` a non-empty string, unique in the round; `title` cut to 24 code points; `detail` optional text; `cost` optional, per unit; `maxCount` from 1 to 9 (default 1), above 1 the card is counted ("Build 3"); `enabled` (default true), and false shows the card greyed, not to be picked.
+- `endsInMs` int, the time left when sent. The phone counts down on its own clock.
+- `defaultId` optional, a card's `id`, applied when nothing is chosen; `currency` optional, e.g. "Bolts".
+- `picked` optional, a card's `id`, and `pickedCount` (default 1) what the host already has for this player; `locked` (default false) whether the host has locked that pick in.
+- `paused` (written only when true, so it is missing when false): the host has frozen the timer. `endsInMs` is then the time left and stands still until a later `choices` says `paused` is false. A phone that understands it shows Paused and stops its countdown.
+
+`choice_pick` (controller → host, sent only to a host that listed `choices`): the player's pick in round `round`. Fields: `round` int; `pick` optional, a card's `id` (missing clears the pick); `count` (default 1); `locked` (default false).
+
+`choices_end` (host → controller, sent only to a controller that listed `choices`): the round is over. Fields: `round` int; `result` optional, the card's `id` the host applied (missing when none); `count` how many of it; `byDefault` true when the host applied `defaultId` because nothing was chosen.
+
+Rules:
+
+- A side sends only what the other side listed: a controller sends `choice_pick` only to a host that listed `choices`, and the host sends `choices` and `choices_end` only to a controller that listed it.
+- A pick is accepted until the round's timer ends, and while the round is paused. A `choice_pick` with `locked` false still counts at the round's end: `locked` only confirms the pick to the host. A `choice_pick` with no `pick` clears it.
+- A player who chose nothing gets the round's `defaultId` when the timer ends; with no `defaultId`, nothing is applied.
+- A controller that did not list `choices` is not sent any of this. The host plays it through the pad's A, B, X and Y buttons instead, which the host maps with its layout messages (§8a).
+
+**A peer one build older.** A host never sends `choices` or `choices_end` to a controller that did not list `choices`. A controller one build older ignores them as unknown types (§2). A controller that lists `choices` on a host one build older never gets a round, and plays through the pad's buttons as before.
+
 ## 9. Metrics (capability `metrics`)
 
 ### `metrics` (controller → host)
@@ -338,6 +365,8 @@ The host closes with 4003 if a controller sends one of these view messages.
 | `view_start`, `frame`, `view_end`, `host_away`, `host_back`, `player_away`, `player_back` | host → controller | controller listed `view` |
 | `players` (and a `frame`'s `chars`) | host → controller | controller listed `identity` |
 | `set_character` | controller → host | host listed `identity` |
+| `choices`, `choices_end` | host → controller | controller listed `choices` |
+| `choice_pick` | controller → host | host listed `choices` |
 
 A host that receives a host-only message (or the reverse) closes with 4003; a controller ignores it.
 

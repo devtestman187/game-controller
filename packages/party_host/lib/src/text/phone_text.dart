@@ -261,6 +261,25 @@ abstract final class PhoneText {
     _ => tag,
   };
 
+  // The choice round's screen (M17 phone1b).
+  static const choicesPaused = 'Paused';
+  static const choicesLockIn = 'Lock in';
+  static const choicesLocked = 'Locked';
+  static const choicesDefault = 'Default';
+  static const choicesNoChoice = 'No choice';
+
+  /// The countdown: "12 s".
+  static String choicesSeconds(int seconds) => '$seconds s';
+
+  /// A card's cost line: "3 Bolts each", or "3 each" when the round names no currency.
+  static String choicesCostEach(int cost, String? currency) => currency == null ? '$cost each' : '$cost $currency each';
+
+  /// What the round gave the player when the player chose it.
+  static String choicesYouGot(String card) => 'You got: $card';
+
+  /// What the round gave the player when the default applied.
+  static String choicesChosenForYou(String card) => 'Chosen for you: $card';
+
   // The host start sheet.
   static const playOnThisPhone = 'Play on this phone';
   static const playOnThisPhoneWhy = 'Play here with the controls on the screen';

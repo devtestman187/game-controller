@@ -17,6 +17,7 @@ import '../providers.dart';
 import 'abandoned_notice.dart';
 import 'bar_connection.dart';
 import 'bar_modes.dart';
+import 'choices_screen.dart';
 import 'controls_layer.dart';
 import 'diagnostics_screen.dart';
 import 'host_chip.dart';
@@ -189,7 +190,7 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
     final mode = ref.watch(gyroProvider.select((g) => g.mode));
     // The result card covers the pad (M14 design section 9): the pad is not
     // drawn or touched while it shows.
-    final resultShown = ref.watch(viewResultProvider) != null;
+    final resultShown = ref.watch(viewResultProvider) != null || ref.watch(choicesProvider.select((c) => c != null));
     // Re-laid out when the button size or fixed/floating changes, so the
     // metrics' touch areas follow.
     ref.watch(stickSettingsProvider);
@@ -266,6 +267,9 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
         // This phone's own result of the round it just drew (M14 design
         // section 9): the card over the last frame, and over the pad with it.
         const Positioned.fill(child: _ResultOverlay()),
+        // The host's choice round (M17 phone1b), over the pad like the result card but under the top bar's
+        // line, so the bar (Settings, Diagnostics, the link) still takes a tap during a round.
+        const Positioned(top: topBarHeightPx, left: 0, right: 0, bottom: 0, child: ChoicesOverlay()),
       ],
     );
   }

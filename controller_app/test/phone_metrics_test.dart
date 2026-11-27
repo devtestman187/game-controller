@@ -308,6 +308,7 @@ void main() {
           Capability.layout,
           Capability.status,
           Capability.view,
+          Capability.choices,
           // The client library adds the capabilities it implements itself (M16
           // identity, M16 bugs4 night), after the app's own list.
           Capability.identity,

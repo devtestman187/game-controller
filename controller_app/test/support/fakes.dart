@@ -195,8 +195,32 @@ class FakeClient extends ControllerClient {
   /// The host's night ended with [end], arriving now.
   void nightEnd(NightEndMessage end) => _nightEnds.add(end);
 
+  /// The choice rounds and their ends the host sends this phone (M17 phone1b).
+  final _choices = StreamController<ChoicesMessage>.broadcast();
+  final _choicesEnds = StreamController<ChoicesEndMessage>.broadcast();
+
+  /// Every pick the phone sent, in order.
+  final choicePicks = <ChoicePickMessage>[];
+
+  @override
+  Stream<ChoicesMessage> get choices => _choices.stream;
+
+  @override
+  Stream<ChoicesEndMessage> get choicesEnds => _choicesEnds.stream;
+
+  @override
+  void sendChoicePick(ChoicePickMessage pick) => choicePicks.add(pick);
+
+  /// The host sends a choice round, arriving now (named apart from the [choices] stream).
+  void choicesRound(ChoicesMessage round) => _choices.add(round);
+
+  /// The host ends a choice round, arriving now.
+  void choicesEnd(ChoicesEndMessage end) => _choicesEnds.add(end);
+
   @override
   Future<void> dispose() async {
+    await _choices.close();
+    await _choicesEnds.close();
     await _nightEnds.close();
     await _view.close();
     await _changes.close();

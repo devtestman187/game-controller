@@ -1,0 +1,250 @@
+2026-11-26 17:32:20 RUN_MAX_MIN=232 min (computed backstop of the jobs still to do)
+2026-11-26 17:32:21 start at 04eceb44 on m17side
+2026-11-26 17:32:21 worker: claude
+2026-11-26 17:32:22 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-26 17:32:22 run-base 04eceb44c7402f7e81587f0c88587de5e3cf1c24
+2026-11-26 17:32:42 phase: preflight
+2026-11-26 17:32:49 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-26 17:34:57 phase: worker (preflight took 135s)
+2026-11-26 17:34:57 start y0p
+2026-11-26 17:41:12 start y0dc
+2026-11-26 17:41:13 y0p finished: result 0 (26 turns, 2 min) model claude-sonnet-5-5, ladder 1, tokens in/read/write/out 26/369501/44271/13257
+2026-11-26 17:41:13 WARN: y0p logged 26 turns, 2 min but ran 6 min wall: a resumed session's usage row covers its last resume only, its real turns are unknown
+2026-11-26 17:46:59 y0dc finished: result 0 (36 turns, 3 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 52/1059445/56997/31435
+2026-11-26 17:47:00 phase: tests-first (worker took 723s)
+2026-11-26 17:47:14 tests-first ok: packages/connection/test/choice_round_pause_test.dart fails on the old code
+2026-11-26 17:47:17 tests-first ok: packages/connection/test/client_choices_test.dart fails on the old code
+2026-11-26 17:48:09 phase: check (tests-first took 69s)
+2026-11-26 17:48:25 combined check: the tools suite is skipped (no job changed a file under tools/)
+2026-11-26 17:56:10 phase: apply (check took 481s)
+2026-11-26 17:56:10 finding: y0p's report has no Summary block in its first 40 lines
+2026-11-26 17:56:11 committed y0p: 2f34624e m17 phone1b y0p: ChoiceRound pause and resume
+2026-11-26 17:56:13 committed y0dc: 66704121 m17 phone1b y0dc: phone client receives choices and sends picks
+2026-11-26 17:56:13 phase: review (apply took 3s)
+2026-11-26 17:56:14 STOPPED: PAUSED after wave 1 (RUN_PAUSE_AFTER_WAVE=1): its review is committed; verdict it, add fix jobs to the next wave of waves.txt, commit, restart
+2026-11-26 17:59:37 reviewed wave1: 11 finding(s)
+RESULT: STOPPED: PAUSED after wave 1 (RUN_PAUSE_AFTER_WAVE=1): its review is committed; verdict it, add fix jobs to the next wave of waves.txt, commit, restart
+2026-11-26 18:00:04 RUN_MAX_MIN=150 min (computed backstop of the jobs still to do)
+2026-11-26 18:00:04 start at 46579e68 on m17side
+2026-11-26 18:00:04 worker: claude
+2026-11-26 18:00:05 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-26 18:00:05 removed the last stop's STOP.md
+2026-11-26 18:00:19 phase: preflight
+2026-11-26 18:00:26 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-26 18:02:59 phase: worker (preflight took 160s)
+2026-11-26 18:02:59 skip y0p (already done)
+2026-11-26 18:03:00 skip y0dc (already done)
+2026-11-26 18:03:15 phase: worker (worker took 16s)
+2026-11-26 18:03:16 start y0d
+2026-11-26 18:20:59 start y0e
+2026-11-26 18:31:24 start y0f
+2026-11-26 18:31:25 y0d finished: result 5 (95 turns, 14 min) model claude-sonnet-5-5, ladder 1, tokens in/read/write/out 108/4245576/111791/44568
+2026-11-26 18:31:25 job y0d used 95 turns, over its cap of 80 (parked, siblings continue)
+2026-11-26 18:31:29 job y0d parked: its files are saved in .dart_tool/run-jobs/docs_briefs_m17_phone1b/parked-y0d.patch and out of the tree (the siblings' check does not see them)
+2026-11-26 18:31:29 y0e finished: result 5 (44 turns, 7 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 56/1554736/71697/34351
+2026-11-26 18:31:29 job y0e parked (result 5); its siblings continue
+2026-11-26 18:31:31 job y0e parked: its files are saved in .dart_tool/run-jobs/docs_briefs_m17_phone1b/parked-y0e.patch and out of the tree (the siblings' check does not see them)
+2026-11-26 18:36:00 y0f finished: result 5 (22 turns, 1 min) model claude-sonnet-5-5, ladder 1, tokens in/read/write/out 22/312891/34632/5266
+2026-11-26 18:36:00 job y0f parked (result 5); its siblings continue
+2026-11-26 18:36:02 job y0f parked: its files are saved in .dart_tool/run-jobs/docs_briefs_m17_phone1b/parked-y0f.patch and out of the tree (the siblings' check does not see them)
+2026-11-26 18:36:02 STOPPED: jobs that failed or passed their limit (parked, not committed): y0d y0e y0f (their logs: docs/briefs/m17/phone1b/flash-<job>.log)
+RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): y0d y0e y0f (their logs: docs/briefs/m17/phone1b/flash-<job>.log)
+2026-11-26 18:37:36 RUN_MAX_MIN=150 min (computed backstop of the jobs still to do)
+2026-11-26 18:37:37 start at bd3bf148 on m17side
+2026-11-26 18:37:37 worker: claude
+2026-11-26 18:37:38 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-26 18:37:38 removed the last stop's STOP.md
+2026-11-26 18:37:51 phase: preflight
+2026-11-26 18:37:56 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-26 18:38:12 phase: worker (preflight took 21s)
+2026-11-26 18:38:13 skip y0p (already done)
+2026-11-26 18:38:13 skip y0dc (already done)
+2026-11-26 18:38:28 phase: worker (worker took 16s)
+2026-11-26 18:38:29 start y0d
+2026-11-26 18:42:35 start y0e
+2026-11-26 18:52:05 start y0f
+2026-11-26 18:52:06 y0d finished: result 0 (6 turns, 0 min) model claude-sonnet-5-5, ladder 2, tokens in/read/write/out 12/90076/6414/1385
+2026-11-26 18:52:06 WARN: y0d logged 6 turns, 0 min but ran 13 min wall: a resumed session's usage row covers its last resume only, its real turns are unknown
+2026-11-26 18:52:06 y0e finished: result 0 (39 turns, 5 min) model claude-haiku-5-5, ladder 2, tokens in/read/write/out 46/854241/48709/25716
+2026-11-26 19:08:32 y0f finished: result 0 (79 turns, 10 min) model claude-sonnet-5-5, ladder 2, tokens in/read/write/out 78/3082972/112078/34863
+2026-11-26 19:08:33 phase: tests-first (worker took 1805s)
+2026-11-26 19:09:59 tests-first ok: packages/party_host/test/night_start_old_app_test.dart fails on the old code
+2026-11-26 19:10:06 tests-first ok: packages/party_host/test/shop_demo_test.dart fails on the old code
+2026-11-26 19:11:05 phase: check (tests-first took 152s)
+2026-11-26 19:11:50 combined check: skips protocol connection metrics kit look arena puzzle tools (no job's change reaches them)
+2026-11-26 19:15:26 phase: apply (check took 261s)
+2026-11-26 19:15:27 finding: y0d's report has no Summary block in its first 40 lines
+2026-11-26 19:15:29 committed y0d: 5c788dbd No change: y0d stopped, parked patch unreadable.
+2026-11-26 19:15:31 committed y0e: b0e4895a party_host: the start card names phones that are old apps (y0e)
+2026-11-26 19:15:31 finding: y0f's report has no Summary block in its first 40 lines
+2026-11-26 19:15:33 committed y0f: c891d383 m17 phone1b y0f: "Try the shop" demo on the Games screen
+2026-11-26 19:15:33 phase: review (apply took 7s)
+2026-11-26 19:18:54 reviewed wave2: 14 finding(s)
+2026-11-26 19:18:55 start the run's review
+METRICS run-review worker=claude model=claude-haiku-5-5 turns=48 in=54 out=37319 cache=1610468 min=3.0 wall=- result=0
+METRICS wave1-review worker=claude model=claude-haiku-5-5 turns=26 in=30 out=39404 cache=806055 min=3.1 wall=- result=0
+METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=37 in=46 out=36185 cache=1282108 min=2.9 wall=- result=0
+METRICS y0d worker=claude model=claude-sonnet-5-5 turns=6 in=12 out=1385 cache=96490 min=0.2 wall=13.6 result=0
+METRICS y0dc worker=claude model=claude-haiku-5-5 turns=36 in=52 out=31435 cache=1116442 min=2.9 wall=5.8 result=0
+METRICS y0e worker=claude model=claude-haiku-5-5 turns=39 in=46 out=25716 cache=902950 min=5.0 wall=9.5 result=0
+METRICS y0f worker=claude model=claude-sonnet-5-5 turns=79 in=78 out=34863 cache=3195050 min=10.2 wall=16.4 result=0
+METRICS y0p worker=claude model=claude-sonnet-5-5 turns=26 in=26 out=13257 cache=413772 min=2.0 wall=6.3 result=0
+2026-11-26 19:22:24 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/phone1b/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 5 jobs, 44 min
+2026-11-26 19:24:08 RUN_MAX_MIN=213 min (computed backstop of the jobs still to do)
+2026-11-26 19:24:08 start at e05d9050 on m17side
+2026-11-26 19:24:08 worker: claude
+2026-11-26 19:24:09 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-26 19:24:28 phase: preflight
+2026-11-26 19:24:34 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-26 19:24:50 phase: worker (preflight took 22s)
+2026-11-26 19:24:50 skip y0p (already done)
+2026-11-26 19:24:51 skip y0dc (already done)
+2026-11-26 19:25:06 phase: worker (worker took 16s)
+2026-11-26 19:25:07 skip y0e (already done)
+2026-11-26 19:25:07 skip y0f (already done)
+2026-11-26 19:25:28 phase: worker (worker took 22s)
+2026-11-26 19:25:28 resume y0d (applied by hand, not committed yet)
+2026-11-26 19:25:29 start y0h
+2026-11-26 19:29:49 start y0h2
+2026-11-26 19:29:50 y0h finished: result 0 (38 turns, 3 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 54/1155901/50098/25161
+2026-11-26 19:42:28 y0h2 finished: result 0 (35 turns, 8 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 68/1449620/49398/24280
+2026-11-26 19:42:29 phase: tests-first (worker took 1021s)
+2026-11-26 19:42:41 phase: check (tests-first took 12s)
+2026-11-26 19:43:17 combined check: the tools suite is skipped (no job changed a file under tools/)
+2026-11-26 19:47:46 phase: apply (check took 305s)
+2026-11-26 19:47:46 finding: y0d's report has no Summary block in its first 40 lines
+2026-11-26 19:47:47 STOPPED: commit of y0d refused (see .dart_tool/run-jobs/docs_briefs_m17_phone1b/run-commit.log)
+RESULT: STOPPED: commit of y0d refused (see .dart_tool/run-jobs/docs_briefs_m17_phone1b/run-commit.log)
+2026-11-26 19:48:16 RUN_MAX_MIN=213 min (computed backstop of the jobs still to do)
+2026-11-26 19:48:16 start at dac31c4e on m17side
+2026-11-26 19:48:17 worker: claude
+2026-11-26 19:48:18 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-26 19:48:18 removed the last stop's STOP.md
+2026-11-26 19:48:36 phase: preflight
+2026-11-26 19:48:43 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-26 19:48:59 phase: worker (preflight took 23s)
+2026-11-26 19:48:59 skip y0p (already done)
+2026-11-26 19:49:00 skip y0dc (already done)
+2026-11-26 19:49:15 phase: worker (worker took 16s)
+2026-11-26 19:49:16 skip y0e (already done)
+2026-11-26 19:49:16 skip y0f (already done)
+2026-11-26 19:49:32 phase: worker (worker took 17s)
+2026-11-26 19:49:32 start y0d
+2026-11-26 19:49:33 resume y0h (applied by hand, not committed yet)
+2026-11-26 19:49:33 resume y0h2 (applied by hand, not committed yet)
+2026-11-26 20:00:48 y0d finished: result 0 (26 turns, 5 min) model claude-sonnet-5-5, ladder 3, tokens in/read/write/out 26/366151/42325/17902
+2026-11-26 20:00:48 WARN: y0d logged 26 turns, 5 min but ran 11 min wall: a resumed session's usage row covers its last resume only, its real turns are unknown
+2026-11-26 20:00:48 phase: tests-first (worker took 676s)
+2026-11-26 20:02:21 tests-first ok: controller_app/test/choices_screen_test.dart fails on the old code
+2026-11-26 20:03:25 phase: check (tests-first took 157s)
+2026-11-26 20:04:05 combined check: the tools suite is skipped (no job changed a file under tools/)
+2026-11-26 20:07:41 phase: apply (check took 256s)
+2026-11-26 20:07:43 committed y0h: 7e9c702c Fix ChoiceRound pause and title edge cases (phone1b y0h)
+2026-11-26 20:07:45 committed y0h2: 66668003 phone1b y0h2: shop button 48 dp, picker params, comment sums
+2026-11-26 20:07:45 finding: y0d's report has no Summary block in its first 40 lines
+2026-11-26 20:07:47 committed y0d: bbfc9664 phone: generic choices screen with lock-in, undo and result
+2026-11-26 20:07:47 phase: review (apply took 6s)
+2026-11-26 20:07:48 STOPPED: PAUSED after wave 3 (RUN_PAUSE_AFTER_WAVE=1): its review is committed; verdict it, add fix jobs to the next wave of waves.txt, commit, restart
+2026-11-26 20:11:54 reviewed wave3: 16 finding(s)
+RESULT: STOPPED: PAUSED after wave 3 (RUN_PAUSE_AFTER_WAVE=1): its review is committed; verdict it, add fix jobs to the next wave of waves.txt, commit, restart
+2026-11-26 20:13:40 RUN_MAX_MIN=150 min (computed backstop of the jobs still to do)
+2026-11-26 20:13:41 start at 67a7b83b on m17side
+2026-11-26 20:13:41 worker: claude
+2026-11-26 20:13:41 proc-sweep: ORPHAN 75064 bash 2s "C:/Program Files/Git/bin/../usr/bin/bash.exe" -c "source /c/Users/mrman/.claude/shell-snapshots/snapshot-bash-179555545
+2026-11-26 20:13:41 proc-sweep: proc-sweep: 1 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-26 20:13:42 removed the last stop's STOP.md
+2026-11-26 20:13:50 phase: preflight
+2026-11-26 20:13:56 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-26 20:14:11 phase: worker (preflight took 21s)
+2026-11-26 20:14:12 skip y0p (already done)
+2026-11-26 20:14:12 skip y0dc (already done)
+2026-11-26 20:14:28 phase: worker (worker took 17s)
+2026-11-26 20:14:28 skip y0e (already done)
+2026-11-26 20:14:29 skip y0f (already done)
+2026-11-26 20:14:44 phase: worker (worker took 16s)
+2026-11-26 20:14:44 skip y0d (already done)
+2026-11-26 20:14:45 skip y0h (already done)
+2026-11-26 20:14:45 skip y0h2 (already done)
+2026-11-26 20:15:01 phase: worker (worker took 17s)
+2026-11-26 20:15:01 start y0h3
+2026-11-26 20:23:43 start y0h4
+2026-11-26 20:31:56 start y0h5
+2026-11-26 20:31:57 y0h3 finished: result 0 (40 turns, 4 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 50/996093/48747/24265
+2026-11-26 20:31:57 WARN: y0h3 logged 40 turns, 4 min but ran 16 min wall: a resumed session's usage row covers its last resume only, its real turns are unknown
+2026-11-26 20:31:57 y0h4 finished: result 0 (29 turns, 4 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 36/616003/39056/13807
+2026-11-26 20:42:47 y0h5 finished: result 0 (53 turns, 9 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 70/1941365/77311/48971
+2026-11-26 20:43:28 WARN: job y0h5 used 53 turns, over its cap of 50 (its own checks passed; accepted)
+2026-11-26 20:43:28 phase: tests-first (worker took 1707s)
+2026-11-26 20:43:43 phase: check (tests-first took 15s)
+2026-11-26 20:43:57 combined check: skips protocol metrics look tools (no job's change reaches them)
+2026-11-26 20:48:05 phase: apply (check took 262s)
+2026-11-26 20:48:07 committed y0h3: c6e0784f phone1b y0h3: old-app tests name only phones without choices
+2026-11-26 20:48:09 committed y0h4: f2853330 phone1b y0h4: shop demo strings in ShopText, format, comment
+2026-11-26 20:48:10 committed y0h5: 0e47cc15 choice round: keep a host pick made during a pause
+2026-11-26 20:48:11 phase: review (apply took 6s)
+2026-11-26 20:48:32 phase: worker (review took 21s)
+2026-11-26 20:51:01 start y0h6
+2026-11-26 21:02:35 y0h6 finished: result 0 (51 turns, 7 min) model claude-sonnet-5-5, ladder 1, tokens in/read/write/out 56/1186522/50889/16487
+2026-11-26 21:02:35 phase: tests-first (worker took 843s)
+2026-11-26 21:02:46 phase: check (tests-first took 11s)
+2026-11-26 21:02:59 combined check: skips protocol connection metrics kit look arena puzzle host tv tools (no job's change reaches them)
+2026-11-26 21:07:30 phase: apply (check took 284s)
+2026-11-26 21:07:30 finding: y0h6's report has no Summary block in its first 40 lines
+2026-11-26 21:07:32 committed y0h6: a224d503 phone1b y0h6: choices under the top bar, 480 dp cap, clear on host away
+2026-11-26 21:07:32 phase: review (apply took 2s)
+2026-11-26 21:07:33 reviewed wave4: 12 finding(s)
+2026-11-26 21:10:45 reviewed wave5: 8 finding(s)
+METRICS wave3-review worker=claude model=claude-haiku-5-5 turns=37 in=46 out=39174 cache=1544890 min=3.4 wall=- result=0
+METRICS wave4-review worker=claude model=claude-haiku-5-5 turns=39 in=36 out=30145 cache=898891 min=2.4 wall=- result=0
+METRICS wave5-review worker=claude model=claude-haiku-5-5 turns=29 in=34 out=34296 cache=885327 min=2.8 wall=- result=0
+METRICS y0h worker=claude model=claude-haiku-5-5 turns=38 in=54 out=25161 cache=1205999 min=3.0 wall=- result=0
+METRICS y0h2 worker=claude model=claude-haiku-5-5 turns=35 in=68 out=24280 cache=1499018 min=8.4 wall=- result=0
+METRICS y0h3 worker=claude model=claude-haiku-5-5 turns=40 in=50 out=24265 cache=1044840 min=4.3 wall=16.9 result=0
+METRICS y0h4 worker=claude model=claude-haiku-5-5 turns=29 in=36 out=13807 cache=655059 min=3.5 wall=8.2 result=0
+METRICS y0h5 worker=claude model=claude-haiku-5-5 turns=53 in=70 out=48971 cache=2018676 min=9.2 wall=10.8 result=0
+METRICS y0h6 worker=claude model=claude-sonnet-5-5 turns=51 in=56 out=16487 cache=1237411 min=6.6 wall=11.6 result=0
+2026-11-26 21:10:58 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/phone1b/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 11 jobs, 57 min
+2026-11-26 21:11:38 RUN_MAX_MIN=75 min (computed backstop of the jobs still to do)
+2026-11-26 21:11:38 start at 1283be9b on m17side
+2026-11-26 21:11:38 worker: claude
+2026-11-26 21:11:40 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-26 21:11:47 phase: preflight
+2026-11-26 21:11:56 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-26 21:12:42 phase: worker (preflight took 54s)
+2026-11-26 21:12:42 skip y0p (already done)
+2026-11-26 21:12:42 skip y0dc (already done)
+2026-11-26 21:12:58 phase: worker (worker took 17s)
+2026-11-26 21:12:58 skip y0e (already done)
+2026-11-26 21:12:59 skip y0f (already done)
+2026-11-26 21:13:14 phase: worker (worker took 16s)
+2026-11-26 21:13:15 skip y0d (already done)
+2026-11-26 21:13:15 skip y0h (already done)
+2026-11-26 21:13:15 skip y0h2 (already done)
+2026-11-26 21:13:31 phase: worker (worker took 17s)
+2026-11-26 21:13:31 skip y0h3 (already done)
+2026-11-26 21:13:32 skip y0h4 (already done)
+2026-11-26 21:13:32 skip y0h5 (already done)
+2026-11-26 21:13:48 phase: worker (worker took 17s)
+2026-11-26 21:13:48 skip y0h6 (already done)
+2026-11-26 21:14:19 phase: worker (worker took 31s)
+2026-11-26 21:14:19 start y0h7
+2026-11-26 21:16:57 start y0h8
+2026-11-26 21:16:58 y0h7 finished: result 0 (25 turns, 2 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 24/391101/40483/18068
+2026-11-26 21:24:09 y0h8 finished: result 0 (42 turns, 4 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 44/1123130/75586/31583
+2026-11-26 21:24:10 phase: tests-first (worker took 591s)
+2026-11-26 21:24:22 phase: check (tests-first took 12s)
+2026-11-26 21:24:34 combined check: skips protocol metrics look tools (no job's change reaches them)
+2026-11-26 21:28:25 phase: apply (check took 243s)
+2026-11-26 21:28:27 committed y0h7: aa7bb29a Keep a host pick over resume; defaults a phone's pick
+2026-11-26 21:28:28 committed y0h8: ad5c4a8a phone1b: split the choice result card out, fix the cap doc, add tests
+2026-11-26 21:28:28 phase: review (apply took 3s)
+2026-11-26 21:31:27 reviewed wave6: 5 finding(s)
+METRICS wave6-review worker=claude model=claude-haiku-5-5 turns=39 in=42 out=33132 cache=927916 min=2.6 wall=- result=0
+METRICS y0h7 worker=claude model=claude-haiku-5-5 turns=25 in=24 out=18068 cache=431584 min=1.7 wall=2.6 result=0
+METRICS y0h8 worker=claude model=claude-haiku-5-5 turns=42 in=44 out=31583 cache=1198716 min=4.2 wall=7.2 result=0
+2026-11-26 21:31:35 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/phone1b/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 13 jobs, 19 min
+full check: All checks passed (113s, 10 cached). Logs: C:\Users\mrman\AppData\Local\Temp/thumbparty-check-20261126-213150 2026-11-26 74360bca
+full check: All checks passed (350s, 4 cached). Logs: C:\Users\mrman\AppData\Local\Temp/thumbparty-check-20261126-213501 2026-11-26 74360bca

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
 import 'package:party_host/testing.dart';
+import 'package:protocol/protocol.dart';
 
 import 'support/host_harness.dart';
 import 'support/night_harness.dart';
@@ -91,12 +92,16 @@ Future<FakeHostService> _pumpNight(WidgetTester tester, Size device) async {
     screen: const _NightInFrame(child: NightStartScreen(seed: _seed)),
     size: device,
   );
-  // The sample state's own two phones make way for the four the card shows.
+  // The sample state's own two phones make way for the four the card shows. Each
+  // lists the choices capability, so none is an old app and no old-app line draws.
   fake.removeController('p1');
   fake.removeController('p2');
   var state = fake.state;
   for (var i = 0; i < _playerNames.length; i++) {
-    state = withController(state, phoneInfo('p${i + 1}', i + 1, name: _playerNames[i]));
+    state = withController(
+      state,
+      phoneInfo('p${i + 1}', i + 1, name: _playerNames[i], capabilities: [Capability.choices]),
+    );
   }
   fake.state = state;
   fake.emit();

@@ -143,6 +143,12 @@ class ControllerClient {
   /// listed [Capability.night], only while paired.
   Stream<NightEndMessage> get nightEnds => _controls.nightEnds;
 
+  /// Choice rounds from the TV (M17), for a phone that listed [Capability.choices], only while paired.
+  Stream<ChoicesMessage> get choices => _controls.choices;
+
+  /// The end of each choice round (M17), with the same limits as [choices].
+  Stream<ChoicesEndMessage> get choicesEnds => _controls.choicesEnds;
+
   /// The viewer's measurements since its last metrics batch (m12 §4, §6):
   /// `FrameView` or `SimView` feeds them; null without [Capability.view].
   ViewerStats? get viewerStats => _viewer?.stats;
@@ -171,6 +177,12 @@ class ControllerClient {
   /// Answers a rating prompt (M9). Sent only if connected.
   void sendRating(RatingMessage rating) {
     if (_snap.isConnected && _snap.hostCapabilities.contains(Capability.rating)) _send(rating);
+  }
+
+  /// Sends this player's pick in a choice round (M17). Sent only if connected and the host listed
+  /// [Capability.choices]; a pick that is not locked can still be changed until the round ends.
+  void sendChoicePick(ChoicePickMessage pick) {
+    if (_snap.isConnected && _snap.hostCapabilities.contains(Capability.choices)) _send(pick);
   }
 
   /// Whether this phone's player shares their stats (sentry1 stats option B),

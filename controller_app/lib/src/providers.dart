@@ -2,6 +2,7 @@ import 'package:connection/connection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+export 'providers/choices.dart';
 export 'providers/connection.dart';
 export 'providers/consent.dart';
 export 'providers/controls.dart';
