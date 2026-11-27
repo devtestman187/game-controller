@@ -4,7 +4,9 @@ read: docs/briefs/templates/COMMON.md · packages/party_host/lib/src/night/night
 changes: NightSave · nightSaveProvider · NightState.toJson · NightState.tryRestore · PartyNight.build
 probe: docs/briefs/m17/night1b/probe-e0c.patch
 model: haiku
-turns: 60
+turns: 70
+ladder: 2
+repair: the first try finished the lib code but 23 existing host tests failed with "UnimplementedError: prefsProvider must be overridden" (party_night_test.dart 15, round_results_test.dart 3, night_award_results_test.dart 3, night_robo_test.dart 1, champion_test.dart 1): they build a ProviderContainer for partyNightProvider without prefs. Fix them in those test files (override prefsProvider with a SharedPreferences from SharedPreferences.setMockInitialValues, see support/fake_prefs.dart), not by weakening the lib. Redo the whole job; its lib design stands
 expected-min: 35
 tests-first: exempt none; the restart test fails on the base (a new container starts with no night)
 do:
@@ -14,6 +16,6 @@ do:
 4 Tests: NEW packages/party_host/test/night_save_test.dart, written and run first (SharedPreferences.setMockInitialValues, a ProviderContainer with prefsProvider overridden; see host_harness.dart): toJson/tryRestore round-trips a night with 2 players, 2 rounds, an award outcome and a player who left; garbage, wrong types and an unknown award give null; one container plays start and one recordRound, a SECOND container on the same prefs resumes at round 1 with the same totals; end() then a new container has no night; an over night is not resumed. Existing party_host tests that read partyNightProvider must still pass: run `bash tools/check.sh host` once; fix a harness that lacks prefs only inside allow:.
 5 Report: the key, what is saved, what a corrupt save does.
 6 Before finishing run `dart analyze` on the files you changed and fix every info, warning and error.
-allow: packages/party_host/lib/src/night/night_state.dart · packages/party_host/lib/src/night/night_save.dart · packages/party_host/lib/src/night/party_night.dart · packages/party_host/test/night_save_test.dart · packages/party_host/test/support/host_harness.dart
+allow: packages/party_host/lib/src/night/night_state.dart · packages/party_host/lib/src/night/night_save.dart · packages/party_host/lib/src/night/party_night.dart · packages/party_host/test/night_save_test.dart · packages/party_host/test/support/host_harness.dart · packages/party_host/test/party_night_test.dart · packages/party_host/test/champion_test.dart · packages/party_host/test/night_award_results_test.dart · packages/party_host/test/night_robo_test.dart · packages/party_host/test/round_results_test.dart · packages/party_host/test/support/fake_prefs.dart
 check: format analyze host
 report: docs/briefs/m17/night1b/e0c-report.md
