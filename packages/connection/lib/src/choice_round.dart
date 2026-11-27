@@ -36,7 +36,8 @@ final class ChoiceRound {
   List<ChoiceCard> Function(String playerId) get cardsFor => setup.cardsFor;
 
   /// The card that applies when nothing is chosen, or null when nothing does. The build stop must set it to
-  /// the build stop's default card; with null an away player's pick is removed and the player abstains (the away timer).
+  /// the build stop's default card; with null an away player's pick is removed and the player abstains (the
+  /// away timer).
   String? get defaultId => setup.defaultId;
 
   /// The unit the costs are in, or null when there are none.
@@ -132,18 +133,26 @@ final class ChoiceRound {
   /// Stores [pickId] for [playerId]; null, or an unlocked pick, is an undo.
   /// Ignores a player not in the round, a card the player's list lacks or that
   /// is disabled, and any pick once the round is closed or disposed. [count] is
-  /// held to 1 up to the card's maxCount.
+  /// held to 1 up to the card's maxCount. A pick made here during a pause is kept over [resume]; a phone's
+  /// own pick, which comes in on its channel, is not, so its player is still defaulted after the pause.
   void pick(String playerId, {String? pickId, int count = 1, bool locked = false}) {
-    if (_isDisposed || isClosed || !players.contains(playerId)) return;
+    if (_storePick(playerId, pickId: pickId, count: count, locked: locked) && isPaused) {
+      _pickedWhilePaused.add(playerId);
+    }
+  }
+
+  /// Stores the pick and returns whether one was stored; an undo or a refused pick returns false.
+  bool _storePick(String playerId, {String? pickId, int count = 1, bool locked = false}) {
+    if (_isDisposed || isClosed || !players.contains(playerId)) return false;
     if (pickId == null) {
       if (_picks.remove(playerId) != null) _changes.add(null);
-      return;
+      return false;
     }
     final card = cardsFor(playerId).where((c) => c.id == pickId).firstOrNull;
-    if (card == null || !card.enabled) return;
+    if (card == null || !card.enabled) return false;
     _picks[playerId] = _Pick(cardId: pickId, count: count.clamp(1, card.maxCount), locked: locked);
-    if (isPaused) _pickedWhilePaused.add(playerId);
     _changes.add(null);
+    return true;
   }
 
   /// Ends the round, now or at the timer: settles each player's outcome, sends
@@ -221,7 +230,7 @@ final class ChoiceRound {
     if (message is! ChoicePickMessage || message.round != setup.round) return;
     final sender = server.snapshot.controllers.where((c) => c.controllerId == m.controllerId).firstOrNull;
     if (sender == null || !sender.supports(Capability.choices)) return;
-    pick(m.controllerId, pickId: message.pick, count: message.count, locked: message.locked);
+    _storePick(m.controllerId, pickId: message.pick, count: message.count, locked: message.locked);
   }
 
   void _onServerChange(HostSnapshot snapshot) {

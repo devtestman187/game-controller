@@ -321,7 +321,7 @@ void main() {
       });
 
       test(
-        'a shop round: a player away past the grace gets Save +2 by default and can pick again before the end',
+        'a shop round: a player away past the grace has the Save +2 default set and can pick again before the end',
         () async {
           final s = await _setup(t);
           s.server.dropAllConnections();

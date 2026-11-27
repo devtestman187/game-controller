@@ -42,6 +42,12 @@ const _wellBeforeFullLength = Duration(milliseconds: 1500);
 /// The most time a test waits for the round to reach a state, so a stuck test fails.
 const _waitLimit = Duration(seconds: 5);
 
+/// The most time a test polls the server snapshot for a phone to show as away, before it fails.
+const _pollLimit = Duration(seconds: 2);
+
+/// The gap between two polls of the server snapshot.
+const _pollStep = Duration(milliseconds: 10);
+
 /// How many players the pause tests' round has.
 const _playerCount = 2;
 
@@ -109,6 +115,16 @@ Future<void> _dropPhones(_Setup s) async {
   await hostUntil(s.server, (h) => stateOf(h, 'phone-1') == ControllerState.disconnected);
 }
 
+/// Polls the server snapshot, for at most [_pollLimit], until [id] shows as away. The round's own state is
+/// private, so this is the snapshot the test can read; the round listens to the same server changes.
+Future<void> _untilAway(HostServer server, String id) async {
+  final watch = Stopwatch()..start();
+  while (stateOf(server.snapshot, id) != ControllerState.disconnected) {
+    if (watch.elapsed > _pollLimit) throw TimeoutException('$id still connected after $_pollLimit');
+    await Future<void>.delayed(_pollStep);
+  }
+}
+
 void main() {
   for (final t in TestTransport.values) {
     group(t.name, () {
@@ -171,9 +187,9 @@ void main() {
 
       test('a player already away when the pause starts is not defaulted during the pause', () async {
         final s = await _setup(t);
-        // The drop is awaited on the server snapshot; the round subscribed to the server's changes first,
-        // so it has handled the drop before this test continues.
-        await _dropPhones(s);
+        // The round must see the drop before the pause starts, or it would still start an away timer.
+        s.server.dropAllConnections();
+        await _untilAway(s.server, 'phone-1');
 
         s.round.pause();
         await Future<void>.delayed(_pastEnd);
@@ -236,6 +252,20 @@ void main() {
         await Future<void>.delayed(_pastEnd);
 
         expect(round.close()['phone-2'], const ChoiceOutcome(cardId: 'build', count: 3, byDefault: false));
+      });
+
+      test('a phone pick during a pause does not stop its player being defaulted after a drop and resume', () async {
+        final s = await _setup(t);
+        s.round.pause();
+        s.capable.send(const ChoicePickMessage(round: 7, pick: 'build', count: 2));
+        await s.capable.drain();
+        await _dropPhones(s);
+        expect(s.round.lockedIds, isEmpty);
+
+        s.round.resume();
+        await _untilLocked(s.round);
+
+        expect(s.round.close()['phone-1'], const ChoiceOutcome(cardId: 'save', count: 1, byDefault: true));
       });
 
       test('the paused and resumed states reach the capable phone with the frozen time left', () async {
