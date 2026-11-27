@@ -217,3 +217,8 @@ RESULT: STOPPED: brief gate: brief-check failed: FAIL changes g3b4: CityRules is
 2026-11-27 00:16:23 phase: apply (check took 387s)
 2026-11-27 00:16:24 committed g3b4: 343a757e city: move corners and lane suffix into CityRules; add kids flag
 2026-11-27 00:16:25 phase: review (apply took 2s)
+2026-11-27 00:17:57 reviewed wave5: 5 finding(s)
+METRICS g3b4 worker=claude model=claude-haiku-5-5 turns=19 in=26 out=17143 cache=394914 min=3.8 wall=10.7 result=0
+METRICS wave5-review worker=claude model=claude-haiku-5-5 turns=13 in=14 out=14491 cache=209277 min=1.2 wall=- result=0
+2026-11-27 00:18:05 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/board3a/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 6 jobs, 20 min
