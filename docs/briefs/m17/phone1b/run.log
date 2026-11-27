@@ -193,3 +193,16 @@ RESULT: STOPPED: PAUSED after wave 3 (RUN_PAUSE_AFTER_WAVE=1): its review is com
 2026-11-26 21:07:30 finding: y0h6's report has no Summary block in its first 40 lines
 2026-11-26 21:07:32 committed y0h6: a224d503 phone1b y0h6: choices under the top bar, 480 dp cap, clear on host away
 2026-11-26 21:07:32 phase: review (apply took 2s)
+2026-11-26 21:07:33 reviewed wave4: 12 finding(s)
+2026-11-26 21:10:45 reviewed wave5: 8 finding(s)
+METRICS wave3-review worker=claude model=claude-haiku-5-5 turns=37 in=46 out=39174 cache=1544890 min=3.4 wall=- result=0
+METRICS wave4-review worker=claude model=claude-haiku-5-5 turns=39 in=36 out=30145 cache=898891 min=2.4 wall=- result=0
+METRICS wave5-review worker=claude model=claude-haiku-5-5 turns=29 in=34 out=34296 cache=885327 min=2.8 wall=- result=0
+METRICS y0h worker=claude model=claude-haiku-5-5 turns=38 in=54 out=25161 cache=1205999 min=3.0 wall=- result=0
+METRICS y0h2 worker=claude model=claude-haiku-5-5 turns=35 in=68 out=24280 cache=1499018 min=8.4 wall=- result=0
+METRICS y0h3 worker=claude model=claude-haiku-5-5 turns=40 in=50 out=24265 cache=1044840 min=4.3 wall=16.9 result=0
+METRICS y0h4 worker=claude model=claude-haiku-5-5 turns=29 in=36 out=13807 cache=655059 min=3.5 wall=8.2 result=0
+METRICS y0h5 worker=claude model=claude-haiku-5-5 turns=53 in=70 out=48971 cache=2018676 min=9.2 wall=10.8 result=0
+METRICS y0h6 worker=claude model=claude-sonnet-5-5 turns=51 in=56 out=16487 cache=1237411 min=6.6 wall=11.6 result=0
+2026-11-26 21:10:58 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/phone1b/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 11 jobs, 57 min
