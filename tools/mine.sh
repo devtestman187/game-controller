@@ -158,7 +158,8 @@ tests=() # the test files of the package being handled (paths from the root)
 
 read_changes() { # fills changed and old_paths from git status
   local entries=() entry i=0
-  while IFS= read -r -d '' entry; do entries+=("$entry"); done < <(git status --porcelain -z)
+  # --untracked-files=all lists each new file, not its folder: a folder entry would hide its .dart files
+  while IFS= read -r -d '' entry; do entries+=("$entry"); done < <(git status --porcelain -z --untracked-files=all)
   while [ "$i" -lt "${#entries[@]}" ]; do
     entry="${entries[$i]}"
     i=$((i + 1))
@@ -195,6 +196,11 @@ collect() { # fills dart_touched, dart_files and packages from the change list
     case "$path" in
       pubspec.yaml | */pubspec.yaml) ;;
       *.dart) dart_touched+=("$path"); [ -f "$path" ] && dart_files+=("$path") ;;
+      */) # a folder git lists as one entry (a nested repository): its files are not seen, so fail
+        echo "FAILED untracked folder $path: its files are not listed, so they cannot be checked"
+        failed=$((failed + 1))
+        continue
+        ;;
       *) continue ;;
     esac
     package="$(package_of "$path")"

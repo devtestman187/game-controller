@@ -237,6 +237,23 @@ rc=0
 if [ "$rc" = 3 ] && last | grep -qF 'RESULT: BAD INPUT: not a git worktree' && [ ! -s "$stub/log" ]; then r=0; else r=1; fi
 report "a folder outside a git worktree is bad input (exit 3)" "$r"
 
+repo untracked-folder
+mkdir -p "$repo_path/app/lib/fresh"
+printf 'const fresh = 1;\n' > "$repo_path/app/lib/fresh/fresh.dart"
+reset_stub
+mine "$repo_path"
+if [ "$rc" = 0 ] && grep -qF 'format app/lib/fresh/fresh.dart' "$stub/log" &&
+  last | grep -qF 'RESULT: ok: 1 file(s) formatted'; then r=0; else r=1; fi
+report "a new untracked folder's .dart file is formatted and counted, not a green 0 files" "$r"
+
+repo nested-repo
+mkdir -p "$repo_path/app/lib/nested" && git -C "$repo_path/app/lib/nested" init -q
+reset_stub
+mine "$repo_path"
+if [ "$rc" = 1 ] && grep -qF 'FAILED untracked folder app/lib/nested/' "$out" &&
+  last | grep -qF 'RESULT: FAILED:'; then r=0; else r=1; fi
+report "an untracked folder git lists as one entry (a nested repository) fails loudly (exit 1)" "$r"
+
 if [ "$fails" -gt 0 ]; then
   echo "RESULT: FAILED: $fails of $cases case(s) failed"
   exit 1
