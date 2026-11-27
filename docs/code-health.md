@@ -385,4 +385,5 @@ Not built. bugs2 wave A with the 1-hour cache showed no large Sonnet cache write
 - c2 (no code): the host phone's own player gets no choice round at a build stop (shop_demo_screen.dart:76-79 keeps only players with !p.local && !p.simulated); the host device has no choices UI path.
 
 ## night2d notes
+- choice_round grace test made race-free (both phones away -> both default); 74d79796.
 - The old-phone rule (a phone that cannot show a card gets the button fallback) lives in `cardsFor`; `choice_fallback.dart` could share one helper with it later. Owner Nov 27: leave it where it is.
