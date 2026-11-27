@@ -1,0 +1,1 @@
+- 10:04 wave1: g3r1 g3t committed, g3m parked on format only (class: capability, worker skipped dart format); hand-fixed via parked patch + dart format, tests 97 pass. next: restart runner for wave 2

@@ -24,3 +24,6 @@
 2026-11-27 10:04:05 committed g3r1: 9b6b091d m17 board3m g3r1: CityRules to the owner's final rules
 2026-11-27 10:04:07 committed g3t: f12450ea board3m g3t: one targeted gate per night on the board
 2026-11-27 10:04:08 phase: review (apply took 4s)
+2026-11-27 10:04:09 STOPPED: jobs that failed or passed their limit (parked, not committed): g3m (their logs: docs/briefs/m17/board3m/flash-<job>.log)
+2026-11-27 10:04:56 HAND-FIX g3m: runner's parked patch applied with git apply, dart format on night_adapter_test.dart (check failed on format only)
+2026-11-27 10:04:56 HAND-FIX-EVENT g3m: 1 lines changed, replaced ladder level 2
