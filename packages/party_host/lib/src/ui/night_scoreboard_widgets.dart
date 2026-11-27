@@ -94,6 +94,9 @@ class _ScoreCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final over = night.isOver;
     final rows = night.rows(players);
+    // The crown and the winner's mark go to the night's champions by the Quick
+    // night rule (championsAmong), the one rule the champion's screen shares.
+    final champions = night.championsAmong(players);
     final maxPoints = rows.fold(0, (most, row) => math.max(most, row.total));
     // Robo can win a round and the night (party-night §7a): its row wears the
     // robot disc in the free player colour the results card gives it.
@@ -111,10 +114,10 @@ class _ScoreCard extends StatelessWidget {
         children: [
           for (final row in rows)
             ScoreRow(
-              row: _data(row, over: over, roboNumber: roboNumber),
+              row: _data(row, over: over, roboNumber: roboNumber, champion: champions.contains(row.id)),
               maxPoints: maxPoints,
               keys: _keys(row),
-              badgeMark: over && row.place == 1
+              badgeMark: over && champions.contains(row.id)
                   ? NightCrown(key: Key('nightCrown-${row.id}'), size: nightWinnerCrownPx)
                   : null,
             ),
@@ -126,7 +129,7 @@ class _ScoreCard extends StatelessWidget {
   /// One player's line for [ScoreRow]: the night's own words on the row, and
   /// what the final scores add to it — the crown's player, the top three's
   /// discs (DESIGN section 4), and Robo's head.
-  ScoreRowData _data(NightRow row, {required bool over, required int roboNumber}) {
+  ScoreRowData _data(NightRow row, {required bool over, required int roboNumber, required bool champion}) {
     final robo = row.id == roboPlayerId;
     return ScoreRowData(
       rank: row.place,
@@ -140,7 +143,7 @@ class _ScoreCard extends StatelessWidget {
       // full (m14 r5 8).
       isAway: !row.isHere && !robo,
       isRobo: robo,
-      isWinner: over && row.place == 1,
+      isWinner: over && champion,
       medal: over ? _medalOf(row.place) : null,
     );
   }
