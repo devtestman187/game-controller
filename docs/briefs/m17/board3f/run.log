@@ -15,3 +15,13 @@
 2026-11-27 13:21:09 finding: split's report has no Summary block in its first 40 lines
 2026-11-27 13:21:11 committed split: 29af9c4d m17 board3f: split sim_report.dart into cell, stats and report
 2026-11-27 13:21:11 phase: review (apply took 2s)
+2026-11-27 13:21:32 phase: worker (review took 21s)
+2026-11-27 13:23:46 start final-row
+2026-11-27 13:29:22 final-row finished: result 0 (33 turns, 4 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 46/854676/42354/23971
+2026-11-27 13:29:22 phase: tests-first (worker took 470s)
+2026-11-27 13:29:27 tests-first ok: tools/sim/sim_final_test.dart fails on the old code
+2026-11-27 13:29:35 phase: check (tests-first took 13s)
+2026-11-27 13:29:43 combined check: skips protocol connection metrics kit look arena puzzle host phone tv (no job's change reaches them)
+2026-11-27 13:37:29 phase: apply (check took 474s)
+2026-11-27 13:37:31 committed final-row: dfe83a5f m17 board3f: final-rules row built through SimRules.forNight
+2026-11-27 13:37:31 phase: review (apply took 2s)
