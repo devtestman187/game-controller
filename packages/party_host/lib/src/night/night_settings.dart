@@ -17,9 +17,19 @@ const _timerScaleMax = 3.0;
 /// The timer a Kids night plays with: half as fast again, so younger players have time to act.
 const _kidsTimerScale = 1.5;
 
-/// How the night picks each game (M17 plan n1h). The director jobs of later batches fill in the others; [host] is
-/// the host taps each game, which is today's behaviour.
-enum NightPicker { host, shuffle, playlist, rotating, vote }
+/// How the night picks each game (M17 plan n1h). The later batches fill in the rest; [host] is the host taps each
+/// game, which is today's behaviour.
+enum NightPicker {
+  host,
+
+  /// The rule-based night director picks each game and says why.
+  director,
+
+  shuffle,
+  playlist,
+  rotating,
+  vote,
+}
 
 /// The party night's settings on this host (M17 plan n1h): how long a night is, which games it may play, how hard
 /// they may be, how often the cat comes, how fast the timers run, and who picks each game. A night starts from these.
