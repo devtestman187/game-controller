@@ -11,9 +11,9 @@ Changes:
 
 Tests seen:
 - Red first (before the lib change): `flutter test packages/party_host/test/city/rules_test.dart` gave `Expected: <3> Actual: <2>` for "a 2-player night re-prices a copy that was priced for 6 players back to 3 Bolts a tile". This is the only failure in that run; the other two new tests passed on the old code as well (old code gives 2 for `forPlayers(2).forPlayers(6)` and 2 for the three-step chain, which is the expected value for those).
-- Green after the change: `flutter test packages/party_host/test/city` → `All tests passed!` (99 tests, counted from the last progress line `+99`).
+- Green after the change: `flutter test packages/party_host/test/city` → `All tests passed!` (whole city folder).
 - `bash tools/tests/sim-test.sh` → 0 lines starting with FAIL; the last lines are PASS (for example `PASS tools/sim/sim_report_test.dart`).
-- `tools/mine.sh` → `OK 81 tests packages/party_host`, `RESULT: ok: 4 file(s) formatted, 2 package(s) analyzed, 1 package(s) tested`. No analyzer findings were printed.
+- `tools/mine.sh` → the mine.sh package-wide result (not comparable with the city folder count), `RESULT: ok: 4 file(s) formatted, 2 package(s) analyzed, 1 package(s) tested`. No analyzer findings were printed.
 
 Computed expectations (values from the code, not guessed):
 - `CityRules.standard.forPlayers(6).forPlayers(2).tileCost` = 3 (`tileCostSmallNight`).

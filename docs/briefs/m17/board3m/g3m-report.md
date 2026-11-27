@@ -17,7 +17,7 @@ Classes (`packages/party_host/lib/src/city/night_adapter.dart`):
   plazaDistance, bolts)` and runs `chain.champions`. Default chain is
   `ChampionChain.cityRush`.
 
-Test file (`packages/party_host/test/city/night_adapter_test.dart`), 18 tests, all passing:
+Test file (`packages/party_host/test/city/night_adapter_test.dart`), 13 tests, all passing:
 - RoundResultPlacing: `gives each player the place stat the round recorded`;
   `places a player with no place stat after the placed ones, in the order listed`;
   `places every listed player 1, 2, 3 in order when the round has no places at all`;
@@ -59,7 +59,7 @@ Analysis: `dart analyze` on both changed files: No issues found.
 
 ## Hand-over
 
-- Checks run: `dart format` on both files (formatted, 1 changed); `flutter test test/city/night_adapter_test.dart test/city/stubs_test.dart` (18 + 5 tests, all passed); `dart analyze` on both files (no issues).
+- Checks run: `dart format` on both files (the runner check failed on format; the driver ran dart format, see run.log HAND-FIX); `flutter test test/city/night_adapter_test.dart test/city/stubs_test.dart` (13 + 5 tests = 18 in total, all passed); `dart analyze` on both files (no issues).
 - Not run: `tools/mine.sh` and `tools/check.sh`. The brief says "never tools/mine.sh", while the job prompt asks for `tools/mine.sh`; I followed the brief. The runner's format/analyze/host step will cover the rest.
 - The new test file was written before the implementation file existed; the test would fail to compile without it, so it fails on the code as it was.
 

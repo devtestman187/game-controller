@@ -3,7 +3,7 @@
 ## Summary
 
 - Added `tools/tests/board-gate-test.sh` first (tests-first: new files, exempt). Run before the script existed: 12 of 12 FAIL (exit 127).
-- Added `tools/board-gate.sh` (about 65 lines, plain bash, no stdin reads, no coverage run).
+- Added `tools/board-gate.sh` (77 lines, plain bash, no stdin reads, no coverage run).
 - Ran `bash tools/tests/board-gate-test.sh` after the script: `cases 12 failed 0`.
 
 Test output (PASS lines, the `warning: ... CRLF` lines are git noise from the throw-away repos):
