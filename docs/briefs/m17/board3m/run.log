@@ -58,3 +58,15 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-27 10:47:46 committed g3h: 8f9e3e61 rules: drop gateTileIndex, re-price forPlayers from the night prices
 2026-11-27 10:47:48 committed g3n: 3e8a50c3 board3m g3n: merge gate script for the board line
 2026-11-27 10:47:48 phase: review (apply took 3s)
+2026-11-27 10:47:50 reviewed wave1-g3m: 7 finding(s)
+2026-11-27 10:48:21 phase: worker (review took 33s)
+2026-11-27 10:51:10 start g3r2
+2026-11-27 11:10:09 g3r2 finished: result 0 (29 turns, 2 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 42/712595/41360/21181
+2026-11-27 11:10:09 WARN: g3r2 logged 29 turns, 2 min but ran 18 min wall: a resumed session's usage row covers its last resume only, its real turns are unknown
+2026-11-27 11:10:10 phase: tests-first (worker took 1309s)
+2026-11-27 11:10:15 tests-first ok: tools/sim/sim_rules_test.dart fails on the old code
+2026-11-27 11:10:22 phase: check (tests-first took 12s)
+2026-11-27 11:10:30 combined check: skips protocol connection metrics kit look arena puzzle host phone tv (no job's change reaches them)
+2026-11-27 11:25:43 phase: apply (check took 921s)
+2026-11-27 11:25:45 committed g3r2: 597708bc board3m g3r2: sim reads the final night rules and the V2 label is fixed
+2026-11-27 11:25:45 phase: review (apply took 2s)
