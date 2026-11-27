@@ -125,3 +125,4 @@ METRICS g3h4 worker=claude model=claude-haiku-5-5 turns=30 in=24 out=14964 cache
 METRICS wave4-review worker=claude model=claude-haiku-5-5 turns=34 in=48 out=30262 cache=1225476 min=3.8 wall=- result=0
 2026-11-27 12:13:18 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/board3m/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 9 jobs, 39 min
+full check: All checks passed (634s, 7 cached). Logs: C:\Users\mrman\AppData\Local\Temp/thumbparty-check-20261127-121411 2026-11-27 c717558c
