@@ -84,3 +84,18 @@ RESULT: STOPPED: PAUSED after wave 1 (RUN_PAUSE_AFTER_WAVE=1): its review is com
 2026-11-27 11:02:07 checks failed; fetching packages and trying once more
 2026-11-27 11:17:56 STOPPED: checks failed twice on the combined tree after t2 d1 v2
 RESULT: STOPPED: checks failed twice on the combined tree after t2 d1 v2
+2026-11-27 11:18:36 HAND-FIX c1: phone_text version text and test use 'Thumb Party TV app' (tv-word rule), text! removed, test name shortened (c1 review trivials)
+2026-11-27 11:18:38 RUN_MAX_MIN=244 min (computed backstop of the jobs still to do)
+2026-11-27 11:18:38 start at 931d5db0 on m17
+2026-11-27 11:18:38 worker: claude
+2026-11-27 11:18:40 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-27 11:18:40 removed the last stop's STOP.md
+2026-11-27 11:19:04 phase: preflight
+2026-11-27 11:19:13 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-27 11:26:04 phase: worker (preflight took 420s)
+2026-11-27 11:26:05 skip v1a (already done)
+2026-11-27 11:26:06 WARN: c1 was committed by hand (a8ebf10a); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-27 11:26:06 hand-fixed c1: tests-first proof and worker review done (marked in done.txt)
+2026-11-27 11:26:06 skip c1 (already done)
+2026-11-27 11:26:07 skip t1 (already done)
+2026-11-27 11:26:07 wave 1 review: wave1-review-report.md does not cover c1, so its review is wave1-c1
