@@ -29,3 +29,10 @@
 2026-11-26 23:00:00 STOPPED: PAUSED after wave 1 (RUN_PAUSE_AFTER_WAVE=1): its review is committed; verdict it, add fix jobs to the next wave of waves.txt, commit, restart
 2026-11-26 23:02:29 reviewed wave1: 7 finding(s)
 RESULT: STOPPED: PAUSED after wave 1 (RUN_PAUSE_AFTER_WAVE=1): its review is committed; verdict it, add fix jobs to the next wave of waves.txt, commit, restart
+2026-11-26 23:03:06 RUN_MAX_MIN=75 min (computed backstop of the jobs still to do)
+2026-11-26 23:03:07 start at 322f32f0 on m17
+2026-11-26 23:03:07 worker: claude
+2026-11-26 23:03:08 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-26 23:03:08 removed the last stop's STOP.md
+2026-11-26 23:03:19 STOPPED: brief gate: brief-check failed: FAIL changes d2b: tier is used in packages/party_host/lib/src/night/variant.dart, which no job of wave 2 or earlier allows
+RESULT: STOPPED: brief gate: brief-check failed: FAIL changes d2b: tier is used in packages/party_host/lib/src/night/variant.dart, which no job of wave 2 or earlier allows
