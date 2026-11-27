@@ -63,7 +63,14 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
   late final List<NightAward> _awards = drawAwards(_random, games: _games);
 
   /// The length the night starts with: the saved setting's, which the header's segment and the setup screen write.
-  late NightLength _length = ref.read(nightSettingsProvider).length;
+  /// [initState] sets it from the saved setting before the first build; the default here is only its placeholder.
+  NightLength _length = NightLength.three;
+
+  @override
+  void initState() {
+    super.initState();
+    _length = ref.read(nightSettingsProvider).length;
+  }
 
   /// The night under way, if there is one: a night with a recorded round, whose
   /// own length and awards stand, so the card never names a draw the night
@@ -158,7 +165,6 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
             catVisits: catVisits,
             players: ref.watch(gamePlayersProvider),
             oldAppIds: _oldAppIds(ref.watch(hostStateProvider).host.controllers),
-            isPicked: isPicked,
             onSetup: _openSetup,
           ),
         ),
@@ -187,18 +193,14 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
 /// frame's body has room for it at every size (392 px at the shortest, against
 /// 286 px of content at 4 and 6 players), and a screen that did not fit would
 /// be redesigned rather than scrolled.
-class _StartColumn extends StatelessWidget {
+class _StartColumn extends ConsumerWidget {
   const _StartColumn({
     required this.awards,
     required this.catVisits,
     required this.players,
     required this.oldAppIds,
-    required this.isPicked,
     required this.onSetup,
   });
-
-  /// Whether the night picks its games, so the bottom line says so instead of naming the round the buttons pick.
-  final bool isPicked;
 
   /// Opens the setup screen.
   final VoidCallback onSetup;
@@ -217,9 +219,11 @@ class _StartColumn extends StatelessWidget {
   final Set<String> oldAppIds;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = ToyLookScope.of(context).colors;
     final text = ToyType.frame.body.copyWith(color: colors.onBackground);
+    // Whether the night picks its games, so the bottom line says so instead of naming the round the buttons pick.
+    final isPicked = ref.watch(nightSettingsProvider.select((settings) => settings.picker != NightPicker.host));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
