@@ -90,3 +90,12 @@ RESULT: STOPPED: PAUSED after wave 2 (RUN_PAUSE_AFTER_WAVE=1): its review is com
 2026-11-26 20:28:34 committed f2: 5f245306 Make NightSettingsStore.save awaitable and drop the test settle
 2026-11-26 20:28:36 committed f1: e4b9224b Subject: `party_host: night controller ends when the night is over`
 2026-11-26 20:28:36 phase: review (apply took 3s)
+2026-11-26 20:31:40 phase: worker (review took 184s)
+2026-11-26 20:31:41 start f3
+2026-11-26 20:38:54 f3 finished: result 0 (36 turns, 4 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 60/1229575/56022/27478
+2026-11-26 20:38:55 phase: tests-first (worker took 435s)
+2026-11-26 20:39:03 phase: check (tests-first took 8s)
+2026-11-26 20:39:12 combined check: skips protocol connection metrics kit look arena puzzle tools (no job's change reaches them)
+2026-11-26 20:42:32 phase: apply (check took 209s)
+2026-11-26 20:42:34 committed f3: 44e76979 party_host: puzzle Next ends its night round; startRound checks route
+2026-11-26 20:42:34 phase: review (apply took 2s)
