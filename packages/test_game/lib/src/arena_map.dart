@@ -6,6 +6,7 @@ import 'package:game_kit/game_kit.dart';
 import 'arena_pieces.dart';
 import 'arena_specs.dart';
 
+part 'arena_map_parse.dart';
 part 'arena_map_pieces.dart';
 
 /// The map file format this build reads (M14 k1b, docs/levels.md): files say
@@ -21,6 +22,14 @@ const mapThemes = ['playroom', 'pinball', 'castle', 'factory', 'tops'];
 /// The refusal of a theme this build has not got, in the same words in the
 /// schema and the parser.
 String notATheme(Object? theme) => '"$theme" is not a theme: use ${_oneOf(mapThemes)}';
+
+/// The difficulty tiers a map may be rated at (easy, medium or hard), in the
+/// same words in the schema and the parser. The night director reads them.
+const mapTiers = ['easy', 'medium', 'hard'];
+
+/// The refusal of a tier this build has not got, in the same words in the
+/// schema and the parser.
+String notATier(Object? tier) => '"$tier" is not a tier: use ${_oneOf(mapTiers)}';
 
 /// The names [names], as a sentence lists them: "a, b or c".
 String _oneOf(List<String> names) =>
@@ -100,6 +109,7 @@ final class ArenaMap {
     required this.name,
     required this.line,
     this.theme = 'playroom',
+    this.tier,
     this.walls = const [],
     this.hazards = const [],
     this.springs = const [],
@@ -158,6 +168,10 @@ final class ArenaMap {
   /// The floor's look ([mapThemes]). Drawn only: it never changes the play.
   final String theme;
 
+  /// The map's difficulty, one of [mapTiers], which the night director uses.
+  /// Null until the map is rated: a map with no tier in its file has none yet.
+  final String? tier;
+
   final List<WallSpec> walls;
   final List<HazardSpec> hazards;
 
@@ -193,6 +207,8 @@ final class ArenaMap {
     final where = 'Map "$id"';
     final theme = json['theme'] == null ? 'playroom' : _text(json, 'theme', where);
     if (!mapThemes.contains(theme)) throw FormatException(notATheme(theme));
+    final tier = json['tier'] == null ? null : _text(json, 'tier', where);
+    if (tier != null && !mapTiers.contains(tier)) throw FormatException(notATier(tier));
     final race = json['race'] == null ? null : _race(json['race'], where);
     final bumper = json['bumper'] == null ? null : _bumper(json['bumper'], where);
     if (race == null && bumper == null) {
@@ -203,6 +219,7 @@ final class ArenaMap {
       name: _text(json, 'name', where),
       line: _text(json, 'line', where),
       theme: theme,
+      tier: tier,
       walls: [
         for (final (i, raw) in _list(json['walls'] ?? const [], '$where: "walls"').indexed)
           _wall(raw, '$where, wall $i'),
@@ -244,112 +261,6 @@ final class ArenaMap {
     return fromJson(decoded);
   }
 
-  static RaceSpec _race(Object? raw, String where) {
-    if (raw is! Map<String, Object?>) throw FormatException('$where: "race" is not an object, got ${jsonEncode(raw)}');
-    final start = _point(raw['start'], '$where, race', 'start');
-    final goal = _rect(raw['goal'], '$where, race', 'goal');
-    final swap = raw['swapSides'];
-    if (swap != null && swap is! bool) {
-      throw FormatException('$where, race: "swapSides" must be true or false, got ${jsonEncode(swap)}');
-    }
-    return RaceSpec(start: start, goal: goal, swapSides: swap != false);
-  }
-
-  static BumperSpec _bumper(Object? raw, String where) {
-    if (raw is! Map<String, Object?>) {
-      throw FormatException('$where: "bumper" is not an object, got ${jsonEncode(raw)}');
-    }
-    return BumperSpec(
-      starts: [
-        for (final (i, spot) in _list(raw['starts'], '$where, bumper: "starts"').indexed)
-          _point(spot, '$where, bumper start $i', 'starts'),
-      ],
-      coins: [
-        for (final (i, zone) in _list(raw['coins'], '$where, bumper: "coins"').indexed)
-          _rect(zone, '$where, coin zone $i', 'coins'),
-      ],
-    );
-  }
-
-  static WallSpec _wall(Object? raw, String where) {
-    if (raw is! Map<String, Object?>) throw FormatException('$where is not an object, got ${jsonEncode(raw)}');
-    final bouncy = raw['bouncy'];
-    if (bouncy != null && bouncy is! bool) {
-      throw FormatException('$where: "bouncy" must be true or false, got ${jsonEncode(bouncy)}');
-    }
-    return WallSpec(_point(raw['from'], where, 'from'), _point(raw['to'], where, 'to'), bouncy: bouncy == true);
-  }
-
-  static HazardSpec _hazard(Object? raw, String where) {
-    if (raw is! Map<String, Object?>) throw FormatException('$where is not an object, got ${jsonEncode(raw)}');
-    if (raw['still'] != null) {
-      if (raw['still'] is! Map<String, Object?>) {
-        throw FormatException('$where: "still" is not an object, got ${jsonEncode(raw['still'])}');
-      }
-      return HazardSpec.still(_point((raw['still'] as Map<String, Object?>)['at'], where, 'at'));
-    }
-    final period = _number(raw['periodS'], where, 'periodS');
-    final phase = raw['phase'] == null ? 0.0 : _number(raw['phase'], where, 'phase');
-    if (raw['slide'] != null) {
-      if (raw['slide'] is! Map<String, Object?>) {
-        throw FormatException('$where: "slide" is not an object, got ${jsonEncode(raw['slide'])}');
-      }
-      final slide = raw['slide'] as Map<String, Object?>;
-      return HazardSpec.slide(
-        _point(slide['from'], where, 'from'),
-        _point(slide['to'], where, 'to'),
-        periodS: period,
-        phase: phase,
-      );
-    }
-    if (raw['orbit'] != null) {
-      if (raw['orbit'] is! Map<String, Object?>) {
-        throw FormatException('$where: "orbit" is not an object, got ${jsonEncode(raw['orbit'])}');
-      }
-      final orbit = raw['orbit'] as Map<String, Object?>;
-      return HazardSpec.orbit(
-        _point(orbit['centre'], where, 'centre'),
-        radius: _number(orbit['radius'], where, 'radius'),
-        periodS: period,
-        phase: phase,
-      );
-    }
-    throw FormatException(
-      '$where: needs a "slide" ({from, to}), an "orbit" ({centre, radius}) or a "still" ({at}), got '
-      '${jsonEncode(raw)}',
-    );
-  }
-
-  static String _text(Map<String, Object?> json, String key, String where) => switch (json[key]) {
-    final String value => value,
-    final other => throw FormatException('$where: "$key" must be text, got ${jsonEncode(other)}'),
-  };
-
-  static double _number(Object? value, String where, String key) => switch (value) {
-    final num number => number.toDouble(),
-    final other => throw FormatException('$where: "$key" must be a number, got ${jsonEncode(other)}'),
-  };
-
-  static Offset _point(Object? value, String where, String key) => switch (value) {
-    [final num x, final num y] => Offset(x.toDouble(), y.toDouble()),
-    _ => throw FormatException('$where: "$key" must be [x, y], got ${jsonEncode(value)}'),
-  };
-
-  static Rect _rect(Object? value, String where, String key) => switch (value) {
-    [final num left, final num top, final num right, final num bottom] => Rect.fromLTRB(
-      left.toDouble(),
-      top.toDouble(),
-      right.toDouble(),
-      bottom.toDouble(),
-    ),
-    _ => throw FormatException('$where: "$key" must be [left, top, right, bottom], got ${jsonEncode(value)}'),
-  };
-
-  static List<Object?> _list(Object? value, String where) => switch (value) {
-    final List<Object?> list => list,
-    _ => throw FormatException('$where must be a list, got ${jsonEncode(value)}'),
-  };
-
   @override
   bool operator ==(Object other) =>
       other is ArenaMap &&
@@ -357,6 +268,7 @@ final class ArenaMap {
       other.name == name &&
       other.line == line &&
       other.theme == theme &&
+      other.tier == tier &&
       _sameList(other.walls, walls) &&
       _sameList(other.hazards, hazards) &&
       _sameList(other.springs, springs) &&
@@ -373,6 +285,7 @@ final class ArenaMap {
     name,
     line,
     theme,
+    tier,
     Object.hashAll(walls),
     Object.hashAll(hazards),
     Object.hashAll(springs),

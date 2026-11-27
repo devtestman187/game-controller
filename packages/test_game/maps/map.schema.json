@@ -40,6 +40,11 @@
       "errorMessage": "{value} is not a theme: use playroom, pinball, castle, factory or tops",
       "description": "The floor's look, which every map names: the Playroom's mat, or the look of one of M14 k2's four maps (Pinball, Block Castle, Toy Factory, Spinning Tops). A theme only changes how the field is drawn; it never changes the play."
     },
+    "tier": {
+      "enum": ["easy", "medium", "hard"],
+      "errorMessage": "{value} is not a tier: use easy, medium or hard",
+      "description": "The map's difficulty, which the night director uses. Left out until the map is rated."
+    },
     "walls": {
       "type": "array",
       "maxItems": 24,
