@@ -86,3 +86,35 @@ METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=31 in=28 out=375
 METRICS wave3-review worker=claude model=claude-haiku-5-5 turns=21 in=24 out=28920 cache=459363 min=2.2 wall=- result=0
 2026-11-27 11:32:45 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/board3m/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 6 jobs, 81 min
+2026-11-27 11:34:15 RUN_MAX_MIN=132 min (computed backstop of the jobs still to do)
+2026-11-27 11:34:15 start at d8d33b6a on board-line
+2026-11-27 11:34:15 worker: claude
+2026-11-27 11:34:17 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-27 11:34:26 phase: preflight
+2026-11-27 11:34:34 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-27 11:37:06 phase: worker (preflight took 160s)
+2026-11-27 11:37:07 skip g3r1 (already done)
+2026-11-27 11:37:07 skip g3t (already done)
+2026-11-27 11:37:07 skip g3m (already done)
+2026-11-27 11:37:28 phase: worker (worker took 22s)
+2026-11-27 11:37:29 skip g3h (already done)
+2026-11-27 11:37:29 skip g3n (already done)
+2026-11-27 11:37:44 phase: worker (worker took 16s)
+2026-11-27 11:37:45 skip g3r2 (already done)
+2026-11-27 11:38:00 phase: worker (worker took 16s)
+2026-11-27 11:38:01 start g3h2
+2026-11-27 11:44:04 start g3h3
+2026-11-27 11:55:34 start g3h4
+2026-11-27 11:55:35 g3h2 finished: result 0 (14 turns, 2 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 28/327871/24045/9997
+2026-11-27 11:55:35 WARN: g3h2 logged 14 turns, 2 min but ran 17 min wall: a resumed session's usage row covers its last resume only, its real turns are unknown
+2026-11-27 11:55:36 g3h3 finished: result 0 (35 turns, 2 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 32/605686/43965/23695
+2026-11-27 11:55:36 WARN: g3h3 logged 35 turns, 2 min but ran 11 min wall: a resumed session's usage row covers its last resume only, its real turns are unknown
+2026-11-27 11:58:35 g3h4 finished: result 0 (30 turns, 2 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 24/332484/29023/14964
+2026-11-27 11:58:36 phase: tests-first (worker took 1236s)
+2026-11-27 11:58:40 phase: check (tests-first took 4s)
+2026-11-27 11:58:51 combined check: skips protocol connection metrics kit look arena puzzle (no job's change reaches them)
+2026-11-27 12:08:53 phase: apply (check took 613s)
+2026-11-27 12:08:54 committed g3h2: 66eee5dc board3m g3h2: forPlayers chain tests, adapter gap test, decider doc
+2026-11-27 12:08:56 committed g3h3: 1d8af754 Fix the simulator's gate-game and gate-blocks checks and cityRulesWith
+2026-11-27 12:08:58 committed g3h4: 7ebe72d1 board-gate: size and layer checks read committed content
+2026-11-27 12:08:58 phase: review (apply took 5s)
