@@ -8,3 +8,14 @@
 - how-to bounds test repeats the constants (night_flow_controller_test.dart:154) - minor - code-health
 - n1f report says 16 tests, 17 exist - trivial - ignored
 - silent decode catch without LogSink (night_settings.dart:203) - minor - code-health with night_save.dart
+# Wave 2 verdicts (10 findings, driver Nov 26)
+- champion tests pass on old code (night_scoreboard_champions_test.dart:93) - must - accepted: n1j's brief exempted it (row.place == 1 gives the same crowns; the test pins the wiring); noted in REPORT
+- puzzle_pick _next no roundEnded/next (puzzle_pick.dart:222) - should - f3
+- startRound top-route check (night_scoreboard_screen.dart:82) - should - f3
+- startRound nightBumperRoundReady - could - f3
+- replaceRound empty (:95) - could - f3 dartdoc; skipped-game points rule recorded (see REPORT)
+- _FakeTimer/_FakeScheduler copy; _NightInFrame copy - minor - code-health
+- begin() returns when any event exists - minor - code-health (latent)
+- _howTo always arms a timer (n1g question 2) - answered: not reachable
+- controller file 326 lines - minor - code-health (split roster handling later)
+- Coordinator addition (Fable review): 5-round night plays 5 games after skips/rerolls - f3 item 4; skipped-game points: partial points can reach the scoreboard today only because replaceRound is a stub (the old game keeps running and records at its end); rule needs replaceRound, so pinned as a dartdoc + REPORT note
