@@ -72,3 +72,17 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-27 11:25:45 phase: review (apply took 2s)
 2026-11-27 11:25:46 reviewed wave2: 9 finding(s)
 2026-11-27 11:28:42 reviewed wave3: 6 finding(s)
+2026-11-27 11:28:44 start the run's review
+METRICS g3h worker=claude model=claude-haiku-5-5 turns=36 in=32 out=16848 cache=536380 min=3.7 wall=8.1 result=0
+METRICS g3m worker=claude model=claude-haiku-5-5 turns=26 in=30 out=14346 cache=433846 min=2.9 wall=15.7 result=5
+METRICS g3n worker=claude model=claude-haiku-5-5 turns=10 in=20 out=16925 cache=273000 min=1.7 wall=2.2 result=0
+METRICS g3r1 worker=claude model=claude-haiku-5-5 turns=20 in=38 out=31085 cache=843423 min=4.7 wall=16.8 result=0
+METRICS g3r2 worker=claude model=claude-haiku-5-5 turns=29 in=42 out=21181 cache=753955 min=2.0 wall=19.0 result=0
+METRICS g3t worker=claude model=claude-haiku-5-5 turns=18 in=30 out=16394 cache=448482 min=3.8 wall=7.9 result=0
+METRICS run-review worker=claude model=claude-haiku-5-5 turns=56 in=52 out=41049 cache=1480604 min=3.3 wall=- result=0
+METRICS wave1-g3m-review worker=claude model=claude-haiku-5-5 turns=29 in=22 out=25528 cache=429490 min=2.1 wall=- result=0
+METRICS wave1-review worker=claude model=claude-haiku-5-5 turns=25 in=34 out=21694 cache=735094 min=1.8 wall=- result=0
+METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=31 in=28 out=37596 cache=820714 min=2.9 wall=- result=0
+METRICS wave3-review worker=claude model=claude-haiku-5-5 turns=21 in=24 out=28920 cache=459363 min=2.2 wall=- result=0
+2026-11-27 11:32:45 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/board3m/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 6 jobs, 81 min
