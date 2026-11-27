@@ -11,10 +11,12 @@ final nightPacingProvider = Provider<NightPacing>((ref) => const NightPacing());
 final nightScheduleProvider = Provider<NightSchedule?>((ref) => null);
 
 /// The controller of the night running now, or null when none runs. It stays the same while the night changes and is
-/// built again only when a night starts or ends; a night loaded after rounds were played resumes at their scoreboard.
+/// built again only when a night starts or is over (ended early included); a night loaded after rounds were played
+/// resumes at their scoreboard.
 /// It never begins by itself: the screen that shows the night calls begin.
 final nightFlowControllerProvider = Provider<NightFlowController?>((ref) {
-  final length = ref.watch(partyNightProvider.select((night) => night?.length));
+  // A night that is over, ended early included, has no controller: the select changes when it ends, so this rebuilds.
+  final length = ref.watch(partyNightProvider.select((night) => night == null || night.isOver ? null : night.length));
   if (length == null) return null;
   final played = ref.read(partyNightProvider)?.round ?? 0;
   final pacing = ref.watch(nightPacingProvider);

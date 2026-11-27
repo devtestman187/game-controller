@@ -16,6 +16,44 @@ ProviderContainer _container(FakePrefs prefs) {
   return harness.container;
 }
 
+/// A container whose night timers run on [clock], so nothing waits in real time.
+ProviderContainer _clockContainer({required FakePrefs prefs, required _FakeScheduler clock}) {
+  final harness = nightContainer(
+    overrides: [prefsProvider.overrideWithValue(prefs), nightScheduleProvider.overrideWithValue(clock.schedule)],
+  );
+  return harness.container;
+}
+
+/// A timer the test holds: it waits until cancelled and never fires by itself.
+class _FakeTimer implements Timer {
+  bool _cancelled = false;
+
+  @override
+  void cancel() => _cancelled = true;
+
+  @override
+  bool get isActive => !_cancelled;
+
+  @override
+  int get tick => 0;
+}
+
+/// A scheduler that records each pause asked for and the timers still waiting.
+class _FakeScheduler {
+  /// The pause each timer was asked for, in order.
+  final List<Duration> asked = [];
+  final List<_FakeTimer> timers = [];
+
+  Timer schedule(Duration after, void Function() fire) {
+    asked.add(after);
+    final timer = _FakeTimer();
+    timers.add(timer);
+    return timer;
+  }
+
+  int get waiting => timers.where((timer) => timer.isActive).length;
+}
+
 void main() {
   test('there is no controller while no night runs', () {
     final container = _container(FakePrefs());
@@ -45,11 +83,41 @@ void main() {
     final prefs = FakePrefs();
     NightSave(prefs)
         .save(NightState.start(length: NightLength.three, awards: threeAwards).record(roundResult(points: {'p1': 5})));
-    final container = _container(prefs);
+    final clock = _FakeScheduler();
+    final container = _clockContainer(prefs: prefs, clock: clock);
     final controller = container.read(nightFlowControllerProvider)!;
     expect(controller.flow.stage, NightStage.scoreboard);
     expect(controller.flow.round, 1);
     expect(controller.flow.rounds, 3);
+    expect(clock.asked, [const NightPacing().scoreboard], reason: 'the scoreboard pause is armed, not begun');
+    expect(clock.waiting, 1);
+  });
+
+  test('ending the night early on a round disposes the controller and the provider is null again', () {
+    final clock = _FakeScheduler();
+    final container = _clockContainer(prefs: FakePrefs(), clock: clock);
+    container.read(partyNightProvider.notifier).start(length: NightLength.three, awards: threeAwards);
+    final controller = container.read(nightFlowControllerProvider)!..begin();
+    expect(clock.waiting, 1, reason: 'the setup pause waits');
+
+    container.read(partyNightProvider.notifier).endNow(roundResult(points: {'p1': 3}));
+    expect(container.read(nightFlowControllerProvider), isNull);
+    expect(clock.waiting, 0, reason: 'disposing the controller drops its pause');
+    controller.next();
+    expect(controller.events, [const NightSetup(3)], reason: 'a disposed controller does nothing');
+  });
+
+  test('playing the last round disposes the controller and the provider is null again', () {
+    final clock = _FakeScheduler();
+    final container = _clockContainer(prefs: FakePrefs(), clock: clock);
+    container.read(partyNightProvider.notifier).start(length: NightLength.three, awards: threeAwards);
+    final controller = container.read(nightFlowControllerProvider)!..begin();
+    for (var round = 1; round <= NightLength.three.rounds; round++) {
+      container.read(partyNightProvider.notifier).recordRound(roundResult(points: {'p1': 3}));
+    }
+    expect(container.read(nightFlowControllerProvider), isNull);
+    controller.next();
+    expect(controller.events, [const NightSetup(3)], reason: 'a disposed controller does nothing');
   });
 
   test('ending the night disposes the controller and the provider is null again', () {
