@@ -1,0 +1,5 @@
+# wave 1: controller, settings, badge ring (no shared files)
+n1f n1h e0d
+# wave 2: controls and roster (controller, provider), round-start hook (screens), champion wiring (scoreboard widgets)
+n1g n1i n1j
+# fix round

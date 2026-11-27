@@ -1,0 +1,21 @@
+diff --git a/packages/party_host/lib/src/night/night_flow_controller.dart b/packages/party_host/lib/src/night/night_flow_controller.dart
+new file mode 100644
+index 00000000..33d5469b
+--- /dev/null
++++ b/packages/party_host/lib/src/night/night_flow_controller.dart
+@@ -0,0 +1,5 @@
++// probe stub
++final class NightFlowController { const NightFlowController(); }
++final class NightPacing { const NightPacing(); }
++typedef NightSchedule = int;
++abstract interface class NightRoundHooks {}
+diff --git a/packages/party_host/lib/src/night/night_flow_provider.dart b/packages/party_host/lib/src/night/night_flow_provider.dart
+new file mode 100644
+index 00000000..33d5469b
+--- /dev/null
++++ b/packages/party_host/lib/src/night/night_flow_provider.dart
+@@ -0,0 +1,4 @@
++// probe stub
++final nightFlowControllerProvider = 0;
++final nightPacingProvider = 0;
++final nightScheduleProvider = 0;

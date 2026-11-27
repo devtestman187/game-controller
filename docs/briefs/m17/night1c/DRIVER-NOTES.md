@@ -1,0 +1,1 @@
+- 19:16 briefs written (n1f n1h e0d / n1g n1i n1j), brief-check ok; semantics chosen: skip and reroll replace the round's game, never burn a round (default, owner question); pause seam = NightPausable list. next: probe-deps, dry-run, commit, start

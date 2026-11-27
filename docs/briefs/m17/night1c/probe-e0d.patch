@@ -1,0 +1,9 @@
+diff --git a/packages/party_host/lib/src/ui/player_badge_ring.dart b/packages/party_host/lib/src/ui/player_badge_ring.dart
+new file mode 100644
+index 00000000..33d5469b
+--- /dev/null
++++ b/packages/party_host/lib/src/ui/player_badge_ring.dart
+@@ -0,0 +1,3 @@
++// probe stub
++bool badgeNeedsRing(int number) => false;
++class PlayerBadgeRing { const PlayerBadgeRing(); }
