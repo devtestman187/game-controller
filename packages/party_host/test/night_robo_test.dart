@@ -4,6 +4,7 @@ import 'package:game_kit/game_kit.dart';
 import 'package:party_host/party_host.dart';
 import 'package:test_game/test_game.dart' show roboPlayerId;
 
+import 'support/fake_prefs.dart';
 import 'support/host_harness.dart';
 import 'support/night_harness.dart';
 
@@ -84,7 +85,7 @@ void main() {
   });
 
   test('Robo’s coins and rounds win it no award: awards are for people', () {
-    final (:container, :roster) = nightContainer();
+    final (:container, :roster) = savingNightContainer();
     roster.put([nightPlayer('p1', 1, 'Mia')]);
     final night = container.read(partyNightProvider.notifier)
       ..start(

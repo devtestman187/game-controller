@@ -6,6 +6,7 @@ import 'package:protocol/protocol.dart' show PlayerCharacter;
 import 'champion.dart';
 import 'night_award_results.dart';
 import 'night_awards.dart';
+import 'night_save.dart';
 
 /// The most rounds any night may play. Nights stay at 5 rounds until about 15 game variants exist (M17 plan n1c), so
 /// 8 rounds stays unavailable.
@@ -133,6 +134,23 @@ final class NightState {
       isEndedEarly: false,
     );
   }
+
+  /// The night a saved one rebuilds (NightSave reads the fields back from JSON):
+  /// every field, as NightSave's JSON wrote it.
+  factory NightState.restored(SavedNight parts) => NightState._(
+    length: parts.length,
+    round: parts.round,
+    awards: parts.awards,
+    totals: parts.totals,
+    counters: parts.counters,
+    roundsWon: parts.roundsWon,
+    played: parts.played,
+    lastRoundPoints: parts.lastRoundPoints,
+    seen: parts.seen,
+    outcomes: parts.outcomes,
+    maps: parts.maps,
+    isEndedEarly: parts.isEndedEarly,
+  );
 
   /// How many rounds the night plays: 3 or 5.
   final NightLength length;

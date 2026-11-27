@@ -5,6 +5,7 @@ import 'package:puzzle_game/puzzle_game.dart' show Chaos, PuzzleSettings;
 
 import '../providers.dart';
 import 'night_awards.dart';
+import 'night_save.dart';
 import 'night_state.dart';
 
 /// What a night's round scores at (design section 2 N3): the game multiplies
@@ -50,7 +51,8 @@ abstract final class NightChaos {
 ///
 /// A night starts on its start card's first game button, records each round on
 /// the results' Next, and ends after the final scores or when the host answers
-/// "End the party night?" with Yes. Nothing is saved: the hall of fame is M15.
+/// "End the party night?" with Yes. The night is saved after each change and
+/// resumes when the host restarts (NightSave); the hall of fame is M15.
 /// Nothing in a game imports it: a game only builds a [RoundResult].
 class PartyNight extends Notifier<NightState?> {
   @override
@@ -62,7 +64,7 @@ class PartyNight extends Notifier<NightState?> {
       final night = state;
       if (night != null) state = night.remember(players);
     });
-    return null;
+    return ref.read(nightSaveProvider).load();
   }
 
   /// Starts a night of [length] rounds playing for [awards], with the players
@@ -70,7 +72,7 @@ class PartyNight extends Notifier<NightState?> {
   /// running is left as it is.
   void start({required NightLength length, required List<NightAward> awards}) {
     if (state != null) return;
-    state = NightState.start(length: length, awards: awards, players: ref.read(gamePlayersProvider));
+    _set(NightState.start(length: length, awards: awards, players: ref.read(gamePlayersProvider)));
   }
 
   /// Records a round played (N1, N5): its points, already scaled by the game
@@ -81,7 +83,7 @@ class PartyNight extends Notifier<NightState?> {
     final night = state;
     if (night == null || night.isOver) return;
     final recorded = night.remember(ref.read(gamePlayersProvider)).record(result);
-    state = recorded.isOver ? recorded.withAwards() : recorded;
+    _set(recorded.isOver ? recorded.withAwards() : recorded);
   }
 
   /// Ends the night on the round just played (B-021), before its last one: it
@@ -93,27 +95,38 @@ class PartyNight extends Notifier<NightState?> {
     final night = state;
     if (night == null || night.isOver) return;
     final recorded = night.remember(ref.read(gamePlayersProvider)).record(result).endedEarly();
-    state = recorded.withAwards();
+    _set(recorded.withAwards());
   }
 
   /// Notes the Arena map a round started on (party-night §7b): the night's
   /// Bumper Rounds each start on Surprise me, which picks a map it hasn't used.
   void usedMap(String mapId) {
     final night = state;
-    if (night != null) state = night.usedMap(mapId);
+    if (night != null) _set(night.usedMap(mapId));
   }
 
   /// Ends the night, clearing it: the final scores' "Back to games" and the
   /// scoreboard's "End the party night?" Yes both do this, so the picker's card
   /// opens a fresh start card afterwards.
-  void end() => state = null;
+  void end() => _set(null);
 
   /// Drops a night the host never played (B-032): one whose round 1 was left
   /// before any round was recorded leaves nothing behind, so the start card is
   /// a fresh pick again. A night with a recorded round is kept.
   void dropIfUnplayed() {
     final night = state;
-    if (night != null && night.round == 0) state = null;
+    if (night != null && night.round == 0) _set(null);
+  }
+
+  /// Sets the night, and saves it, or clears the save when no night runs (NightSave).
+  void _set(NightState? night) {
+    state = night;
+    final save = ref.read(nightSaveProvider);
+    if (night == null) {
+      save.clear();
+    } else {
+      save.save(night);
+    }
   }
 }
 

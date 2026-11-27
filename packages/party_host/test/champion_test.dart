@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
 import 'package:party_host/src/night/champion.dart';
 
+import 'support/fake_prefs.dart';
 import 'support/night_harness.dart';
 
 /// The champion chain (M17 night1a e0b): one test per step, the owner's added
@@ -96,7 +97,7 @@ void main() {
   });
 
   test('quick night picks the same champions as the scoreboard\'s place 1', () {
-    final (:container, :roster) = nightContainer();
+    final (:container, :roster) = savingNightContainer();
     roster.put([nightPlayer('p1', 1, 'Mia'), nightPlayer('p2', 2, 'Dad'), nightPlayer('p3', 3, 'Sam')]);
     final night = container.read(partyNightProvider.notifier)..start(length: NightLength.three, awards: threeAwards);
     night.recordRound(roundResult(points: {'p1': 5, 'p2': 5, 'p3': 2}, winners: {'p1', 'p2'}));

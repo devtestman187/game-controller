@@ -4,13 +4,14 @@ import 'package:party_host/party_host.dart';
 import 'package:party_host/src/night/round_results.dart';
 import 'package:test_game/test_game.dart' show roboName, roboPlayerId;
 
+import 'support/fake_prefs.dart';
 import 'support/night_harness.dart';
 
 /// The results a night's round sends each joined phone (M14 design section 9):
 /// their own outcome, and the night's standings after the round.
 void main() {
   test('a night\'s standings carry Robo with its name, so a phone shows it too', () {
-    final (:container, :roster) = nightContainer();
+    final (:container, :roster) = savingNightContainer();
     roster.put([nightPlayer('p1', 1, 'Mia')]);
     container.read(partyNightProvider.notifier).start(length: NightLength.three, awards: threeAwards);
     final result = RoundResult(
@@ -40,7 +41,7 @@ void main() {
   });
 
   test('the last round\'s standings carry no award points: the night\'s end sends the final scores', () {
-    final (:container, :roster) = nightContainer();
+    final (:container, :roster) = savingNightContainer();
     roster.put([nightPlayer('p1', 1, 'Mia'), nightPlayer('p2', 2, 'Ben')]);
     final notifier = container.read(partyNightProvider.notifier);
     notifier.start(length: NightLength.three, awards: threeAwards);
@@ -68,7 +69,7 @@ void main() {
   });
 
   test('a round one of three of a night carries no award points', () {
-    final (:container, :roster) = nightContainer();
+    final (:container, :roster) = savingNightContainer();
     roster.put([nightPlayer('p1', 1, 'Mia'), nightPlayer('p2', 2, 'Ben')]);
     container.read(partyNightProvider.notifier).start(length: NightLength.three, awards: threeAwards);
     final first = resultOf(

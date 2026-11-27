@@ -3,12 +3,13 @@ import 'package:game_kit/game_kit.dart';
 import 'package:party_host/party_host.dart';
 import 'package:puzzle_game/puzzle_game.dart' show Chaos, PuzzleSettings;
 
+import 'support/fake_prefs.dart';
 import 'support/night_harness.dart';
 
 void main() {
   group('PartyNight', () {
     test('no night runs until one starts, and it can be ended', () {
-      final (:container, roster: _) = nightContainer();
+      final (:container, roster: _) = savingNightContainer();
       expect(container.read(partyNightProvider), isNull);
       container.read(partyNightProvider.notifier).start(length: NightLength.three, awards: threeAwards);
       expect(container.read(partyNightProvider), isNotNull);
@@ -17,7 +18,7 @@ void main() {
     });
 
     test('a night of three rounds is over after its third', () {
-      final (:container, :roster) = nightContainer();
+      final (:container, :roster) = savingNightContainer();
       roster.put([nightPlayer('p1', 1, 'Mia')]);
       final night = container.read(partyNightProvider.notifier)..start(length: NightLength.three, awards: threeAwards);
       expect(container.read(partyNightProvider)!.rounds, 3);
@@ -32,7 +33,7 @@ void main() {
     });
 
     test('a night ended early has no rounds left', () {
-      final (:container, :roster) = nightContainer();
+      final (:container, :roster) = savingNightContainer();
       roster.put([nightPlayer('p1', 1, 'Mia')]);
       final night = container.read(partyNightProvider.notifier)..start(length: NightLength.three, awards: threeAwards);
       night.recordRound(roundResult(points: {'p1': 5}));
@@ -43,7 +44,7 @@ void main() {
     });
 
     test('a night of five rounds plays five', () {
-      final (:container, :roster) = nightContainer();
+      final (:container, :roster) = savingNightContainer();
       roster.put([nightPlayer('p1', 1, 'Mia')]);
       final night = container.read(partyNightProvider.notifier)..start(length: NightLength.five, awards: threeAwards);
       for (var i = 0; i < 4; i++) {
@@ -57,7 +58,7 @@ void main() {
     });
 
     test('each player keeps their own total when the teams change', () {
-      final (:container, :roster) = nightContainer();
+      final (:container, :roster) = savingNightContainer();
       roster.put([nightPlayer('p1', 1, 'Mia'), nightPlayer('p2', 2, 'Dad'), nightPlayer('p3', 3, 'Sam')]);
       final night = container.read(partyNightProvider.notifier)..start(length: NightLength.three, awards: threeAwards);
       // P1 and P2 on the left, P3 on the right: the left wins.
@@ -76,7 +77,7 @@ void main() {
     // M14 f1 (r5 finding 3): a board played alone has no winning side of its
     // own, so Round Winner could never be won in a solo or team night.
     test('a round played on one board counts as its side\'s round won', () {
-      final (:container, :roster) = nightContainer();
+      final (:container, :roster) = savingNightContainer();
       roster.put([nightPlayer('p1', 1, 'Mia')]);
       final night = container.read(partyNightProvider.notifier)..start(length: NightLength.three, awards: threeAwards);
       // One board, done: its line says `done` and no side won.
@@ -93,7 +94,7 @@ void main() {
     });
 
     test('the counters a round reports add up over the night', () {
-      final (:container, :roster) = nightContainer();
+      final (:container, :roster) = savingNightContainer();
       roster.put([nightPlayer('p1', 1, 'Mia'), nightPlayer('p2', 2, 'Dad')]);
       final night = container.read(partyNightProvider.notifier)..start(length: NightLength.three, awards: threeAwards);
       night.recordRound(
@@ -123,7 +124,7 @@ void main() {
     });
 
     test('the last round scores what the game scored: the double is the game\'s', () {
-      final (:container, :roster) = nightContainer();
+      final (:container, :roster) = savingNightContainer();
       roster.put([nightPlayer('p1', 1, 'Mia')]);
       final night = container.read(partyNightProvider.notifier)..start(length: NightLength.three, awards: threeAwards);
       night.recordRound(roundResult(points: {'p1': 7}));
@@ -135,7 +136,7 @@ void main() {
     });
 
     test('a joiner starts at 0, at the foot of the scoreboard', () {
-      final (:container, :roster) = nightContainer();
+      final (:container, :roster) = savingNightContainer();
       roster.put([nightPlayer('p1', 1, 'Mia')]);
       final night = container.read(partyNightProvider.notifier)..start(length: NightLength.three, awards: threeAwards);
       night.recordRound(roundResult(points: {'p1': 7}));
@@ -148,7 +149,7 @@ void main() {
     });
 
     test('a leaver keeps a greyed row, and counts again when they come back', () {
-      final (:container, :roster) = nightContainer();
+      final (:container, :roster) = savingNightContainer();
       roster.put([nightPlayer('p1', 1, 'Mia'), nightPlayer('p2', 2, 'Dad')]);
       final night = container.read(partyNightProvider.notifier)..start(length: NightLength.three, awards: threeAwards);
       night.recordRound(roundResult(points: {'p1': 3, 'p2': 5}));
@@ -166,7 +167,7 @@ void main() {
     });
 
     test('ties share a place, and the row says so', () {
-      final (:container, :roster) = nightContainer();
+      final (:container, :roster) = savingNightContainer();
       roster.put([nightPlayer('p1', 1, 'Mia'), nightPlayer('p2', 2, 'Dad'), nightPlayer('p3', 3, 'Sam')]);
       final night = container.read(partyNightProvider.notifier)..start(length: NightLength.three, awards: threeAwards);
       night.recordRound(roundResult(points: {'p1': 3, 'p2': 9, 'p3': 2}));
@@ -178,7 +179,7 @@ void main() {
     });
 
     test('who has played is kept, so a round nobody played says so', () {
-      final (:container, :roster) = nightContainer();
+      final (:container, :roster) = savingNightContainer();
       roster.put([nightPlayer('p1', 1, 'Mia'), nightPlayer('p2', 2, 'Dad')]);
       final night = container.read(partyNightProvider.notifier)..start(length: NightLength.five, awards: threeAwards);
       expect(container.read(partyNightProvider)!.played, isEmpty);
@@ -187,7 +188,7 @@ void main() {
     });
 
     test('a round recorded after the night is over changes nothing', () {
-      final (:container, :roster) = nightContainer();
+      final (:container, :roster) = savingNightContainer();
       roster.put([nightPlayer('p1', 1, 'Mia')]);
       final night = container.read(partyNightProvider.notifier)..start(length: NightLength.three, awards: threeAwards);
       for (var i = 0; i < 3; i++) {
@@ -198,7 +199,7 @@ void main() {
     });
 
     test('a second start leaves the running night as it is', () {
-      final (:container, :roster) = nightContainer();
+      final (:container, :roster) = savingNightContainer();
       roster.put([nightPlayer('p1', 1, 'Mia')]);
       final night = container.read(partyNightProvider.notifier)
         ..start(length: NightLength.three, awards: threeAwards)
@@ -209,7 +210,7 @@ void main() {
     });
 
     test('a round started during the night says which of the night\'s it is (M14)', () {
-      final (:container, :roster) = nightContainer();
+      final (:container, :roster) = savingNightContainer();
       expect(nightRoundTags(container.read(partyNightProvider)), isEmpty, reason: 'no night outside one');
       roster.put([nightPlayer('p1', 1, 'Mia')]);
       final night = container.read(partyNightProvider.notifier)..start(length: NightLength.five, awards: threeAwards);

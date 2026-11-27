@@ -1,4 +1,9 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:party_host/party_host.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'night_harness.dart';
 
 /// The preferences the host id code writes to: the first [failures] writes
 /// fail, by throwing when [throwsOnWrite] or by answering false, and the rest
@@ -81,4 +86,18 @@ class FakePrefs implements SharedPreferences {
 
   @override
   Future<void> reload() async {}
+}
+
+/// [nightContainer] with [prefs] as the host's prefs, which a night saves in: a
+/// container built on the same prefs resumes the night the first one saved.
+({ProviderContainer container, TestRoster roster}) savingNightContainer({FakePrefs? prefs}) {
+  final container = ProviderContainer(
+    overrides: [
+      prefsProvider.overrideWithValue(prefs ?? FakePrefs()),
+      gamePlayersProvider.overrideWith(TestRoster.new),
+    ],
+  );
+  addTearDown(container.dispose);
+  final roster = container.read(gamePlayersProvider.notifier) as TestRoster;
+  return (container: container, roster: roster);
 }

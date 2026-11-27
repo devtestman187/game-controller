@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
 
+import 'support/fake_prefs.dart';
 import 'support/night_harness.dart';
 
 /// The night's twelve awards decided from its counters (M14 c2, design section
@@ -168,7 +169,7 @@ void main() {
   });
 
   test('the night decides its three awards when the last round is recorded, in its order', () {
-    final (:container, :roster) = nightContainer();
+    final (:container, :roster) = savingNightContainer();
     roster.put([nightPlayer('p1', 1, 'Mia'), nightPlayer('p2', 2, 'Dad')]);
     final night = container.read(partyNightProvider.notifier)
       ..start(
@@ -194,7 +195,7 @@ void main() {
   });
 
   test('an award adds its +3 to the final scores, never to the rounds\' own total', () {
-    final (:container, :roster) = nightContainer();
+    final (:container, :roster) = savingNightContainer();
     roster.put([nightPlayer('p1', 1, 'Mia'), nightPlayer('p2', 2, 'Dad')]);
     final night = container.read(partyNightProvider.notifier)
       ..start(
@@ -221,7 +222,7 @@ void main() {
   });
 
   test('a round recorded after the awards are decided adds nothing more', () {
-    final (:container, :roster) = nightContainer();
+    final (:container, :roster) = savingNightContainer();
     roster.put([nightPlayer('p1', 1, 'Mia')]);
     final night = container.read(partyNightProvider.notifier)
       ..start(
