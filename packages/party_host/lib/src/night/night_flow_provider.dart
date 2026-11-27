@@ -29,14 +29,9 @@ final nightFlowControllerProvider = Provider<NightFlowController?>((ref) {
   // The director's rule for a round's game comes from the pick the night made for it; a host pick has none.
   DirectorReason? reasonFor(int round) => ref.read(nightPickProvider.notifier).pickFor(round)?.reason;
   final controller = played > 0
-      ? NightFlowController.resumed(
-          rounds: length.rounds,
-          playedRounds: played,
-          pacing: pacing,
-          schedule: schedule,
-          reasonFor: reasonFor,
-        )
-      : NightFlowController(rounds: length.rounds, pacing: pacing, schedule: schedule, reasonFor: reasonFor);
+      ? NightFlowController.resumed(rounds: length.rounds, playedRounds: played, pacing: pacing, schedule: schedule)
+      : NightFlowController(rounds: length.rounds, pacing: pacing, schedule: schedule);
+  controller.reasonFor = reasonFor;
   ref.onDispose(controller.dispose);
   // The roster is read, not watched: a phone joining or leaving must not build the night again.
   controller.rosterChanged(ref.read(gamePlayersProvider));

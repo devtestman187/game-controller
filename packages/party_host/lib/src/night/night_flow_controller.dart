@@ -77,15 +77,10 @@ final class NightPacing {
 /// each round: [hooks] starts it after the how-to card, and [roundEnded] says it is over.
 final class NightFlowController {
   /// A night of [rounds] rounds, not begun yet. [onEvent] hears each accepted event.
-  NightFlowController({
-    required int rounds,
-    this.pacing = const NightPacing(),
-    NightSchedule? schedule,
-    this.onEvent,
-    this.reasonFor,
-  }) : assert(pacing.isPlayable, 'the pacing keeps how-to cards and gaps in range'),
-       _schedule = schedule ?? _realTimer,
-       _flow = NightFlow.start(rounds);
+  NightFlowController({required int rounds, this.pacing = const NightPacing(), NightSchedule? schedule, this.onEvent})
+    : assert(pacing.isPlayable, 'the pacing keeps how-to cards and gaps in range'),
+      _schedule = schedule ?? _realTimer,
+      _flow = NightFlow.start(rounds);
 
   /// A night resumed after [playedRounds] rounds (1 up to [rounds] - 1): replays them without telling [onEvent], ends
   /// at the last played round's scoreboard and arms the step after it.
@@ -95,7 +90,6 @@ final class NightFlowController {
     this.pacing = const NightPacing(),
     NightSchedule? schedule,
     this.onEvent,
-    this.reasonFor,
   }) : assert(playedRounds >= 1 && playedRounds < rounds, 'a resumed night has played 1 to rounds - 1 rounds'),
        assert(pacing.isPlayable, 'the pacing keeps how-to cards and gaps in range'),
        _schedule = schedule ?? _realTimer,
@@ -117,9 +111,6 @@ final class NightFlowController {
   /// Hears each accepted event, except the replayed ones of a resumed night.
   final void Function(NightEvent)? onEvent;
 
-  /// Why the round's game was chosen, asked as each how-to card is emitted; null when nobody says (a host pick). The
-  /// replayed rounds of a resumed night are not asked.
-  final DirectorReason? Function(int round)? reasonFor;
   final List<NightEvent> _events = [];
   NightFlow _flow;
   Timer? _timer;
@@ -141,6 +132,10 @@ final class NightFlowController {
 
   /// The host's side of a round; while null the flow waits at each how-to card for [startNow].
   NightRoundHooks? hooks;
+
+  /// Why the round's game was chosen, asked as each how-to card is emitted; null gives no reason (a host pick). The
+  /// replayed rounds of a resumed night are not asked. Set it right after construction, before [begin] or [startNow].
+  DirectorReason? Function(int round)? reasonFor;
 
   /// Starts the night: the start card, then round 1's how-to card. Only at the start with nothing emitted.
   void begin() {

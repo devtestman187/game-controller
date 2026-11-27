@@ -104,15 +104,11 @@ void main() {
     test('a resumed night replays its played rounds without asking for a reason, then asks for round 2', () {
       final clock = _HeldClock();
       final asked = <int>[];
-      final controller = NightFlowController.resumed(
-        rounds: _rounds,
-        playedRounds: 1,
-        schedule: clock.schedule,
-        reasonFor: (round) {
-          asked.add(round);
-          return DirectorReason.steady;
-        },
-      );
+      final controller = NightFlowController.resumed(rounds: _rounds, playedRounds: 1, schedule: clock.schedule);
+      controller.reasonFor = (round) {
+        asked.add(round);
+        return DirectorReason.steady;
+      };
       expect(asked, isEmpty, reason: 'the replay of round 1 asks nobody');
       controller.next();
       expect(asked, [2], reason: 'only round 2, the round the card is for, is asked');
@@ -151,6 +147,28 @@ void main() {
     expect(pick?.reason, isNotNull, reason: 'the director always gives a reason');
     final howTo = controller.events.last;
     expect(howTo, NightHowTo(2, reason: pick?.reason));
-    expect((howTo as NightHowTo).reason, pick?.reason);
+  });
+
+  test('a host pick gives round 2 no reason and no director pick', () async {
+    final clock = _HeldClock();
+    final container = nightContainer(
+      overrides: [
+        prefsProvider.overrideWithValue(FakePrefs()),
+        arenaMapLibraryProvider.overrideWith((ref) => testMaps()),
+        nightRandomProvider.overrideWithValue(Random(1)),
+        nightScheduleProvider.overrideWithValue(clock.schedule),
+      ],
+    ).container;
+    await container.read(arenaMapLibraryProvider.future);
+    container.read(nightSettingsProvider.notifier).update(const NightSettings());
+    container.read(partyNightProvider.notifier).start(length: NightLength.three, awards: threeAwards);
+    container.read(partyNightProvider.notifier).recordRound(roundResult(points: {'a': 0, 'b': 0}));
+
+    final controller = container.read(nightFlowControllerProvider)!;
+    controller.next();
+
+    expect(container.read(nightPickProvider), isNull, reason: 'a host pick makes no director pick');
+    expect(controller.events.last, const NightHowTo(2));
+    expect((controller.events.last as NightHowTo).reason, isNull);
   });
 }
