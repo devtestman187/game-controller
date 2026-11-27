@@ -10,3 +10,4 @@
 - compat note: the owner's brief had "hazard rule" in driver-kit; none found, d1 adds the compat policy bullet instead.
 - calls so far: driver ~28, waiters 4 (about 35 polls)
 - 11:25 wave2 stopped: tv-word-test failed on c1's version text (bare TV); hand-fixed, restarting. waiter 2 had 23 polls (57 min)
+- 12:50 run done; hand-fixes: isKids, scoreboard stale vote; next: check.sh, report
