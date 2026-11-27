@@ -3,4 +3,4 @@ v1a c1 t1
 # wave 2: director default (night_settings + 21 test files + harnesses), mine.sh, docs: no shared files (v2 follows v1a on night_pick_test.dart)
 v2 t2 d1
 # wave 3: Vote in the setup, Vote on the TV (needs v1a; v1b follows v2 on the setup tests)
-v1b v1c
+v1b v1c f1

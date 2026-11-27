@@ -375,3 +375,9 @@ Not built. bugs2 wave A with the 1-hour cache showed no large Sonnet cache write
 - JoinScreen's player card overflows by 9 px at 960x540 with two joined phones (toy_card.dart:129; d2x-report.md Questions 1; its tests run at 1920x1080): pin it and fix in a join-screen job. A night's Bumper pick overwrites the host's saved Arena map and mode (night_pick_open.dart:21-23). `nightNextVariantProvider` now holds a NightPick: rename when touched. A pick is recorded when the how-to card shows, so a start refused by a dialog still counts it as played. `withDifficulty` with both ends applies max first, then min.
 - night2b review leftovers: `lastRound` of NightRoundHooks.startRound is never read; night_start_screen.dart is 313 lines (move the columns out when next touched); a pool of non-offered games from an old save is not cleaned on load; setup refused-toggle test passes when a tap misses; chip text uses the body size, not the button's, on a TV; a night restored mid-round re-picks that round (the current pick is not saved).
 - night2b wave 4: night_setup_widgets.dart:28 fallback `?? roundChipHeightPx` is a wrong unit (branch never runs); night_setup_screen_test.dart copies the provider's playable pool and still has the `width / 960` scale literal at :101 and `?? 1` at :150; `_length = NightLength.three` in night_start_screen.dart is a placeholder until initState.
+
+## night2c notes (Nov 27, wave 1 review)
+- tools/agent_cost.py main() is about 113 lines; move the per-owner and driver accumulation into a helper; name the 60 (seconds per minute) and the three `sub` cases ("head", True, False).
+- tools/tests/agent-cost-test.sh `agents-off-unchanged` should compare the whole no-flag output with a stored text.
+- night_vote.dart holds five public types: move ServerVoteHandle to its own file; night_vote_test.dart `setup()` is about 60 lines (move to support/).
+- docs/driver-kit.md section 12: say "longest wait (min)" to match the tool's output.

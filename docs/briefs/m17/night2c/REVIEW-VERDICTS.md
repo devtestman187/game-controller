@@ -1,0 +1,11 @@
+# Verdicts, wave 1 review (driver)
+- v1a-report.md:1 no A1-A6 self-check - minor - the driver's REPORT.md covers it; worker reports are not the record
+- night_vote.dart:78 default voteStarterProvider untested - must - f1
+- night_vote_test.dart:277 real round closing by its own timer untested - must - f1
+- night_pick_test.dart:215 vote pick test passes with the vote ignored - must - f1
+- night_vote.dart:64 dispose never completes done - must - f1 (complete done with an empty map)
+- agent-cost-test.sh:172 agents-off-unchanged weak - minor - code-health
+- agent_cost.py:243 main() long; :240 bare 60; :292 "head" cases; driver-kit.md:129 wording - minor - code-health
+- night_vote.dart:19 five public types in one file; night_vote_test.dart:215 long helper, :92 name; v1a-report count - minor - code-health / invalid
+- run-findings.md Summary block - invalid - no rule requires it
+- Decisions: run() disposing an old open vote - accepted: v1c's scoreboard starts the next round only after the previous vote was taken; one-game result random - accepted; the vote pick draws from the offer (up to 4) - accepted; no phone = no vote - accepted (the owner's rule: nobody voting = random)
