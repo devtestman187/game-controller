@@ -154,3 +154,20 @@ RESULT: STOPPED: PAUSED after wave 2 (RUN_PAUSE_AFTER_WAVE=1): its review is com
 2026-11-27 12:12:41 committed f1: 21e83c81 night2c f1: vote engine tests, dispose completes done
 2026-11-27 12:12:41 phase: review (apply took 6s)
 2026-11-27 12:15:55 reviewed wave3: 7 finding(s)
+2026-11-27 12:15:57 start the run's review
+METRICS c1 worker=claude model=claude-haiku-5-5 turns=48 in=68 out=24975 cache=1563996 min=5.4 wall=6.0 result=0
+METRICS d1 worker=claude model=claude-haiku-5-5 turns=16 in=16 out=8440 cache=245555 min=0.7 wall=- result=0
+METRICS f1 worker=claude model=claude-sonnet-5-5 turns=24 in=30 out=7939 cache=476640 min=2.6 wall=3.3 result=0
+METRICS run-review worker=claude model=claude-haiku-5-5 turns=35 in=48 out=38189 cache=1182658 min=3.0 wall=- result=0
+METRICS t1 worker=claude model=claude-haiku-5-5 turns=45 in=60 out=39713 cache=1645506 min=6.2 wall=6.7 result=0
+METRICS t2 worker=claude model=claude-haiku-5-5 turns=18 in=30 out=8932 cache=417586 min=2.0 wall=- result=0
+METRICS v1a worker=claude model=claude-sonnet-5-5 turns=48 in=50 out=21947 cache=1151230 min=5.2 wall=6.4 result=0
+METRICS v1b worker=claude model=claude-sonnet-5-5 turns=19 in=16 out=4388 cache=191476 min=2.8 wall=10.7 result=0
+METRICS v1c worker=claude model=claude-sonnet-5-5 turns=59 in=60 out=20465 cache=1620354 min=6.2 wall=10.3 result=0
+METRICS v2 worker=claude model=claude-sonnet-5-5 turns=95 in=108 out=25465 cache=2699687 min=17.3 wall=- result=0
+METRICS wave1-c1-review worker=claude model=claude-haiku-5-5 turns=33 in=42 out=40892 cache=1055281 min=3.3 wall=- result=0
+METRICS wave1-review worker=claude model=claude-haiku-5-5 turns=19 in=22 out=30470 cache=543208 min=2.6 wall=- result=0
+METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=23 in=28 out=21585 cache=564996 min=1.8 wall=- result=0
+METRICS wave3-review worker=claude model=claude-haiku-5-5 turns=32 in=42 out=33997 cache=1199420 min=2.8 wall=- result=0
+2026-11-27 12:19:34 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/night2c/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 9 jobs, 35 min
