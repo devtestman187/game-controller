@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:party_host/src/night/director_input.dart';
 import 'package:party_host/src/night/night_director.dart';
 import 'package:party_host/src/night/variant.dart';
 import 'package:puzzle_game/puzzle_game.dart';
@@ -8,17 +9,15 @@ import 'package:puzzle_game/puzzle_game.dart';
 const _shapeEasy = Variant(game: VariantGame.shapeRace, tier: Level.easy);
 const _shapeMedium = Variant(game: VariantGame.shapeRace, tier: Level.medium);
 const _shapeHard = Variant(game: VariantGame.shapeRace, tier: Level.hard);
+const _arenaEasy = Variant(game: VariantGame.arenaRace, tier: Level.easy, mapId: 'playroom');
 const _arenaMedium = Variant(game: VariantGame.arenaRace, tier: Level.medium, mapId: 'playroom');
 const _arenaMediumCastle = Variant(game: VariantGame.arenaRace, tier: Level.medium, mapId: 'block-castle');
+const _arenaHard = Variant(game: VariantGame.arenaRace, tier: Level.hard, mapId: 'playroom');
 
 /// The pick for [seed] over the whole easy..hard range.
 DirectorPick? _pickFor(List<Variant> pool, List<Variant> played, List<int> totals, int seed) {
   return const NightDirector().pick(
-    pool: pool,
-    played: played,
-    totals: totals,
-    min: Level.easy,
-    max: Level.hard,
+    DirectorInput(pool: pool, played: played, totals: totals, min: Level.easy, max: Level.hard),
     random: Random(seed),
   );
 }
@@ -31,11 +30,7 @@ void main() {
   test('a pool with nothing between min and max gives no pick', () {
     const director = NightDirector();
     final pick = director.pick(
-      pool: const [_shapeHard],
-      played: const [],
-      totals: const [0, 0],
-      min: Level.easy,
-      max: Level.medium,
+      const DirectorInput(pool: [_shapeHard], played: [], totals: [0, 0], min: Level.easy, max: Level.medium),
       random: Random(1),
     );
     expect(pick, isNull);
@@ -49,6 +44,16 @@ void main() {
     }
   });
 
+  test('a steady table picks the easier variant when the last played one is left out', () {
+    // Lead 4 of 10 is steady, so the target is the last tier (medium). shapeMedium was played last and is left out,
+    // so the only option is shapeEasy.
+    const pool = [_shapeMedium, _shapeEasy];
+    for (var seed = 1; seed <= 20; seed++) {
+      final pick = _pickFor(pool, const [_shapeMedium], const [10, 6], seed);
+      expect(pick, const DirectorPick(_shapeEasy, DirectorReason.steady), reason: 'seed $seed');
+    }
+  });
+
   test('the last played variant is picked when it is the only one left', () {
     final pick = _pickFor(const [_shapeMedium], const [_shapeMedium], const [10, 6], 1);
     expect(pick, const DirectorPick(_shapeMedium, DirectorReason.steady));
@@ -58,20 +63,12 @@ void main() {
     const director = NightDirector();
     const pool = [_shapeEasy, _shapeMedium, _shapeHard];
     final easyFirst = director.pick(
-      pool: pool,
-      played: const [],
-      totals: const [0, 0],
-      min: Level.easy,
-      max: Level.hard,
+      const DirectorInput(pool: pool, played: [], totals: [0, 0], min: Level.easy, max: Level.hard),
       random: Random(1),
     );
     expect(easyFirst, const DirectorPick(_shapeEasy, DirectorReason.opening));
     final mediumFirst = director.pick(
-      pool: pool,
-      played: const [],
-      totals: const [0, 0],
-      min: Level.medium,
-      max: Level.hard,
+      const DirectorInput(pool: pool, played: [], totals: [0, 0], min: Level.medium, max: Level.hard),
       random: Random(1),
     );
     expect(mediumFirst, const DirectorPick(_shapeMedium, DirectorReason.opening));
@@ -86,6 +83,16 @@ void main() {
     }
   });
 
+  test('a lopsided table with a kind variant in the pool picks it with reason kindForLastPlace', () {
+    // Lead 8 of 10 is lopsided: the last round was hard, so the target is medium. shapeEasy is the only kind variant,
+    // so it is picked over arenaMedium, which the ease alone would have chosen.
+    const pool = [_shapeEasy, _arenaMedium];
+    for (var seed = 1; seed <= 20; seed++) {
+      final pick = _pickFor(pool, const [_shapeHard], const [10, 2], seed);
+      expect(pick, const DirectorPick(_shapeEasy, DirectorReason.kindForLastPlace), reason: 'seed $seed');
+    }
+  });
+
   test('a lopsided table with no kind variant eases one tier with reason easedAfterLopsided', () {
     // Lead 8 of 10 is lopsided: the last round was hard, so the target is medium, and no candidate is kind.
     const pool = [_shapeHard, _shapeMedium, _arenaMedium];
@@ -96,12 +103,42 @@ void main() {
     }
   });
 
+  test('a lopsided table eases one tier below the last played tier', () {
+    // Lead 8 of 10 is lopsided: the last round was arenaHard, so the target is medium. The pool holds no kind variant,
+    // so shapeMedium is picked; without the ease the target would be hard and shapeHard would be picked.
+    const pool = [_shapeHard, _shapeMedium];
+    for (var seed = 1; seed <= 20; seed++) {
+      final pick = _pickFor(pool, const [_arenaHard], const [10, 2], seed);
+      expect(pick, const DirectorPick(_shapeMedium, DirectorReason.easedAfterLopsided), reason: 'seed $seed');
+    }
+  });
+
   test('a close table raises one tier with reason raisedAtCloseTable', () {
     // Lead 1 of 10 is close (at most 2): the last round was easy, so the target is medium.
     const pool = [_shapeEasy, _shapeMedium, _shapeHard];
     for (var seed = 1; seed <= 20; seed++) {
       final pick = _pickFor(pool, const [_shapeEasy], const [10, 9], seed);
       expect(pick, const DirectorPick(_shapeMedium, DirectorReason.raisedAtCloseTable), reason: 'seed $seed');
+    }
+  });
+
+  test('a close table raises one tier above the last played tier', () {
+    // Lead 1 of 10 is close (at most 2): the last round was arenaEasy, so the target is medium. The pool holds no
+    // easy variant, so shapeMedium is picked; without the raise the target would be easy and shapeEasy would be picked.
+    const pool = [_shapeEasy, _shapeMedium];
+    for (var seed = 1; seed <= 20; seed++) {
+      final pick = _pickFor(pool, const [_arenaEasy], const [10, 9], seed);
+      expect(pick, const DirectorPick(_shapeMedium, DirectorReason.raisedAtCloseTable), reason: 'seed $seed');
+    }
+  });
+
+  test('a table of one player is steady, not close', () {
+    // One total has no lead, so it would count as close and raise to hard. The pool's easy and hard variants are
+    // equally near medium, and the tie goes to the easier one: shapeEasy with reason steady.
+    const pool = [_shapeEasy, _shapeHard];
+    for (var seed = 1; seed <= 20; seed++) {
+      final pick = _pickFor(pool, const [_shapeMedium], const [10], seed);
+      expect(pick, const DirectorPick(_shapeEasy, DirectorReason.steady), reason: 'seed $seed');
     }
   });
 
@@ -137,11 +174,7 @@ void main() {
       ]) {
         for (var seed = 1; seed <= 5; seed++) {
           final pick = director.pick(
-            pool: pool,
-            played: [played],
-            totals: totals,
-            min: Level.easy,
-            max: Level.easy,
+            DirectorInput(pool: pool, played: [played], totals: totals, min: Level.easy, max: Level.easy),
             random: Random(seed),
           );
           expect(pick?.variant.tier, Level.easy, reason: 'played $played, totals $totals, seed $seed');

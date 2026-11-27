@@ -1,11 +1,25 @@
 import 'dart:math';
 
-import 'package:puzzle_game/puzzle_game.dart' show Level;
-
+import 'director_input.dart';
 import 'variant.dart';
 
-/// Why the director chose a variant. The night's caption and the saved night carry this code (M17 plan 1.2).
-enum DirectorReason { opening, steady, easedAfterLopsided, raisedAtCloseTable, kindForLastPlace }
+/// Why the director chose a variant. The night's caption and the saved night will carry this code (B8, M17 plan 1.2).
+enum DirectorReason {
+  /// The first round of the night, at the easiest tier the night may play.
+  opening,
+
+  /// The table is neither lopsided nor close, or it has fewer than two players, so the tier stays.
+  steady,
+
+  /// The table is lopsided and no kind variant is left in the pool, so the tier eases one step.
+  easedAfterLopsided,
+
+  /// The table is close, so the tier rises one step.
+  raisedAtCloseTable,
+
+  /// The table is lopsided and a kind variant is left in the pool, so a kind variant is picked.
+  kindForLastPlace,
+}
 
 /// The variant the director picked for the next round, and the [reason] it picked it.
 final class DirectorPick {
@@ -22,9 +36,6 @@ final class DirectorPick {
 
   @override
   int get hashCode => Object.hash(variant, reason);
-
-  @override
-  String toString() => 'DirectorPick($variant, ${reason.name})';
 }
 
 /// Picks each round's variant from the pool by the night's totals (M17 plan 1.2). The shares are first guesses that
@@ -38,63 +49,72 @@ final class NightDirector {
   /// The table is close when the leader's lead over last place is at most this share of the leader's total.
   final double closeShare;
 
-  /// The next variant, or null when no pool variant lies between the [min] and [max] tiers. [played] is the rounds
-  /// so far, oldest first; [totals] are the players' night totals in any order.
-  DirectorPick? pick({
-    required List<Variant> pool,
-    required List<Variant> played,
-    required List<int> totals,
-    required Level min,
-    required Level max,
-    required Random random,
-  }) {
-    var options = [
-      for (final variant in pool)
-        if (variant.tier.index >= min.index && variant.tier.index <= max.index) variant,
-    ];
+  /// The next variant, or null when no pool variant lies between the input's min and max tiers.
+  DirectorPick? pick(DirectorInput input, {required Random random}) {
+    final played = input.played;
+    final options = _options(input);
     if (options.isEmpty) return null;
 
-    if (played.isNotEmpty) {
-      final last = played.last;
-      final notLast = [
-        for (final variant in options)
-          if (variant != last) variant,
-      ];
-      if (notLast.isNotEmpty) options = notLast;
-    }
-
     if (played.isEmpty) {
-      return DirectorPick(_choose(options, target: min.index, played: played, random: random), DirectorReason.opening);
+      final opening = _choose(options, target: input.min.index, played: played, random: random);
+      return DirectorPick(opening, DirectorReason.opening);
     }
 
     final lastIndex = played.last.tier.index;
-    final mood = _mood(totals);
-    final int target;
+    final mood = _mood(input.totals);
+    final aim = _aim(input, mood, options, lastIndex);
+    final chosen = _choose(aim.options, target: aim.target, played: played, random: random);
+    return DirectorPick(chosen, _reasonFor(mood, chosen, lastIndex));
+  }
+
+  /// The pool variants inside the input's tier range, without the last played variant while another one is left.
+  static List<Variant> _options(DirectorInput input) {
+    final inRange = [
+      for (final variant in input.pool)
+        if (variant.tier.index >= input.min.index && variant.tier.index <= input.max.index) variant,
+    ];
+    if (input.played.isEmpty) return inRange;
+    final last = input.played.last;
+    final notLast = [
+      for (final variant in inRange)
+        if (variant != last) variant,
+    ];
+    return notLast.isNotEmpty ? notLast : inRange;
+  }
+
+  /// The tier to aim at for [mood], and the options that aim allows: a lopsided table keeps only the kind variants
+  /// when one is left.
+  static ({int target, List<Variant> options}) _aim(
+    DirectorInput input,
+    _Mood mood,
+    List<Variant> options,
+    int lastIndex,
+  ) {
     switch (mood) {
       case _Mood.lopsided:
-        target = _max(min.index, lastIndex - 1);
         final kind = [
           for (final variant in options)
             if (variant.isKind) variant,
         ];
-        if (kind.isNotEmpty) options = kind;
+        return (target: _max(input.min.index, lastIndex - 1), options: kind.isNotEmpty ? kind : options);
       case _Mood.close:
-        target = _min(max.index, lastIndex + 1);
+        return (target: _min(input.max.index, lastIndex + 1), options: options);
       case _Mood.steady:
-        target = lastIndex;
+        return (target: lastIndex, options: options);
     }
-    final chosen = _choose(options, target: target, played: played, random: random);
-    final reason = switch (mood) {
-      _Mood.lopsided when chosen.isKind => DirectorReason.kindForLastPlace,
-      _Mood.lopsided => DirectorReason.easedAfterLopsided,
-      _Mood.close when chosen.tier.index > lastIndex => DirectorReason.raisedAtCloseTable,
-      _ => DirectorReason.steady,
-    };
-    return DirectorPick(chosen, reason);
   }
 
+  /// The rule that chose [chosen]: a kind pick after a lopsided table, an eased tier, a raised tier, or steady.
+  static DirectorReason _reasonFor(_Mood mood, Variant chosen, int lastIndex) => switch (mood) {
+    _Mood.lopsided when chosen.isKind => DirectorReason.kindForLastPlace,
+    _Mood.lopsided => DirectorReason.easedAfterLopsided,
+    _Mood.close when chosen.tier.index > lastIndex => DirectorReason.raisedAtCloseTable,
+    _ => DirectorReason.steady,
+  };
+
   _Mood _mood(List<int> totals) {
-    if (totals.isEmpty) return _Mood.steady;
+    // A lead needs two players to exist, so a solo table is steady rather than close.
+    if (totals.length < 2) return _Mood.steady;
     final leader = totals.reduce(_max);
     if (leader <= 0) return _Mood.steady;
     final lead = leader - totals.reduce(_min);
