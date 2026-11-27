@@ -79,3 +79,4 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-26 19:15:31 finding: y0f's report has no Summary block in its first 40 lines
 2026-11-26 19:15:33 committed y0f: c891d383 m17 phone1b y0f: "Try the shop" demo on the Games screen
 2026-11-26 19:15:33 phase: review (apply took 7s)
+2026-11-26 19:18:54 reviewed wave2: 14 finding(s)
