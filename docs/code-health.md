@@ -368,3 +368,7 @@ Not built. bugs2 wave A with the 1-hour cache showed no large Sonnet cache write
 - puzzle_screen.dart is at 380 lines (k1 trimmed a dartdoc): split before the next job touches it. isKids is equality with the preset, so an edited Kids night is no longer capped at A little. The Kids cat pace (NightSettings.cat = calm) has no reader either.
 - Reports d2a/d2d/k1 lack the review-rules part A self-check lines and d2a a Summary; k1's new tests were not proved failing on the base by the runner (no tests-first line).
 - Map ratings (d2b) are by hand from obstacle counts (no single cut-off gives them): owner confirms; Bumper pool of 4 maps excludes playroom although playroom.json has a bumper section (plan 1.6).
+
+## night2b notes (Nov 27)
+- variant_text.dart keeps a copy of the map names (test_game's arenaMapNames is not exported): export it with the next test_game job and add a drift test; choices_vote_test.dart `_pumpRound` is 41 lines.
+- Vote is built (vote_round.dart, phone pin test) but not wired into a night: when it runs, Rotating chooser rules, Playlist order UI and Arena Race in a night are owner questions (night2b REPORT).

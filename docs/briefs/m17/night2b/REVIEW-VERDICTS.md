@@ -1,0 +1,11 @@
+# night2b wave 1 verdicts (Claude)
+- choices_vote_test passes on the old code (must) - invalid: the generic screen already holds four cards; the brief asked for a pin and said so; kept as a pin, noted in REPORT.
+- settleVote counts a repeated offer twice (should) - must (cheap): f1 item 1 (offerFor never repeats, so a defence).
+- played list cleared only if built (should) - must: f1 item 2.
+- mapNames copy in variant_text (should) - minor: code-health (export arenaMapNames from test_game with the next test_game job).
+- d2f report test counts (should) - trivial: ignored, report is superseded by REPORT.md.
+- pool of 4 with the last played offers 3 (should) - invalid: the rule is "never the last played while another exists".
+- director test one seed (should) - must: f1 item 3.
+- opening test default min only (could) - f1 item 3.
+- byChance false with one offered game and nobody voting (could) - minor: one candidate is not chance; documented in REPORT.
+- _pumpRound 41 lines (could) - minor: code-health.
