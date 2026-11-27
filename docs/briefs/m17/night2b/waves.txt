@@ -2,5 +2,5 @@
 d2w d2f
 # wave 2: open the pick (ui), how-to reason (night flow), pool honesty (pure): no shared files
 d2x d2h d2i
-# wave 3: setup screen and start card (needs d2x, d2i); fixes for wave 1 (no shared files)
-d2g f1
+# wave 3: setup screen and start card (needs d2x, d2i); fixes for waves 1 and 2 (no shared files)
+d2g f1 f2
