@@ -41,7 +41,7 @@
   - **iOS build HOLD (owner, Nov 26):** "I have setup pay-as-you-go in codemagic. I want to try the next iOS build only when the check builds have been disabled. Do not start a new iOS build until that's happened." So: no manual Codemagic build and no tag push (a tag starts ios-testflight automatically) until the trigger removal is on main. m16.6 iOS stays unbuilt until then. How the yaml change reaches main (with the next release, or a separate untagged fast-forward) is decided then, with Fable first.
   - **When to run the iOS check by hand** (Codemagic > Start new build > iOS check): (1) a change reaches main without a release tag and touches codemagic.yaml, controller_app/ios/, the Flutter or Xcode version, or native plugins in controller_app/pubspec.yaml; (2) optionally, before tagging a release that contains such a change, on the release branch, to find iOS breakage before the tag. Otherwise the tag's TestFlight build is the iOS test.
 - **Driver cost plan (owner picked "A" on Nov 26, Fable-reviewed):**
-  - **Why:** on Nov 25 Sonnet cost $35.54 of $63.54. Batch drivers were $22.29 of it: 117-168 calls each, re-reading 165k-230k of context per call (about 60% of driver cost), plus inline wait loops and cache expiry on waits over 5 minutes (about $0.5 per wake-up at 230k). Measure with `bash tools/agent-cost.sh --since <time>`.
+  - **Why:** on Nov 25 Sonnet cost $35.54 of $63.54. Batch drivers were $22.29 of it: 117-168 calls each, re-reading 165k-230k of context per call (about 60% of driver cost), plus inline wait loops and cache expiry on waits over 5 minutes (superseded Nov 27: the 1h cache has been on since Nov 23; a wait over about 55 min expires it) (about $0.5 per wake-up at 230k). Measure with `bash tools/agent-cost.sh --since <time>`.
   - **Step 1, trim every driver (still Sonnet), from B1 on:**
     - At most one short inline wait per run, then thumb-wait. agent-cost flags repeated inline waits.
     - Cap the call count rather than banning short reads (a 20-line sed inline is fine).
@@ -85,3 +85,11 @@ Lines: at most two at once (main m17, one side line m17side); full checks never 
 - "Let's do A": driver cost plan step 1 (above) from B1 on; Haiku-driver trial on board-1 after B1's baseline.
 - City Rush: full City Rush + Shape Race 3-4 a side; build stop is a phone shop (choices screen, y-jobs in M17a); one fixed road per district; 6 colours plus badges; Option-B policy research is M18 (p0d dropped).
 - Standing: every recommendation goes through the fable-review agent before the owner sees it.
+
+## Owner decisions, Nov 27 (record)
+- Q4 B: the night director becomes the default picker; a director-picked Bumper Round overwrites the host's saved Arena map in internal builds; the restore is a later job, not built.
+- Q5 B then A, "Let's finish this work and then build": wire the Vote now; then internal build 2 on the owner's word only.
+- O5 Vote rules (final): 5 s; no tap = no vote; a tie or nobody voting = random; at most 4 games shown. Timing default NOT yet owner-confirmed: the Vote runs during the previous round's scoreboard, and for round 1 on the start card.
+- Q6 A: the Rotating chooser moves to M17b, hidden and unbuilt.
+- Compat policy: no new backwards-compatibility work before a public release; old apps lack the feature and get no Roadworks; protocol bumps and wire changes only as a same-day TV+Android+iOS release. Full text: docs/driver-kit.md section 11.
+- City Rush final rules: see E:/AI/m17-scoping/city-rush-plan.md end.
