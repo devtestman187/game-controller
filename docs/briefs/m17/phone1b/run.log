@@ -80,3 +80,14 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-26 19:15:33 committed y0f: c891d383 m17 phone1b y0f: "Try the shop" demo on the Games screen
 2026-11-26 19:15:33 phase: review (apply took 7s)
 2026-11-26 19:18:54 reviewed wave2: 14 finding(s)
+2026-11-26 19:18:55 start the run's review
+METRICS run-review worker=claude model=claude-haiku-5-5 turns=48 in=54 out=37319 cache=1610468 min=3.0 wall=- result=0
+METRICS wave1-review worker=claude model=claude-haiku-5-5 turns=26 in=30 out=39404 cache=806055 min=3.1 wall=- result=0
+METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=37 in=46 out=36185 cache=1282108 min=2.9 wall=- result=0
+METRICS y0d worker=claude model=claude-sonnet-5-5 turns=6 in=12 out=1385 cache=96490 min=0.2 wall=13.6 result=0
+METRICS y0dc worker=claude model=claude-haiku-5-5 turns=36 in=52 out=31435 cache=1116442 min=2.9 wall=5.8 result=0
+METRICS y0e worker=claude model=claude-haiku-5-5 turns=39 in=46 out=25716 cache=902950 min=5.0 wall=9.5 result=0
+METRICS y0f worker=claude model=claude-sonnet-5-5 turns=79 in=78 out=34863 cache=3195050 min=10.2 wall=16.4 result=0
+METRICS y0p worker=claude model=claude-sonnet-5-5 turns=26 in=26 out=13257 cache=413772 min=2.0 wall=6.3 result=0
+2026-11-26 19:22:24 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/phone1b/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 5 jobs, 44 min
