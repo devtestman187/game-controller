@@ -112,9 +112,10 @@ final class ChoiceRound {
   }
 
   /// Ends a pause: the end timer runs for the time left, every player who is
-  /// not connected, not already set to the default and not picked during the
-  /// pause gets a full grace again, and the phones are told. A pick made during
-  /// the pause is kept, not overwritten. Does nothing unless the round is paused.
+  /// not connected, not already set to the default and not picked by pick()
+  /// during the pause (a phone's own message does not count) gets a full
+  /// grace again, and the phones are told. A pick made during the pause is
+  /// kept, not overwritten. Does nothing unless the round is paused.
   void resume() {
     final left = _pausedLeftMs;
     if (left == null || _isDisposed || isClosed) return;

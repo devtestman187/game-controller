@@ -246,3 +246,5 @@ METRICS y0h7 worker=claude model=claude-haiku-5-5 turns=25 in=24 out=18068 cache
 METRICS y0h8 worker=claude model=claude-haiku-5-5 turns=42 in=44 out=31583 cache=1198716 min=4.2 wall=7.2 result=0
 2026-11-26 21:31:35 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/phone1b/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 13 jobs, 19 min
+full check: All checks passed (113s, 10 cached). Logs: C:\Users\mrman\AppData\Local\Temp/thumbparty-check-20261126-213150 2026-11-26 74360bca
+full check: All checks passed (350s, 4 cached). Logs: C:\Users\mrman\AppData\Local\Temp/thumbparty-check-20261126-213501 2026-11-26 74360bca
