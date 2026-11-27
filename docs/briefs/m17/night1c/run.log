@@ -101,3 +101,20 @@ RESULT: STOPPED: PAUSED after wave 2 (RUN_PAUSE_AFTER_WAVE=1): its review is com
 2026-11-26 20:42:34 phase: review (apply took 2s)
 2026-11-26 20:42:36 reviewed wave3: 4 finding(s)
 2026-11-26 20:44:13 reviewed wave4: 6 finding(s)
+2026-11-26 20:44:14 start the run's review
+METRICS e0d worker=claude model=claude-sonnet-5-5 turns=14 in=14 out=5738 cache=143425 min=2.2 wall=2.9 result=0
+METRICS f1 worker=claude model=claude-haiku-5-5 turns=16 in=32 out=13735 cache=434189 min=4.2 wall=4.8 result=0
+METRICS f2 worker=claude model=claude-haiku-5-5 turns=14 in=18 out=6113 cache=184875 min=2.7 wall=3.5 result=0
+METRICS f3 worker=claude model=claude-haiku-5-5 turns=36 in=60 out=27478 cache=1285597 min=4.0 wall=7.2 result=0
+METRICS n1f worker=claude model=claude-sonnet-5-5 turns=40 in=40 out=22426 cache=830781 min=5.5 wall=6.2 result=0
+METRICS n1g worker=claude model=claude-haiku-5-5 turns=38 in=54 out=42944 cache=1584014 min=5.6 wall=6.8 result=0
+METRICS n1h worker=claude model=claude-haiku-5-5 turns=27 in=34 out=25239 cache=596779 min=4.5 wall=5.5 result=0
+METRICS n1i worker=claude model=claude-haiku-5-5 turns=38 in=58 out=38248 cache=1632025 min=5.7 wall=9.1 result=0
+METRICS n1j worker=claude model=claude-haiku-5-5 turns=28 in=32 out=13863 cache=511133 min=3.6 wall=6.1 result=0
+METRICS run-review worker=claude model=claude-haiku-5-5 turns=61 in=66 out=50768 cache=2464853 min=4.2 wall=- result=0
+METRICS wave1-review worker=claude model=claude-haiku-5-5 turns=39 in=38 out=34878 cache=880816 min=2.9 wall=- result=0
+METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=35 in=38 out=39763 cache=1261615 min=3.1 wall=- result=0
+METRICS wave3-review worker=claude model=claude-haiku-5-5 turns=24 in=26 out=20512 cache=380738 min=1.7 wall=- result=0
+METRICS wave4-review worker=claude model=claude-haiku-5-5 turns=24 in=26 out=14887 cache=558203 min=1.2 wall=- result=0
+2026-11-26 20:49:25 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/night1c/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 9 jobs, 30 min
