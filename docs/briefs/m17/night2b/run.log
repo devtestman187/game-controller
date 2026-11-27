@@ -144,3 +144,4 @@ RESULT: STOPPED: tools/review.sh found a FAIL after f1 f2 d2g (see .dart_tool/ru
 2026-11-27 03:14:45 committed f1: 175ffd50 Fix tie odds for repeated offers, clear the played list with no night
 2026-11-27 03:14:46 committed f2: 07473025 night2b f2: reasonFor becomes a settable field, not a constructor parameter
 2026-11-27 03:14:46 phase: review (apply took 5s)
+2026-11-27 03:19:02 reviewed wave3: 10 finding(s)
