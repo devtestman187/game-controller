@@ -87,3 +87,5 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-27 01:50:12 STOPPED: checks failed twice on the combined tree after g3d2
 2026-11-27 01:50:13 reviewed wave1: 6 finding(s)
 RESULT: STOPPED: checks failed twice on the combined tree after g3d2
+2026-11-27 01:50:48 HAND-FIX g3d2: worker result 0, files committed by hand after sim-test, analyze, format green; combined check red only on 3 runner selftests (environment)
+2026-11-27 01:50:48 HAND-FIX-EVENT g3d2: 0 lines changed by hand, replaced ladder level 2
