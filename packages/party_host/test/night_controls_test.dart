@@ -260,6 +260,36 @@ void main() {
     expect(controller.flow.stage, NightStage.ended);
   });
 
+  test('a night of 5 rounds plays 5 rounds after skips and rerolls', () {
+    final clock = _FakeScheduler();
+    final heard = <NightEvent>[];
+    final hooks = _Hooks();
+    final controller = _begun(5, clock, hooks, heard: heard);
+    _toHowTo(clock);
+    expect(controller.skip(), isTrue, reason: 'round 1 is skipped at its how-to card');
+    clock.elapse(_pacing.howTo);
+    expect(controller.flow.stage, NightStage.round);
+
+    controller.roundEnded();
+    clock.elapse(_pacing.results + _pacing.scoreboard + _pacing.howTo);
+    expect(controller.flow.round, 2, reason: 'round 2 starts after round 1\'s scoreboard and how-to card');
+    expect(controller.reroll(), isTrue, reason: 'round 2 is rerolled in play');
+    expect(controller.flow.round, 2);
+
+    controller.roundEnded();
+    clock.elapse(_pacing.results + _pacing.scoreboard + _pacing.howTo);
+    expect(controller.flow.round, 3);
+    expect(controller.skip(), isTrue, reason: 'round 3 is skipped in play');
+    expect(controller.reroll(), isTrue, reason: 'round 3 is then rerolled in play');
+
+    _play(controller, clock);
+
+    expect(heard.whereType<NightRoundStarted>().map((e) => e.round).toList(), [1, 2, 3, 4, 5]);
+    expect(heard.whereType<NightRoundEnded>().length, 5);
+    expect(hooks.replaced, [(1, false), (2, true), (3, false), (3, true)]);
+    expect(controller.flow.stage, NightStage.ended);
+  });
+
   test('a join between rounds is emitted at once with the avatar id and no nickname', () {
     final clock = _FakeScheduler();
     final heard = <NightEvent>[];

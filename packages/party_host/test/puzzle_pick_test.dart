@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
+import 'package:party_host/src/night/night_flow.dart';
+import 'package:party_host/src/night/night_flow_provider.dart';
 import 'package:party_host/src/puzzle_bag.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
@@ -121,5 +123,25 @@ void main() {
       'rocket',
       reason: 'the next any-puzzle round plays the bag\'s next id, not the choice again',
     );
+  });
+
+  testWidgets('a night\'s puzzle round, after Next, leaves the night\'s controller at the scoreboard', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    await neutral(tester, fake, ['p1']);
+    await openNight(tester);
+    appContainer(tester).read(partyNightProvider.notifier).start(length: NightLength.three, awards: threeAwards);
+    await pickShapeRaceRound(tester);
+    await tester.tap(find.byKey(const Key('puzzle-house')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    lockEveryPiece(tester);
+    await endRound(tester);
+
+    await tester.tap(find.byKey(const Key('next')));
+    await navigated(tester);
+
+    final controller = appContainer(tester).read(nightFlowControllerProvider)!;
+    expect(controller.flow.stage, NightStage.scoreboard, reason: 'Next ends the round, so the scoreboard shows');
+    expect(controller.flow.round, 1);
   });
 }

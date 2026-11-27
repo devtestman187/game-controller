@@ -90,4 +90,28 @@ void main() {
 
     expect(_controller(tester).hooks, isNull, reason: 'the scoreboard that set the hooks has gone');
   });
+
+  testWidgets('a dialog on top of the scoreboard when the how-to timer fires opens no game and the card waits', (
+    tester,
+  ) async {
+    await _openRoundOneScoreboard(
+      tester,
+      overrides: [
+        nightPacingProvider.overrideWithValue(_shortPacing),
+        nightNextVariantProvider.overrideWithValue(NightVariant.bumperRound),
+      ],
+    );
+    // A route pushed over the scoreboard, as a dialog is: the scoreboard is no longer the current route.
+    Navigator.of(tester.element(find.byType(NightScoreboardScreen)))
+        .push(MaterialPageRoute<void>(builder: (_) => const SizedBox()));
+    await tester.pump();
+
+    await tester.pump(NightPacing.maxHowTo);
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.byType(GameScreen), findsNothing, reason: 'the Bumper Round does not open under a dialog');
+    expect(find.byType(ShapeRaceScreen), findsNothing, reason: 'no game opens under a dialog');
+    expect(_controller(tester).flow.stage, NightStage.howTo, reason: 'startRound was false, so the card waits');
+    expect(_controller(tester).flow.round, 2);
+  });
 }

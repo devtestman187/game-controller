@@ -223,6 +223,9 @@ extension _PuzzlePick on _PuzzleScreenState {
     final result = _result;
     if (result == null) return;
     _log('Results: ${NightText.next}');
+    final controller = ref.read(nightFlowControllerProvider);
+    controller?.roundEnded();
+    controller?.next();
     ref.read(partyNightProvider.notifier).recordRound(result.round);
     final over = ref.read(partyNightProvider)?.isOver ?? false;
     Navigator.of(context).pushAndRemoveUntil(

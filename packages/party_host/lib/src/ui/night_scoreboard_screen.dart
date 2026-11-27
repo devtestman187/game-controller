@@ -77,11 +77,13 @@ class _NightScoreboardScreenState extends ConsumerState<NightScoreboardScreen> i
   }
 
   /// The controller's timer reached the next round: the variant the night chose opens its game, and the controller
-  /// starts the round. False, with nothing opened, when no variant is chosen or this screen has gone.
+  /// starts the round. False, with nothing opened, when no variant is chosen, this screen has gone, a dialog is on top
+  /// of it, or the variant is the Bumper Round and it is not ready (the footer's gate).
   @override
   bool startRound(int round, bool lastRound) {
     final variant = ref.read(nightNextVariantProvider);
-    if (variant == null || !mounted) return false;
+    if (variant == null || !mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return false;
+    if (variant == NightVariant.bumperRound && !nightBumperRoundReady) return false;
     final Widget screen = switch (variant) {
       NightVariant.shapeRace => const ShapeRaceScreen(),
       NightVariant.bumperRound => const GameScreen(),
@@ -90,7 +92,9 @@ class _NightScoreboardScreenState extends ConsumerState<NightScoreboardScreen> i
     return true;
   }
 
-  /// A replay is not in this batch: a skip or a reroll gets its own screen later (plan n1g).
+  /// A replay is not in this batch: a skip or a reroll gets its own screen later (plan n1g). A skipped or rerolled game
+  /// is meant to give nobody points, which holds only once this method closes the old game's screen before it records
+  /// a result; until then no screen calls skip or reroll.
   @override
   void replaceRound(int round, {required bool sameGame}) {}
 
