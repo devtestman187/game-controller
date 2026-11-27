@@ -45,3 +45,16 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-27 10:15:54 hand-fixed g3m: tests-first proof and worker review done (marked in done.txt)
 2026-11-27 10:15:54 skip g3m (already done)
 2026-11-27 10:15:54 wave 1 review: wave1-review-report.md does not cover g3m, so its review is wave1-g3m
+2026-11-27 10:16:11 phase: worker (worker took 93s)
+2026-11-27 10:18:29 start g3h
+2026-11-27 10:26:35 start g3n
+2026-11-27 10:26:35 g3h finished: result 0 (36 turns, 4 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 32/501934/34446/16848
+2026-11-27 10:28:47 g3n finished: result 0 (10 turns, 2 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 20/249508/23492/16925
+2026-11-27 10:28:48 phase: tests-first (worker took 758s)
+2026-11-27 10:28:51 phase: check (tests-first took 3s)
+2026-11-27 10:28:58 combined check: skips protocol connection metrics kit look arena puzzle (no job's change reaches them)
+2026-11-27 10:39:34 checks failed; fetching packages and trying once more
+2026-11-27 10:47:45 phase: apply (check took 1134s)
+2026-11-27 10:47:46 committed g3h: 8f9e3e61 rules: drop gateTileIndex, re-price forPlayers from the night prices
+2026-11-27 10:47:48 committed g3n: 3e8a50c3 board3m g3n: merge gate script for the board line
+2026-11-27 10:47:48 phase: review (apply took 3s)
