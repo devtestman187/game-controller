@@ -81,3 +81,8 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-26 22:47:37 phase: apply (check took 347s)
 2026-11-26 22:47:39 committed f3a: 7afeeca8 Fix board and stub id checks from wave 1 review (F2, F4, F5, F6)
 2026-11-26 22:47:39 phase: review (apply took 2s)
+2026-11-26 22:49:25 reviewed wave2: 4 finding(s)
+METRICS f3a worker=claude model=claude-haiku-5-5 turns=17 in=34 out=10711 cache=415329 min=2.8 wall=6.3 result=0
+METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=15 in=20 out=15858 cache=327965 min=1.4 wall=- result=0
+2026-11-26 22:49:27 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/board3a/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 3 jobs, 14 min
