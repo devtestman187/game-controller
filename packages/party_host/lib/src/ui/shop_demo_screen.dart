@@ -10,6 +10,7 @@ import 'package:toy_look/toy_look.dart';
 import '../providers.dart';
 import '../text/host_text.dart';
 import '../text/night_text.dart';
+import '../text/shop_text.dart';
 import 'host_button.dart';
 import 'host_frame_screen.dart';
 
@@ -33,34 +34,14 @@ const _roadworksId = 'roadworks';
 const _buildCost = 3;
 const _buildMaxCount = 3;
 
-/// The words of the demo. They live here, not in [HostText], to keep that table under its size limit.
-abstract final class _ShopText {
-  static const title = 'Spend your Bolts';
-  static const currency = 'Bolts';
-  static const build = 'Build';
-  static const save = 'Save +2';
-  static const roadworks = 'Roadworks';
-  static const needsPhones = 'Join with phones to try the shop';
-  static const lockedIn = 'locked in';
-  static const choosing = 'choosing...';
-  static const timeUp = 'Time is up';
-  static const nothing = 'Nothing';
-  static const byDefault = ' (by default)';
-
-  static String secondsLeft(int seconds) => '$seconds s left';
-
-  static String row(String name, String what) => '$name: $what';
-
-  static String counted(String title, int count, int total, String unit) => '$title $count = $total $unit';
-}
-
 const _shopCards = [
-  ChoiceCard(id: _buildId, title: _ShopText.build, cost: _buildCost, maxCount: _buildMaxCount),
-  ChoiceCard(id: _saveId, title: _ShopText.save),
+  ChoiceCard(id: _buildId, title: ShopText.build, cost: _buildCost, maxCount: _buildMaxCount),
+  ChoiceCard(id: _saveId, title: ShopText.save),
 ];
 
-/// Roadworks hits the others, so only the last player (last place) is offered it.
-const _lastPlaceCards = [..._shopCards, ChoiceCard(id: _roadworksId, title: _ShopText.roadworks)];
+/// Roadworks hits the others, so only the last player number is offered it: the demo has no scores to name a
+/// last place.
+const _lastPlaceCards = [..._shopCards, ChoiceCard(id: _roadworksId, title: ShopText.roadworks)];
 
 /// "Try the shop": a TV screen that runs one choice round over the joined phones so a tester sees the phone shop
 /// before the City Rush build exists. Phones with the choices capability get the cards; old phones play it with
@@ -98,10 +79,10 @@ class _ShopDemoScreenState extends ConsumerState<ShopDemoScreen> {
       players: [for (final p in players) p.id],
       setup: ChoiceRoundSetup(
         round: _shopRoundNumber,
-        title: _ShopText.title,
+        title: ShopText.title,
         cardsFor: (id) => id == lastId ? _lastPlaceCards : _shopCards,
         defaultId: _saveId,
-        currency: _ShopText.currency,
+        currency: ShopText.currency,
       ),
       timing: ChoiceTiming(duration: _shopDuration, grace: _shopGrace, nowMs: () => host.nowMs),
     );
@@ -140,9 +121,9 @@ class _ShopDemoScreenState extends ConsumerState<ShopDemoScreen> {
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).maybePop()},
       child: HostFrameScreen(
-        title: _ShopText.title,
+        title: ShopText.title,
         body: round == null
-            ? const _ShopLine(text: _ShopText.needsPhones)
+            ? const _ShopLine(text: ShopText.needsPhones)
             : _ShopBody(round: round, players: _players, secondsLeft: _secondsLeft),
         footer: [
           HostButton(
@@ -190,7 +171,7 @@ class _ShopBody extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            round.isClosed ? _ShopText.timeUp : _ShopText.secondsLeft(secondsLeft),
+            round.isClosed ? ShopText.timeUp : ShopText.secondsLeft(secondsLeft),
             key: const Key('shopDemoCountdown'),
             style: ToyType.frame.button.copyWith(color: colors.onBackground),
           ),
@@ -212,18 +193,18 @@ class _ShopBody extends StatelessWidget {
   String _rowText(GamePlayer p, Set<String> locked) {
     final name = NightText.playerName(p.nickname, p.number);
     final outcome = round.outcomes[p.id];
-    if (outcome == null) return _ShopText.row(name, locked.contains(p.id) ? _ShopText.lockedIn : _ShopText.choosing);
-    return _ShopText.row(name, _outcomeText(p.id, outcome));
+    if (outcome == null) return ShopText.row(name, locked.contains(p.id) ? ShopText.lockedIn : ShopText.choosing);
+    return ShopText.row(name, _outcomeText(p.id, outcome));
   }
 
   String _outcomeText(String playerId, ChoiceOutcome outcome) {
     final card = round.cardsFor(playerId).where((c) => c.id == outcome.cardId).firstOrNull;
     final cost = card?.cost;
     final what = switch (card) {
-      null => _ShopText.nothing,
-      _ when cost != null => _ShopText.counted(card.title, outcome.count, cost * outcome.count, _ShopText.currency),
+      null => ShopText.nothing,
+      _ when cost != null => ShopText.counted(card.title, outcome.count, cost * outcome.count, ShopText.currency),
       _ => card.title,
     };
-    return outcome.byDefault ? '$what${_ShopText.byDefault}' : what;
+    return outcome.byDefault ? '$what${ShopText.byDefault}' : what;
   }
 }

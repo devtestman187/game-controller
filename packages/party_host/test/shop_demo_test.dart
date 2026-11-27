@@ -28,7 +28,8 @@ const _quietLink = Duration(hours: 1);
 const _pollMs = 10;
 const _maxPolls = 500;
 
-/// How far under the full round length the first time-left may read, in ms: the real clock moves between start and send.
+/// How far under the full round length the first time-left may read, in ms: the real clock moves between start
+/// and send.
 const _startSlackMs = 1000;
 
 const _names = ['Ann', 'Bea'];
