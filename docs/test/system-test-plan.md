@@ -7,7 +7,7 @@
 | Last updated | 2026-11-27 (branch m17, base 5142a859; owner answers recorded the same day) |
 | Current phase | Plan written and owner questions answered; nothing from section 3 or later built yet |
 | Next step | Now: S3 checklist and the emulator probe (roadmap 1-2). S1 "systest" before B9 awaits the owner's go. Then the iPad landscape lock (small code item, roadmap 4) |
-| Owner decisions pending | None blocking. Open setup facts: Pixel Tablet Android version (recorded at setup) and that it stays connected to this PC (assumed yes, one setup check) |
+| Owner decisions pending | None blocking for S3, the probe or S1. Pending: one owner word for the Dec 20 old-build rebuild and upload (section 7 item 10); the Pixel Tablet setup check (Android version, `adb shell wm size` and `wm density`, stays connected) before roadmap 7; the iPad lock experiment is not decided (roadmap 4) |
 | Last full system run | None yet. The m17.1 device-test list is the nearest thing (sections 2 and 6) |
 
 Decisions taken (owner, 2026-11-27):
@@ -17,8 +17,8 @@ Decisions taken (owner, 2026-11-27):
 - Q4 the owner approves golden diffs, but the agent triages them first and sends only real changes, batched.
 - Q5 an emulator job of 15-25 min in GitHub Actions on tags only is OK.
 - Q6 dark mode and accessibility are out of scope for now.
-- Q7 keep the m16.3 phone and m16.6 TV builds durably. The plan's pick: GitHub release assets for those tags (APK, Windows zip), plus one local archive copy on this PC. An old iOS build cannot be kept durably (TestFlight expires), so an old-iPhone check may become impossible.
-- Q8 lock iPad to landscape (small code item, roadmap 4).
+- Q7 keep the m16.3 phone and m16.6 TV builds durably. Fact found after review: no APK is stored anywhere today. The m16.3 and m16.6 GitHub releases carry only the Windows zip; `release.yml` builds AABs only, into the `play-bundles` artifact with `retention-days: 30` (`.github/workflows/release.yml:125-129`), so m16.3's copy expires around Dec 24. Old Android builds are therefore NOT kept today. Action, dated: by Dec 20, rebuild phone and TV APKs from tags m16.3 and m16.6, attach them to those GitHub releases and copy them to a local archive folder on this PC. That is a build plus an upload, so it needs the owner's word first. Also add a step to `release.yml` that attaches the APKs on future tags (roadmap 3b). An old iOS build cannot be kept (TestFlight expires), so an old-iPhone check may be impossible. Until the APKs exist, the agent-run old-phone check is blocked (no APK), not covered.
+- Q8 iPad: the owner wants it locked to landscape. Status after review: an experiment, not decided (roadmap 4); the fallback is to keep all four orientations and make the layout cope.
 - Q9 zero owner-hands time per tester build by default. Owner time is requested only in the narrow cases in section 6, asked once, batched, with the reason and a rough duration.
 
 How to update: change the tables here and tick roadmap rows (section 5) in the same commit as the work. Add a dated entry to the run log. A later session reads this box, then section 5 for the first unticked row.
@@ -89,7 +89,7 @@ Facts the plan relies on (checked in code):
 | Drop under and over 30 s grace | Covered at logic level (`player_away_test` with 5 s grace, `reconnect_test`); on device manual-only | Smoke steps skipped on this PC |
 | "Search again" | Partly | Widget tests with FakeDiscovery (`home_view_test.dart`, `phone_home_screen_test.dart`); real mDNS is manual-only |
 | Kids preset / settings reset | Partly | Logic and widget tests; persisted settings on a real device are manual |
-| Old app vs new app pairing | Manual-only | Protocol version equal, so only a real m16.3 phone with an m17 TV (and the reverse) shows it. Keep m16.3 builds |
+| Old app vs new app pairing | Manual-only | Protocol version equal, so only a real m16.3 phone with an m17 TV (and the reverse) shows it. Blocked today: no m16.3 APK is kept (section 7 item 10) |
 | Overlapping or clipped text on other screen sizes | Partly | A few fit tests; no matrix (S2, L1) |
 
 ## 3. Short-term improvements
@@ -121,7 +121,7 @@ Device size matrix (logical px, landscape; confirm the numbers against real devi
 | iphone-std | 844 x 390 | iPhone standard |
 | tablet-8 | 1024 x 600 | 8" Android tablet |
 | tablet-11 | 1194 x 834 | iPad 11" / 11" Android |
-| pixel-tablet | 1280 x 800 (unverified: 2560x1600 px at 2x density, from memory) | the owner's Pixel Tablet |
+| pixel-tablet | 1280 x 800 (unverified: from memory, 2560x1600 px at density 320; confirm at setup with `adb shell wm size` and `adb shell wm density`) | the owner's Pixel Tablet |
 | tv-1080p | 960 x 540 (1920x1080 at 2x) | TV app |
 
 Text scales: 1.0, 1.3, 2.0. Cheaper default: all sizes at 1.0, plus small-android, iphone-se and tablet-8 at 1.3 and 2.0. pixel-tablet joins the 1.0 set.
@@ -139,7 +139,7 @@ Text scales: 1.0, 1.3, 2.0. Cheaper default: all sizes at 1.0, plus small-androi
 Codemagic Mac simulator (iPhone and iPad) can run `flutter test integration_test`. Cost: Mac build minutes on top of the current Test step (about 5m50). Not before the first public release. iOS images are never compared to the ubuntu goldens (fonts), so iOS stays at "no overflow exceptions" plus a human look.
 
 ### L5 Hardware-only list (deferred, not run per build)
-These cannot be checked without hardware or a person and no automated substitute exists today. They are not run per tester build. They are asked of the owner only in the cases in section 6: real Android TV remote and focus, a real TV process restart on Android TV, an old (m16.3) phone against the new TV and the reverse (the agent may do the Android part itself with the kept APK; iOS may be impossible), iOS device behaviour. Real mDNS on Wi-Fi leaves this list if L3b works.
+These cannot be checked without hardware or a person and no automated substitute exists today. They are not run per tester build (this includes real iPhone hardware checks). They are asked of the owner only in the cases in section 6: real Android TV remote and focus, a real TV process restart on Android TV, an old (m16.3) phone against the new TV and the reverse (the agent may do the Android part itself with the kept APK; iOS may be impossible), iOS device behaviour. Real mDNS on Wi-Fi leaves this list if L3b works.
 
 ## 5. Roadmap
 
@@ -148,12 +148,13 @@ These cannot be checked without hardware or a person and no automated substitute
 | 1 | S3 device checklist file | small, docs only | under $1 | none | now | [ ] |
 | 2 | L2 probe: does `integration_test` run on this PC from an agent terminal tab (virtualization, AVD, flutter tool crash); also can an emulator reach a TV on the LAN | 30 min | under $2 | PC virtualization (found by the probe) | now, next to S3 | [ ] |
 | 3 | S1 systest gap batch (plus `.fvmrc` or a Flutter version check in `tools/check.sh`) | 1 batch | $5-15 | the owner's go | before B9 | [ ] |
-| 4 | iPad landscape lock: in `controller_app/ios/Runner/Info.plist` reduce the iPad orientation keys to landscape and add `UIRequiresFullScreen` if App Store rule ITMS-90474 allows it (the comment at :72-75 says the keys were added to pass that check, so verify with an internal TestFlight upload first) | small code item | $2-5 | iOS build and internal TestFlight to confirm | with BP3 | [ ] |
+| 4 | iPad landscape lock, EXPERIMENT (not decided). Today: the iPad key in `controller_app/ios/Runner/Info.plist:76-82` lists all four orientations (comment :72-75: added to pass ITMS-90474), no `UIRequiresFullScreen`; Xcode 27.2 (`codemagic.yaml:28`), deployment target 26.0 (`controller_app/ios/Runner.xcodeproj/project.pbxproj:363`). Apple deprecated `UIRequiresFullScreen` in iOS 26 (from memory, unverified), so with the 27 SDK the key may be ignored or the upload may fail ITMS-90474. Trial: edit on a branch and start `ios-testflight` manually on that branch (it also runs on any tag, so never trial it by tagging). The code side already asks only for landscape: `orientationFor` (`controller_app/lib/src/gyro.dart:83-86`, used at :249) returns only landscapeLeft/landscapeRight, and `controller_app/lib/main.dart:21` sets the same. Fallback if the key is ignored: keep all four orientations and make the layout cope, then add an iPad portrait row to the size matrix | small code item plus one iOS build | $2-5 plus Mac minutes | an iOS build (owner's word) | with BP3 | [ ] |
 | 5 | S2 layout matrix helper (with text-geometry assertion) plus 6-8 key screens | 1 batch | $5-15 | size table | with BP3 | [ ] |
 | 6 | L1a goldens: harness, tag, pinned CI job, "update goldens" workflow, 5-8 stable screens | 1-2 batches | $10-25 | #5 | before M17b | [ ] |
 | 7 | L3 Pixel Tablet periodic run: setup check (Android version, adb, stays connected), then the agent's smoke and screenshots | 1 batch | $5-15 | #2 | M17b | [ ] |
 | 8 | L3b Pixel Tablet + Windows dev TV real-Wi-Fi mDNS and night (unverified) | 1 probe, then 1 batch if it works | $2 then $5-15 | #2, #7, firewall and router allow mDNS | M17b | [ ] |
 | 9 | L1b City Rush map goldens | 1 batch | $5-10 | #6, map screens settled | end of M17b | [ ] |
+| 3b | Old Android builds: `release.yml` step that attaches APKs to the GitHub release on tags; and by Dec 20 the one-off rebuild of m16.3 phone + m16.6 TV APKs, attached to those releases and copied to the local archive (a build plus an upload: owner's word needed) | small | CI minutes | owner's word | by Dec 20 (one-off), step with the next tag | [ ] |
 | 10 | L2 emulator smoke in GitHub Actions (tags only, 15-25 min, owner OK) | 1 batch | $5-10 plus CI minutes | #2 | before first public release | [ ] |
 | 11 | First full system suite run (section 6), recorded in the run log | agent run plus one batched owner ask | owner minutes, asked once | #1-#6, #10 | before first public release | [ ] |
 | 12 | L4 iOS simulator runs | 1 batch | Mac minutes | #10 | after public release, optional | [ ] |
@@ -173,11 +174,11 @@ Default: zero owner-hands time per tester build. Every per-build step is automat
 | Batch that touches screens | Above plus the golden CI job; golden diffs triaged by the agent, real changes sent to the owner batched | +5-10 min (guess) | CI, agent | CI minutes |
 | Every tester build (m17.x tag) | Uncached check, S1, S2, golden CI job, emulator job (once it exists), Pixel Tablet pair-plus-one-round smoke (once it exists). No owner hands | 30-60 min unattended (guess) | CI plus agent | CI minutes plus a small agent run |
 | After a major UX change (new screen, layout rewrite, new picker mode) | Golden regeneration and agent triage, S2 matrix, tablet run, S3 rows for the affected screens | 1-2 h agent time (guess) | agent; owner only approves real golden diffs | $5-15 |
-| After a protocol change | Full suite with the full-night systest, tablet full night, old-phone check with the kept m16.3 APK on the tablet or emulator, old-app vs new-app pairing | 2-3 h agent time (guess) | agent | $10-25 |
+| After a protocol change | Full suite with the full-night systest, tablet full night, old-phone check with the m16.3 APK on the tablet or emulator (blocked until the APK exists, roadmap 3b), old-app vs new-app pairing | 2-3 h agent time (guess) | agent | $10-25 |
 | Before each public release (first and later) | Full suite in full; check the Try-the-shop gate; one batched owner ask for anything hardware-only (real Android TV, iPhone) | agent half a day (guess); owner ask about 30-60 min if hardware checks are needed (guess) | agent, then owner once | $10-25 plus owner minutes |
-| Periodic | Monthly, or every 4th tester build if sooner: golden sweep, tablet run, full night plus old-phone check, all by the agent. Also after every Flutter version bump | 1-2 h agent time (guess) | agent | $5-15 |
+| Periodic | Monthly, or every 4th tester build if sooner: golden sweep, tablet run, full night plus old-phone check (once the m16.3 APK exists), all by the agent. Also after every Flutter version bump | 1-2 h agent time (guess) | agent | $5-15 |
 
-When the agent may ask for owner time (narrow list): (1) before the first public release, for the hardware-only list; (2) a change that only real hardware can check and that has no automated substitute (for example a new Android TV remote or focus behaviour); (3) a golden diff that is a real change to approve (batched, no hardware); (4) a one-time setup that needs hands (plugging in the tablet, accepting the adb prompt). Rules for every ask: ask once, batch everything, say why and roughly how long it takes, and do not ask per build.
+When the agent may ask for owner time (narrow list): (1) before the first public release, for the hardware-only list; (2) a change that only real hardware can check and that has no automated substitute (for example a new Android TV remote or focus behaviour); (3) a golden diff that is a real change to approve (batched, no hardware); (4) a one-time setup that needs hands (plugging in the tablet, accepting the adb prompt once with "always allow this computer"; this is not a recurring owner moment). Rules for every ask: ask once, batch everything, say why and roughly how long it takes, and do not ask per build.
 
 Release policy notes (not part of the suite): how and when TV, Android and iOS releases ship is set in `docs/release.md` and the owner's rules; iOS review timing is Apple's and outside this plan. Whether a protocol change needs a same-day release is a release question, not a test one.
 
@@ -187,23 +188,23 @@ OWNER marks items that need an owner answer. VERIFY marks dependencies still to 
 
 | # | Assumption or dependency | Status |
 |---|---|---|
-| 1 | Pixel Tablet (latest generation); Android version recorded in the run log at setup. Assumed to stay connected to this PC over USB or adb over Wi-Fi (one setup check). After a cable or PC change the adb authorisation prompt must be accepted again (an owner-hands moment); screen lock off; stay-awake while charging on; USB debugging on | decided; setup check pending |
+| 1 | Pixel Tablet (latest generation); Android version recorded in the run log at setup. Assumed to stay connected to this PC over USB or adb over Wi-Fi (one setup check). The adb authorisation prompt is accepted once with "always allow this computer" (the one-time setup in section 6, case 4); it only returns after a PC change; screen lock off; stay-awake while charging on; USB debugging on | decided; setup check pending |
 | 2 | This PC supports virtualization (Hyper-V/WHPX) and has an AVD; emulator runs go from an agent terminal tab because Claude's sandboxed shell hits the flutter tool crash | owner agreed to the probe; result pending (roadmap #2) |
 | 3 | GitHub Actions minutes and plan: a 15-25 min emulator job on tags only: owner OK. Remaining check: free minutes left on the plan | decided; minutes to check |
 | 4 | Baseline images live in git; the owner approves diffs, after the agent triages and batches them | decided |
 | 5 | Fonts: baselines are made on CI ubuntu at Flutter 3.47.8 (`ci.yml:30`, `release.yml:40`); the golden job must use `runs-on: ubuntu-24.04` (today `ci.yml:34` says `ubuntu-latest`, so the pin is a to-do); fonts are bundled and loaded in the test. Changing runner image or Flutter version means regenerating every baseline | decided in plan, confirm |
 | 6 | A Flutter version bump changes rendering: regenerate and re-review baselines after each bump. There is no local Flutter pin (no `.fvmrc` in the repo), so a local run can drift from CI 3.47.8: add `.fvmrc` or a version check in `tools/check.sh` | to do (roadmap #3) |
-| 7 | Phone app is landscape-only on Android and iPhone, so no portrait matrix there. iPad is different: `controller_app/ios/Runner/Info.plist:76-82` lists Portrait and PortraitUpsideDown for iPad (App Store rule, comment at :72-75), and there is no `UIRequiresFullScreen` key. The app asks for landscape at run time, but iPad in a split window may be portrait-shaped. Decision: lock iPad to landscape (roadmap #4). Caveat: the keys were added to pass App Store check ITMS-90474, so confirm the lock still uploads (internal TestFlight only) | decided; to verify |
+| 7 | Phone app is landscape-only on Android and iPhone, so no portrait matrix there. iPad is different: `controller_app/ios/Runner/Info.plist:76-82` lists Portrait and PortraitUpsideDown for iPad (App Store rule, comment at :72-75), and there is no `UIRequiresFullScreen` key. The app asks for landscape at run time, but iPad in a split window may be portrait-shaped. The owner wants a landscape lock, but it is an experiment, not decided (roadmap #4): the keys were added to pass App Store check ITMS-90474 and `UIRequiresFullScreen` may be ignored on the iOS 27 SDK. Fallback: keep all four orientations, make the layout cope, add an iPad portrait row to the size matrix | experiment; to verify |
 | 8 | No test accounts: the app has no sign-in. Firestore stats: VERIFY whether automated runs (emulator, tablet, integration_test) write stats, and if so add a test flag so they do not pollute stats | VERIFY |
 | 9 | The owner's home Wi-Fi allows mDNS between phone and TV; guest or isolated networks are untested. L3b (Pixel Tablet + Windows dev TV) also needs the Windows firewall and network profile to allow mDNS | assumption, unverified |
-| 10 | Old builds for old-version checks: VERIFY where the m16.3 phone APK and m16.6 TV build are stored durably. CI artifacts and TestFlight builds expire (about 90 days), so an old-iOS check may become impossible; decision: keep the m16.3 APK and m16.6 Windows zip as GitHub release assets of those tags, plus one local archive copy on this PC; VERIFY the assets are there. An old iOS build cannot be kept, so an old-iPhone check may be impossible | decided; VERIFY |
+| 10 | Old builds for old-version checks: VERIFY where the m16.3 phone APK and m16.6 TV build are stored durably. CI artifacts and TestFlight builds expire (about 90 days), so an old-iOS check may become impossible; checked: no APK is stored anywhere. The m16.3 and m16.6 releases carry only the Windows zip; `release.yml` builds AABs only into the `play-bundles` artifact (retention 30 days, `release.yml:125-129`), so m16.3's copy expires about Dec 24. Old Android builds are not kept today. Action by Dec 20: rebuild phone and TV APKs from tags m16.3 and m16.6, attach them to those releases, copy to a local archive (needs the owner's word: a build plus an upload), and add APK attachment to `release.yml` for future tags. Until then the agent-run old-phone check is blocked (no APK). An old iOS build cannot be kept, so an old-iPhone check may be impossible | OPEN: owner's word needed by Dec 20 |
 | 11 | Codemagic cost if iOS simulators are added; the Xcode 27 move (Jan 2027) can change iOS timing | OWNER, later |
 | 12 | Android TV emulator is optional; real Android TV hardware stays the reference | assumption |
 | 13 | Protocol version is 1 everywhere, so the mismatch message is not device-testable until a bump; cover it with a unit or widget test | checked in code |
 | 14 | iOS goes to internal TestFlight only; nothing here promotes builds | rule |
 | 15 | PNG baselines add to repo size; cap the screen list and image size | assumption |
 | 16 | Screens added in M17b (City Rush maps) come with S2 matrix entries from day one, or the sweep goes stale | process |
-| 17 | Not in any matrix: accessibility (screen reader, OS display-size setting beyond text scale), dark mode, locale or right-to-left. Owner: dark mode and accessibility are out of scope for now (portrait is not shipped) | decided |
+| 17 | Not in any matrix: accessibility (screen reader, OS display-size setting beyond text scale), dark mode, locale or right-to-left. Owner: dark mode and accessibility are out of scope for now | decided |
 | 18 | Golden diffs: the agent triages first; owner time is only for real changes, batched (guess: a few minutes per batch). No per-build owner time is assumed anywhere in this plan | decided |
 | 19 | Emulator to real TV on the LAN: VERIFY whether an Android emulator (NAT) can reach a TV on the home network. It may need emulator-to-emulator, the Windows dev TV on the same PC (10.0.2.2, as `tools/emulator.sh connect` uses), or port forwarding | VERIFY (part of the probe) |
 | 20 | Fonts: toy_look bundles fonts (`packages/toy_look/pubspec.yaml:31`); VERIFY the other packages and both apps use only bundled or system default fonts and nothing fetched at runtime (no google_fonts found in a pubspec grep) | VERIFY |
@@ -219,11 +220,11 @@ OWNER marks items that need an owner answer. VERIFY marks dependencies still to 
 | 4 | Who approves golden diffs? | Owner, after the agent triages and sends only real changes, batched |
 | 5 | 15-25 min emulator job in GitHub Actions on tags only | OK |
 | 6 | Dark mode and accessibility | Out of scope for now |
-| 7 | Keep m16.3 phone and m16.6 TV builds durably | Yes; plan's pick: GitHub release assets plus one local archive copy |
-| 8 | iPad portrait | Lock iPad to landscape (roadmap #4) |
+| 7 | Keep m16.3 phone and m16.6 TV builds durably | Yes in principle; but no APK exists today (Windows zip only). Needs a rebuild and upload by Dec 20, with the owner's word |
+| 8 | iPad portrait | Owner wants a landscape lock; it is an experiment, not decided (roadmap #4) |
 | 9 | Owner-hands time per tester build | Zero by default; owner time only when absolutely needed (section 6) |
 
-Still open, not blocking: Pixel Tablet Android version (recorded at setup); whether the PC supports emulators (probe); whether L3b works (probe).
+Still open, not blocking S3, the probe or S1: the owner's word for the Dec 20 old-build rebuild and upload; the iPad lock experiment; Pixel Tablet Android version (recorded at setup); whether the PC supports emulators (probe); whether L3b works (probe).
 
 ## Run log
 
@@ -232,4 +233,4 @@ One row per run. List which suite components existed at that run, so later runs 
 | Date | Trigger | Components that existed | Result | Notes |
 |---|---|---|---|---|
 | 2026-11-27 | plan written | check.sh, CI, Codemagic tests, headless tests, smoke (partly), manual lists | no suite run | No S1, S2, goldens, emulator or tablet runs existed. No tests added yet |
-| 2026-11-27 | owner answers recorded | same as above | no suite run | Decisions in section 0; cadence reworked to zero owner time per build |
+| 2026-11-27 | owner answers recorded | same as above | no suite run | Decisions are in the section 0 header box; cadence reworked to zero owner time per build |
