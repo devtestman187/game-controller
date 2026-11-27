@@ -182,7 +182,7 @@ void main() {
         await _until(tester, () => rig.ends.every((e) => e.isNotEmpty));
       });
 
-      testWidgets('Roadworks is offered to the last player number only, and only if it lists choices', (tester) async {
+      testWidgets('Roadworks is offered to the last player number only', (tester) async {
         final rig = await _pumpDemo(tester, look);
 
         List<String> ids(int phone) => [for (final c in rig.offers[phone].last.cards) c.id];

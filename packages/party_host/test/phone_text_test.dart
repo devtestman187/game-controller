@@ -42,13 +42,13 @@ void main() {
 
   test('a version mismatch says in plain words which app to update, for kids and parents', () {
     const mismatch = ClientSnapshot(status: ClientStatus.failed, problem: ClientProblem.versionMismatch);
-    final text = PhoneText.problemText(mismatch);
+    final text = PhoneText.problemText(mismatch) ?? '';
     expect(
       text,
-      'This phone app and the TV app are not the same version. Update the Thumb Party app on the TV, or on this '
-      'phone (Android or iPhone), so both are new.',
+      'This phone app and the Thumb Party TV app are not the same version. Update the Thumb Party TV app, or '
+      'this phone app (Android or iPhone), so both are new.',
     );
-    expect(text!.length, lessThan(200), reason: 'a short line a phone screen fits');
+    expect(text.length, lessThan(200), reason: 'a short line a phone screen fits');
     expect(text.toLowerCase(), isNot(contains('protocol')));
   });
 }

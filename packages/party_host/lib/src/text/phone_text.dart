@@ -109,8 +109,8 @@ abstract final class PhoneText {
       ClientProblem.pairingForgotten =>
         'The screen doesn\'t remember this phone (it may have restarted). Enter the code again.',
       ClientProblem.versionMismatch =>
-        'This phone app and the TV app are not the same version. Update the Thumb Party app on the TV, or on this '
-            'phone (Android or iPhone), so both are new.',
+        'This phone app and the Thumb Party TV app are not the same version. Update the Thumb Party TV app, or '
+            'this phone app (Android or iPhone), so both are new.',
       ClientProblem.replaced => 'This phone connected to the screen again on another connection.',
       ClientProblem.protocolError => 'The screen rejected a message${s.detail == null ? '' : ' (${s.detail})'}.',
       ClientProblem.pairingTimeout => 'The code wasn\'t entered in time.',

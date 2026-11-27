@@ -9,3 +9,4 @@
 - open: wave 2 v2 touches 21 test files (sonnet, 80 turns); v1c is the big UI job. At the end: REPORT.md (batch-report.sh, job-metrics, agent-cost --since 1795792539 --agents --line, proc-sweep), RELEASE-NOTES.md final (draft in the folder, 476 chars), batch-close.sh --run-check, STATUS Resume line, tracker none. Timing default for the Vote is NOT owner-confirmed: say so. c2 finding (no code): the host phone's own player gets nothing at a build stop: shop_demo_screen.dart:76-79 keeps only players with !p.local && !p.simulated; the only ChoiceRound is built at shop_demo_screen.dart:90 (round) with OldPhoneChoices at :~104; the host device has no choices UI path.
 - compat note: the owner's brief had "hazard rule" in driver-kit; none found, d1 adds the compat policy bullet instead.
 - calls so far: driver ~28, waiters 4 (about 35 polls)
+- 11:25 wave2 stopped: tv-word-test failed on c1's version text (bare TV); hand-fixed, restarting. waiter 2 had 23 polls (57 min)

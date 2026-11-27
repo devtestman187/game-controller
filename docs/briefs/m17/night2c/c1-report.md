@@ -8,7 +8,7 @@
 - Tests that pin the new behaviour:
   - `shop_demo_test.dart`, "Roadworks is offered to the last player number only, and only if it lists choices": Ann (player 1) gets `build, save`; Bea (last, capable) gets `build, save, roadworks`. Run in both the menu and TV looks.
   - `shop_demo_test.dart`, "an old phone that is the last number gets Build and Save only, so its X button is hidden": Bea is an old phone. Her layout has A = `Build`, B = `Save +2`, no X label, and X is in `hidden`. Run in both looks.
-  - `phone_text_test.dart`, "a version mismatch says in plain words which app to update, for kids and parents": the text equals the new line, its length is 150 characters (< 200), and it does not contain "protocol".
+  - `phone_text_test.dart`, "a version mismatch says in plain words which app to update, for kids and parents": the text equals the new line, its length is 154 characters (< 200), and it does not contain "protocol".
 - No test pinned the old text. `git grep "Install matching builds"` finds only `phone_text.dart`, so no test was updated for it. `controller_app` has no copy.
 
 ## Files changed
@@ -23,13 +23,13 @@ Not touched: `packages/connection/test/choice_fallback_test.dart`. Its tests cal
 
 ## Computed values for the expectations
 
-- New version text length: 150 characters (count of the literal, under 200).
+- New version text length: 154 characters (count of the literal, under 200).
 - Old phone's layout for a two-card round: `labels` A = `Build` (`ShopText.build`), B = `Save +2` (`ShopText.save`), Y = `Clear`; X is in `hidden` (`_layoutFor` hides every card button not used).
 - Round length in the test is 20 s (`_roundLength`), the same value as before.
 
 ## Self-check (review-rules part A)
 
-1. Host setups: the TV test rig (`shop_demo_test`) covers the TV host; the old phone is "a peer one build older" in the test (no choices capability). A phone on "Play on this phone" or "Show on this device" is not touched by this change, and the test does not cover those setups.
+1. Host setups: the TV test rig (`shop_demo_test`) covers the TV host; the old phone is a phone without the choices capability (no older build is modelled). A phone on "Play on this phone" or "Show on this device" is not touched by this change, and the test does not cover those setups.
 2. Kept state: the old-phone test starts a round and ends it with `pump(_roundLength)` and `_until(ends)`. Nothing new is kept.
 3. Combinations: pause menu, host away, player away, "Get ready", dropped link, results and leaving were not changed and are not exercised by the new tests. The existing "leaving closes the round" test still passes.
 4. Files: all inside `allow:`.

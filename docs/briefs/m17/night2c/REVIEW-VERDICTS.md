@@ -16,3 +16,9 @@
 - could shop_demo_test.dart:185 test name: trivial, fixed by hand at the end.
 - could c1-report.md:26 char count: trivial, fixed by hand at the end.
 - Decision for owner: version text wording; shared old-phone helper (_listsChoices vs choice_fallback.dart:199) deferred to docs/code-health.md.
+
+## c1 re-review (after wave 2): 0 must, 3 should, 3 could
+- should cardsFor reads the live controller list per call (shop_demo_screen.dart:83): edge case (phone drops mid-round, only the last player); deferred to docs/code-health.md.
+- should uncommitted wording: hand-fix (tv-word rule) committed now.
+- should c1-report.md:32 wording: fixed by hand.
+- could c1-report.md char count: fixed (154 for the new text).
