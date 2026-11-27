@@ -27,3 +27,11 @@
 2026-11-27 13:37:31 phase: review (apply took 2s)
 2026-11-27 13:37:33 reviewed wave1: 11 finding(s)
 2026-11-27 13:39:51 reviewed wave2: 7 finding(s)
+2026-11-27 13:39:52 start the run's review
+METRICS final-row worker=claude model=claude-haiku-5-5 turns=33 in=46 out=23971 cache=897030 min=4.3 wall=5.6 result=0
+METRICS run-review worker=claude model=claude-haiku-5-5 turns=24 in=24 out=32976 cache=512819 min=2.6 wall=- result=0
+METRICS split worker=claude model=claude-haiku-5-5 turns=13 in=18 out=16193 cache=255228 min=1.8 wall=2.8 result=0
+METRICS wave1-review worker=claude model=claude-haiku-5-5 turns=30 in=32 out=17479 cache=619998 min=2.1 wall=- result=0
+METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=25 in=26 out=23904 cache=561431 min=1.9 wall=- result=0
+2026-11-27 13:42:53 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/board3f/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 2 jobs, 35 min
