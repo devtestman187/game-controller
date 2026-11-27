@@ -22,13 +22,14 @@ final class NightSave {
   final SharedPreferences _prefs;
 
   /// The saved night, or null when none is saved. A save that is corrupt, names
-  /// an unknown award or is a night already over is cleared, and the night starts
-  /// fresh: nothing is reported, since a host has no use for a broken save.
+  /// an unknown award, is a night already over, or is a night nobody played (round
+  /// 0, B-032, as dropIfUnplayed drops it) is cleared, and the night
+  /// starts fresh: nothing is reported, since a host has no use for a broken save.
   NightState? load() {
     final raw = _prefs.getString(_key);
     if (raw == null) return null;
     final night = _readNight(_decode(raw));
-    if (night != null && !night.isOver) return night;
+    if (night != null && !night.isOver && night.round > 0) return night;
     clear();
     return null;
   }

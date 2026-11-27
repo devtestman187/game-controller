@@ -58,7 +58,9 @@ void main() {
         expect(prefs.containsKey('party_night_v1'), isFalse, reason: raw);
       }
 
-      NightSave(prefs).save(NightState.start(length: NightLength.three, awards: threeAwards));
+      NightSave(
+        prefs,
+      ).save(NightState.start(length: NightLength.three, awards: threeAwards).record(roundResult(points: {'p1': 5})));
       final valid = jsonDecode(prefs.getString('party_night_v1')!) as Map<String, Object?>;
       expect(NightSave(prefs).load(), isNotNull, reason: 'a valid save reads back');
       for (final broken in [
@@ -93,13 +95,41 @@ void main() {
       final prefs = FakePrefs();
       final (container: first, :roster) = savingNightContainer(prefs: prefs);
       roster.put([nightPlayer('p1', 1, 'Mia')]);
-      first.read(partyNightProvider.notifier)
+      final host = first.read(partyNightProvider.notifier)
         ..start(length: NightLength.three, awards: threeAwards)
-        ..end();
+        ..recordRound(roundResult(points: {'p1': 5}));
+      expect(prefs.containsKey('party_night_v1'), isTrue, reason: 'the played night is saved before it ends');
+      host.end();
 
       final (container: second, roster: _) = savingNightContainer(prefs: prefs);
       expect(second.read(partyNightProvider), isNull);
       expect(prefs.containsKey('party_night_v1'), isFalse);
+    });
+
+    test('a night saved with no round played is not resumed, and its save is cleared', () {
+      final prefs = FakePrefs();
+      NightSave(prefs).save(NightState.start(length: NightLength.three, awards: threeAwards));
+      expect(prefs.containsKey('party_night_v1'), isTrue);
+
+      final (container: second, roster: _) = savingNightContainer(prefs: prefs);
+      expect(second.read(partyNightProvider), isNull, reason: 'B-032: a night nobody played is not resumed');
+      expect(prefs.containsKey('party_night_v1'), isFalse);
+    });
+
+    test('a player who joins after a round and then leaves is kept in the resumed night', () {
+      final prefs = FakePrefs();
+      final (container: first, :roster) = savingNightContainer(prefs: prefs);
+      roster.put([nightPlayer('p1', 1, 'Mia')]);
+      first.read(partyNightProvider.notifier)
+        ..start(length: NightLength.three, awards: threeAwards)
+        ..recordRound(roundResult(points: {'p1': 5}));
+      roster.put([nightPlayer('p1', 1, 'Mia'), nightPlayer('p2', 2, 'Sam')]);
+      roster.put([nightPlayer('p1', 1, 'Mia')]);
+
+      final (container: second, roster: _) = savingNightContainer(prefs: prefs);
+      final resumed = second.read(partyNightProvider)!;
+      expect(resumed.seen.keys, unorderedEquals(['p1', 'p2']));
+      expect(resumed.seen['p2']?.nickname, 'Sam');
     });
 
     test('a night that is over is not resumed, and its save is cleared', () {

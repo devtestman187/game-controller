@@ -62,7 +62,7 @@ class PartyNight extends Notifier<NightState?> {
     // greyed rather than away.
     ref.listen(gamePlayersProvider, (_, players) {
       final night = state;
-      if (night != null) state = night.remember(players);
+      if (night != null) _set(night.remember(players));
     });
     return ref.read(nightSaveProvider).load();
   }
