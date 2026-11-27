@@ -18,14 +18,25 @@ final class StubRoundPlacing implements RoundPlacing {
   /// Creates the stub placing.
   const StubRoundPlacing();
 
+  /// Throws [ArgumentError] when a player id is listed more than once.
   @override
   Map<String, int> placeRound(List<String> playerIds) {
+    if (playerIds.toSet().length != playerIds.length) {
+      throw ArgumentError.value(playerIds, 'playerIds', 'a player id must be listed only once');
+    }
     return {for (var index = 0; index < playerIds.length; index++) playerIds[index]: index + 1};
   }
 }
 
 /// One player's figures for the champion decision: how far their last tile is
 /// from the Plaza and how many bolts they hold.
+///
+/// This is a City type of its own, not the night's `ChampionEntry`. The shape
+/// differs in three ways: the id is named [playerId] rather than `id`; the
+/// figures are required ints here, where the night's are nullable; and there is
+/// no `points` or `lastGamePlace`, because the City Rush champion is decided on
+/// distance and bolts only. The City code imports nothing from `night/`, so the
+/// board and the stubs can be built and tested without the night's code.
 final class CityChampionEntry {
   /// Creates an entry for [playerId]. [plazaDistance] is the tiles left to the
   /// Plaza; [bolts] is the bolts the player holds.

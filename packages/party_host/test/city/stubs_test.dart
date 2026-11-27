@@ -16,6 +16,12 @@ void main() {
 
       expect(placing.placeRound(const []), isEmpty);
     });
+
+    test('refuses a player id listed twice, since one player cannot hold two places', () {
+      const RoundPlacing placing = StubRoundPlacing();
+
+      expect(() => placing.placeRound(['ann', 'ben', 'ann']), throwsArgumentError);
+    });
   });
 
   group('StubChampionDecider', () {

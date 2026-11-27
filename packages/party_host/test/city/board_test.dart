@@ -79,4 +79,52 @@ void main() {
       expect(GateKind.values, [GateKind.brokenBridge, GateKind.potholeField, GateKind.riverFerry]);
     });
   });
+
+  group('Board', () {
+    test('accepts districts whose district ids and tile ids are all unique', () {
+      final board = Board(
+        districts: [
+          District(id: 'north', road: const <Tile>[Tile('n1'), Plaza('pn')]),
+          District(id: 'south', road: const <Tile>[Tile('s1'), Plaza('ps')]),
+        ],
+      );
+
+      expect(board.districts.map((district) => district.id).toList(), ['north', 'south']);
+    });
+
+    test('refuses two districts with the same id', () {
+      expect(
+        () => Board(
+          districts: [
+            District(id: 'north', road: const <Tile>[Tile('n1'), Plaza('pn')]),
+            District(id: 'north', road: const <Tile>[Tile('s1'), Plaza('ps')]),
+          ],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('refuses a tile id that appears on two roads', () {
+      expect(
+        () => Board(
+          districts: [
+            District(id: 'north', road: const <Tile>[Tile('shared'), Plaza('pn')]),
+            District(id: 'south', road: const <Tile>[Tile('shared'), Plaza('ps')]),
+          ],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('refuses a tile id that appears twice on one road', () {
+      expect(
+        () => Board(
+          districts: [
+            District(id: 'north', road: const <Tile>[Tile('n1'), Tile('n1'), Plaza('pn')]),
+          ],
+        ),
+        throwsArgumentError,
+      );
+    });
+  });
 }

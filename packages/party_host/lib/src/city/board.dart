@@ -40,6 +40,30 @@ final class District {
   final List<Tile> road;
 }
 
+/// The whole board: its districts. Every district id and every tile id is unique
+/// across the board, so a tile can be named by its id alone.
+final class Board {
+  /// Creates a board from [districts]. Throws [ArgumentError] when two districts
+  /// share an id, or when a tile id appears more than once across the roads.
+  Board({required List<District> districts}) : districts = List.unmodifiable(districts) {
+    final districtIds = <String>{};
+    final tileIds = <String>{};
+    for (final district in districts) {
+      if (!districtIds.add(district.id)) {
+        throw ArgumentError.value(district.id, 'districts', 'a district id must be unique on the board');
+      }
+      for (final tile in district.road) {
+        if (!tileIds.add(tile.id)) {
+          throw ArgumentError.value(tile.id, 'districts', 'a tile id must be unique on the board');
+        }
+      }
+    }
+  }
+
+  /// The districts on the board, in the order they were given.
+  final List<District> districts;
+}
+
 /// A player's piece on the board: which player, where on the road, and whether
 /// they have stepped away from the game.
 final class Token {
@@ -80,7 +104,16 @@ final class RoadworksBlock {
 }
 
 /// The kinds of gate that can stand on a road.
-enum GateKind { brokenBridge, potholeField, riverFerry }
+enum GateKind {
+  /// A bridge that is out until it is opened.
+  brokenBridge,
+
+  /// A stretch of road full of potholes that gates the way through.
+  potholeField,
+
+  /// A river crossing reached by a ferry.
+  riverFerry,
+}
 
 /// A gate on a road. It starts closed. It is shared: one [opened] flag serves
 /// every player who walks past it.
