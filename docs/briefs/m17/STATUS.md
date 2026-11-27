@@ -107,3 +107,4 @@ Lines: at most two at once (main m17, one side line m17side); full checks never 
 - Q6 A: the Rotating chooser moves to M17b, hidden and unbuilt.
 - Compat policy: no new backwards-compatibility work before a public release; old apps lack the feature and get no Roadworks; protocol bumps and wire changes only as a same-day TV+Android+iOS release. Full text: docs/driver-kit.md section 11.
 - City Rush final rules: see E:/AI/m17-scoping/city-rush-plan.md end.
+- Merged board-line at 73884c2d; uncached check All checks passed (811s, 0 cached); coverage TOTAL 93.4% (23461/25126).
