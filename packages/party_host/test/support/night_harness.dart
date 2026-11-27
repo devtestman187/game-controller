@@ -1,6 +1,7 @@
 import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:game_kit/game_kit.dart';
 import 'package:party_host/party_host.dart';
@@ -24,8 +25,8 @@ final class TestRoster extends GamePlayersNotifier {
 
 /// A container whose roster the test sets by hand; the night is
 /// [partyNightProvider] in it.
-({ProviderContainer container, TestRoster roster}) nightContainer() {
-  final container = ProviderContainer(overrides: [gamePlayersProvider.overrideWith(TestRoster.new)]);
+({ProviderContainer container, TestRoster roster}) nightContainer({List<Override> overrides = const []}) {
+  final container = ProviderContainer(overrides: [gamePlayersProvider.overrideWith(TestRoster.new), ...overrides]);
   addTearDown(container.dispose);
   final roster = container.read(gamePlayersProvider.notifier) as TestRoster;
   return (container: container, roster: roster);
