@@ -179,7 +179,8 @@ void main() {
         client.connect(host.address, code: '0000');
         await clientStatus(client, ClientStatus.connected);
         client.sendChoicePick(const ChoicePickMessage(round: 1, pick: 'save', locked: true));
-        // The stats share goes out on the same channel after the pick, so once the host has it the pick would be there.
+        // The stats share goes out on the same channel after the pick, so once the host has it the pick
+        // would be there.
         final afterPick = fromPhone.stream.firstWhere((m) => m is StatsShareMessage);
         client.setStatsShare(true);
         await afterPick;

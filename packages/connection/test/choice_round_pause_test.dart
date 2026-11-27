@@ -164,11 +164,38 @@ void main() {
       test('a player already away when the pause starts is not defaulted during the pause', () async {
         final s = await _setup(t);
         await _dropPhones(s);
+        // The round has no signal for a drop, so wait less than the grace: the drop is seen well inside it,
+        // and the grace has not run out before the pause.
+        await Future<void>.delayed(_insideGrace);
 
         s.round.pause();
         await Future<void>.delayed(_pastEnd);
 
         expect(s.round.lockedIds, isEmpty);
+      });
+
+      test('a player already set to the default before the pause keeps it after resume', () async {
+        final s = await _setup(t);
+        await _dropPhones(s);
+        await _untilLocked(s.round);
+
+        s.round.pause();
+        s.round.resume();
+        await Future<void>.delayed(_pastEnd);
+
+        expect(s.round.lockedIds, contains('phone-1'));
+        expect(s.round.close()['phone-1'], const ChoiceOutcome(cardId: 'save', count: 1, byDefault: true));
+      });
+
+      test('a host pick made during the pause survives resume', () async {
+        final s = await _setup(t);
+        s.round.pause();
+        s.round.pick('phone-2', pickId: 'build', count: 3);
+
+        s.round.resume();
+        await Future<void>.delayed(_pastEnd);
+
+        expect(s.round.close()['phone-2'], const ChoiceOutcome(cardId: 'build', count: 3, byDefault: false));
       });
 
       test('the paused and resumed states reach the capable phone with the frozen time left', () async {

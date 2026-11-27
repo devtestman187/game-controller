@@ -264,7 +264,7 @@ Fields:
 - `endsInMs` int, the time left when sent. The phone counts down on its own clock.
 - `defaultId` optional, a card's `id`, applied when nothing is chosen; `currency` optional, e.g. "Bolts".
 - `picked` optional, a card's `id`, and `pickedCount` (default 1) what the host already has for this player; `locked` (default false) whether the host has locked that pick in.
-- `paused` (written only when true, so it is missing when false): the host has frozen the timer. `endsInMs` is then the time left and stands still until a later `choices` says `paused` is false. The phone shows it and stops its countdown.
+- `paused` (written only when true, so it is missing when false): the host has frozen the timer. `endsInMs` is then the time left and stands still until a later `choices` says `paused` is false. A phone that understands it shows Paused and stops its countdown.
 
 `choice_pick` (controller → host, sent only to a host that listed `choices`): the player's pick in round `round`. Fields: `round` int; `pick` optional, a card's `id` (missing clears the pick); `count` (default 1); `locked` (default false).
 
@@ -273,7 +273,7 @@ Fields:
 Rules:
 
 - A side sends only what the other side listed: a controller sends `choice_pick` only to a host that listed `choices`, and the host sends `choices` and `choices_end` only to a controller that listed it.
-- A pick is accepted until the round's timer ends. A `choice_pick` with `locked` false is an undo: it changes or clears the pick until then.
+- A pick is accepted until the round's timer ends, and while the round is paused. A `choice_pick` with `locked` false still counts at the round's end: `locked` only confirms the pick to the host. A `choice_pick` with no `pick` clears it.
 - A player who chose nothing gets the round's `defaultId` when the timer ends; with no `defaultId`, nothing is applied.
 - A controller that did not list `choices` is not sent any of this. The host plays it through the pad's A, B, X and Y buttons instead, which the host maps with its layout messages (§8a).
 

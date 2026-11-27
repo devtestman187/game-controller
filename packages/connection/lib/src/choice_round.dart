@@ -20,9 +20,6 @@ final class ChoiceRound {
   /// Builds a round for [players]; nothing is sent or timed until [start].
   ChoiceRound({required this.server, required this.players, required this.setup, required this.timing});
 
-  /// The longest card title a phone is sent; the host cuts a longer one to this many characters.
-  static const int maxTitleLength = 24;
-
   /// The host the round sends through and listens to for picks and connections.
   final HostServer server;
 
@@ -38,7 +35,8 @@ final class ChoiceRound {
   /// The cards one player may pick from, asked each time so a list may change.
   List<ChoiceCard> Function(String playerId) get cardsFor => setup.cardsFor;
 
-  /// The card that applies when nothing is chosen, or null when nothing does.
+  /// The card that applies when nothing is chosen, or null when nothing does. The build stop must set it to
+  /// the Save +2 card; with null an away player's pick is removed and the player abstains (the away timer).
   String? get defaultId => setup.defaultId;
 
   /// The unit the costs are in, or null when there are none.
@@ -76,6 +74,7 @@ final class ChoiceRound {
   /// starts the timer. Does nothing once started, closed or disposed.
   void start() {
     if (_isStarted || _isDisposed || isClosed) return;
+    assert(_isDefaultOffered(), 'the default card must be in every player\'s list and enabled');
     _isStarted = true;
     _endsAtMs = timing.nowMs() + timing.duration.inMilliseconds;
     _messageSub = server.messages.listen(_onMessage);
@@ -110,8 +109,8 @@ final class ChoiceRound {
   }
 
   /// Ends a pause: the end timer runs for the time left, every player who is
-  /// not connected gets a full grace again, and the phones are told. Does
-  /// nothing unless the round is paused.
+  /// not connected and not already set to the default gets a full grace again,
+  /// and the phones are told. Does nothing unless the round is paused.
   void resume() {
     final left = _pausedLeftMs;
     if (left == null || _isDisposed || isClosed) return;
@@ -119,7 +118,7 @@ final class ChoiceRound {
     _endsAtMs = timing.nowMs() + left;
     _endTimer = Timer(Duration(milliseconds: left), close);
     for (final id in players) {
-      if (!_connected.contains(id)) _startAwayTimer(id);
+      if (!_connected.contains(id) && _picks[id]?.byDefault != true) _startAwayTimer(id);
     }
     _sendToConnected();
   }
@@ -163,15 +162,19 @@ final class ChoiceRound {
     return outcomes;
   }
 
-  /// Cancels the timers and listeners. The round sends nothing after it.
+  /// Cancels the timers and listeners and ends any pause. The round sends nothing after it.
   Future<void> dispose() async {
     _isDisposed = true;
+    _pausedLeftMs = null;
     _cancelWatching();
-    for (final t in _awayTimers.values) {
-      t.cancel();
-    }
-    _awayTimers.clear();
     await _changes.close();
+  }
+
+  /// Whether the default card, when there is one, is in every player's list and enabled.
+  bool _isDefaultOffered() {
+    final id = defaultId;
+    if (id == null) return true;
+    return players.every((p) => cardsFor(p).any((c) => c.id == id && c.enabled));
   }
 
   void _cancelWatching() {
@@ -264,16 +267,22 @@ final class ChoiceRound {
     );
   }
 
-  /// The card as the phone shows it: the same card with its title cut to [maxTitleLength].
+  /// The card as the phone shows it: the same card with its title cut to [ChoiceCard.maxTitleLength].
   ChoiceCard _shownCard(ChoiceCard card) {
-    final title = card.title.length <= maxTitleLength ? card.title : card.title.substring(0, maxTitleLength);
     return ChoiceCard(
       id: card.id,
-      title: title,
+      title: _cutTitle(card.title),
       detail: card.detail,
       cost: card.cost,
       maxCount: card.maxCount,
       enabled: card.enabled,
     );
+  }
+
+  /// Cuts [title] to [ChoiceCard.maxTitleLength] code points, so a character outside the Basic Multilingual
+  /// Plane (an emoji) is never split in two.
+  String _cutTitle(String title) {
+    if (title.runes.length <= ChoiceCard.maxTitleLength) return title;
+    return String.fromCharCodes(title.runes.take(ChoiceCard.maxTitleLength));
   }
 }

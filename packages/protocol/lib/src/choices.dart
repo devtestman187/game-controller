@@ -16,10 +16,14 @@ final class ChoiceCard {
   /// The most a card's [maxCount] may be. Above this, a card is not a valid wire card.
   static const int maxCountLimit = 9;
 
+  /// The most code points of a title the host sends; a longer title is cut to this many (the owner's limit
+  /// for the phone's card, M17 phone1a).
+  static const int maxTitleLength = 24;
+
   /// The card's own ID, unique within its round, which a pick names. Never empty.
   final String id;
 
-  /// The card's name as the phone shows it. The host cuts it to 24 characters.
+  /// The card's name as the phone shows it. The host cuts it to [maxTitleLength] code points.
   final String title;
 
   /// A line under the title, or null when there is none.

@@ -292,17 +292,69 @@ void main() {
         expect(s.capable.fromHost.whereType<ChoicesMessage>(), isEmpty);
       });
 
-      test('a card title of 40 characters reaches the phone cut to 24', () async {
+      test('a card title of 40 characters reaches the phone cut to its first 24 characters', () async {
         const long = 'abcdefghijklmnopqrstuvwxyz0123456789ABCD';
         final s = await _setup(
           t,
+          defaultId: null,
           cards: [const ChoiceCard(id: 'long', title: long)],
         );
 
         final sent = s.capable.fromHost.whereType<ChoicesMessage>().single;
         expect(long.length, 40);
-        expect(ChoiceRound.maxTitleLength, 24);
+        expect(ChoiceCard.maxTitleLength, 24);
         expect(sent.cards.single.title, 'abcdefghijklmnopqrstuvwx');
+      });
+
+      test('a title of 23 characters then an emoji reaches the phone whole, cut on code points not UTF-16', () async {
+        // 23 ASCII letters, one emoji (two UTF-16 units), then a 'z' that the cut removes.
+        const title = 'abcdefghijklmnopqrstuvw\u{1F600}z';
+        final s = await _setup(
+          t,
+          defaultId: null,
+          cards: [const ChoiceCard(id: 'emoji', title: title)],
+        );
+
+        final sent = s.capable.fromHost.whereType<ChoicesMessage>().single;
+        expect(sent.cards.single.title, 'abcdefghijklmnopqrstuvw\u{1F600}');
+        expect(sent.cards.single.title.runes.length, 24);
+      });
+
+      test(
+        'a shop round: a player away past the grace gets Save +2 by default and can pick again before the end',
+        () async {
+          final s = await _setup(t);
+          s.server.dropAllConnections();
+          await _untilLocked(s.round);
+
+          expect(s.round.lockedIds, {'phone-1'});
+          s.round.pick('phone-1', pickId: 'build', count: 2);
+          expect(s.round.close()['phone-1'], const ChoiceOutcome(cardId: 'build', count: 2, byDefault: false));
+        },
+      );
+
+      test('a default card in no player\'s list fails the start assert and the round does not start', () async {
+        final s = await _setup(t, defaultId: 'missing', start: false);
+
+        expect(s.round.start, throwsA(isA<AssertionError>()));
+        expect(s.round.isClosed, isFalse);
+        expect(s.capable.fromHost.whereType<ChoicesMessage>(), isEmpty);
+      });
+
+      test('a default card that is disabled fails the start assert', () async {
+        final s = await _setup(t, defaultId: 'locked', start: false);
+
+        expect(s.round.start, throwsA(isA<AssertionError>()));
+      });
+
+      test('dispose while paused leaves the round not paused', () async {
+        final s = await _setup(t);
+        s.round.pause();
+        expect(s.round.isPaused, isTrue);
+
+        await s.round.dispose();
+
+        expect(s.round.isPaused, isFalse);
       });
     });
   }
