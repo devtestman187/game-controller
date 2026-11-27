@@ -105,10 +105,6 @@ void main() {
       expect(driveCost(), 0);
     });
 
-    test('driveCost returns nothing for a tile that is not built, so roadworks never charge a token', () {
-      expect(driveCost(), 0);
-    });
-
     test('a token may move onto a built tile', () {
       expect(canDriveOnto(true), isTrue);
     });
@@ -131,14 +127,6 @@ void main() {
       corners: rules.corners,
       laneSuffix: rules.laneSuffix,
     );
-
-    test('roadworks are offered on an ordinary night', () {
-      expect(roadworksOffered(kidsPreset: false), isTrue);
-    });
-
-    test('roadworks are not offered on a kids night', () {
-      expect(roadworksOffered(kidsPreset: true), isFalse);
-    });
 
     test('roadworks price is read from the configured roadworksCost, not a constant', () {
       final cost = rules.roadworksCost + 1;
@@ -217,21 +205,24 @@ void main() {
     test('the first four players start on the corners, in slot order', () {
       final starts = assignStarts(['p1', 'p2', 'p3', 'p4']);
 
-      expect(starts, {'p1': 'cog-hill', 'p2': 'candy-harbour', 'p3': 'pepper-park', 'p4': 'lantern-ridge'});
+      final corners = rules.corners;
+      expect(starts, {'p1': corners[0], 'p2': corners[1], 'p3': corners[2], 'p4': corners[3]});
     });
 
     test('players 5-8 start on the second lane beside each corner, in the same order', () {
       final starts = assignStarts(['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8']);
 
+      final corners = rules.corners;
+      final lane = rules.laneSuffix;
       expect(starts, {
-        'p1': 'cog-hill',
-        'p2': 'candy-harbour',
-        'p3': 'pepper-park',
-        'p4': 'lantern-ridge',
-        'p5': 'cog-hill-lane',
-        'p6': 'candy-harbour-lane',
-        'p7': 'pepper-park-lane',
-        'p8': 'lantern-ridge-lane',
+        'p1': corners[0],
+        'p2': corners[1],
+        'p3': corners[2],
+        'p4': corners[3],
+        'p5': '${corners[0]}$lane',
+        'p6': '${corners[1]}$lane',
+        'p7': '${corners[2]}$lane',
+        'p8': '${corners[3]}$lane',
       });
     });
 

@@ -68,8 +68,8 @@ final class CityRules {
   /// Plaza and has no toll.
   final int gateTileIndex;
 
-  /// The corner roads a night's players start on, in slot order. The first four players
-  /// take these; players 5-8 take the lane beside each corner, in the same order.
+  /// The corner roads a night's players start on, in slot order. One player takes each
+  /// corner, then one takes the lane beside each corner, in the same order.
   final List<String> corners;
 
   /// The suffix that names the lane beside a corner: a corner [corners] entry followed by
@@ -118,8 +118,12 @@ int tilesToBuy({required int bolts, required CityRules rules}) {
 /// and it only drives onto built tiles (see [canDriveOnto]).
 int driveCost() => 0;
 
-/// Whether roadworks are offered on a night. They are not offered on a kids night.
-bool roadworksOffered({required bool kidsPreset}) => !kidsPreset;
+/// Whether a player is offered roadworks at a stop: only the last place of the round
+/// ([place] equal to [lowestPlace], the highest place number given), and never on a kids
+/// night ([CityRules.kidsPreset], the one source of that flag). When everyone is tied for
+/// first ([lowestPlace] is 1) nobody is last, so nobody is offered roadworks.
+bool roadworksOffered({required int place, required int lowestPlace, required CityRules rules}) =>
+    !rules.kidsPreset && lowestPlace > 1 && place == lowestPlace;
 
 /// The Bolts a roadworks job costs, read from [CityRules.roadworksCost].
 int roadworksPrice({required CityRules rules}) => rules.roadworksCost;
