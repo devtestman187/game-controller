@@ -27,6 +27,21 @@ void main() {
       expect(placing.placeRound(['cy', 'ann', 'dee', 'ben']), {'cy': 3, 'ann': 2, 'dee': 4, 'ben': 1});
     });
 
+    test('places an unplaced player after the highest recorded place, not after the count of placed players', () {
+      final gapped = RoundResultPlacing(
+        RoundResult(
+          game: 'arena',
+          stats: {
+            'ann': {'place': 3},
+            'ben': {'place': 1},
+          },
+        ),
+      );
+
+      // Ann holds 3rd and Ben 1st, so 2nd is free and Cy is placed 4th, after the highest place.
+      expect(gapped.placeRound(['cy', 'ann', 'ben']), {'cy': 4, 'ann': 3, 'ben': 1});
+    });
+
     test('places every listed player 1, 2, 3 in order when the round has no places at all', () {
       final placing = RoundResultPlacing(RoundResult(game: 'arena'));
 

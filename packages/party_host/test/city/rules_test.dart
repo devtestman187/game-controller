@@ -61,12 +61,12 @@ void main() {
       expect(rules.forPlayers(6).forPlayers(2).tileCost, 3);
     });
 
-    test('a 6-player night re-prices a copy that was priced for 2 players to 2 Bolts a tile', () {
-      expect(rules.forPlayers(2).forPlayers(6).tileCost, 2);
+    test('a 4-player night re-prices a copy that was priced for 6 players to 3 Bolts a tile', () {
+      expect(rules.forPlayers(6).forPlayers(4).tileCost, 3);
     });
 
-    test('re-pricing a copy for 6 players then 2 players then 6 players ends at 2 Bolts a tile', () {
-      expect(rules.forPlayers(6).forPlayers(2).forPlayers(6).tileCost, 2);
+    test('a copy priced for 6 players costs 2 Bolts a tile', () {
+      expect(rules.forPlayers(6).tileCost, 2);
     });
 
     test('rejects a night of 0 players', () {

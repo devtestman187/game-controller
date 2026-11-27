@@ -50,7 +50,9 @@ final class RoundResultPlacing implements RoundPlacing {
 /// Picks the night's champion set with the real champion chain. The default
 /// chain is City Rush: closest to the Plaza, then most bolts, then a shared win.
 final class NightChampionDecider implements ChampionDecider {
-  /// Creates the decider; [chain] defaults to [ChampionChain.cityRush].
+  /// Creates the decider; [chain] defaults to [ChampionChain.cityRush]. Pass only a chain
+  /// whose steps never read points: every entry carries 0 points, so a points step ties
+  /// every entry and shares the win.
   NightChampionDecider([ChampionChain? chain]) : _chain = chain ?? ChampionChain.cityRush;
 
   final ChampionChain _chain;
