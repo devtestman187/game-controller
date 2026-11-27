@@ -71,3 +71,27 @@ RESULT: STOPPED: brief gate: brief-check failed: FAIL changes d2b: tier is used 
 2026-11-26 23:26:49 RUN_MAX_MIN=45 min (computed backstop of the jobs still to do)
 2026-11-26 23:28:23 reviewed wave2: 14 finding(s)
 RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): d2b (their logs: docs/briefs/m17/night2a/flash-<job>.log)
+2026-11-26 23:32:10 RUN_MAX_MIN=45 min (computed backstop of the jobs still to do)
+2026-11-26 23:32:11 start at 6852df1a on m17
+2026-11-26 23:32:11 worker: claude
+2026-11-26 23:32:12 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-26 23:32:12 removed the last stop's STOP.md
+2026-11-26 23:32:17 phase: preflight
+2026-11-26 23:32:29 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-26 23:32:59 phase: worker (preflight took 42s)
+2026-11-26 23:33:00 skip d2a (already done)
+2026-11-26 23:33:00 skip d2c (already done)
+2026-11-26 23:33:01 skip k1 (already done)
+2026-11-26 23:35:39 phase: worker (worker took 160s)
+2026-11-26 23:35:40 start d2b
+2026-11-26 23:35:41 skip d2d (already done)
+2026-11-26 23:35:41 skip d2e (already done)
+2026-11-26 23:40:12 d2b finished: result 0 (26 turns, 2 min) model claude-haiku-5-5, ladder 2, tokens in/read/write/out 34/445063/25373/11977
+2026-11-26 23:40:13 phase: tests-first (worker took 274s)
+2026-11-26 23:40:31 tests-first ok: packages/test_game/test/map_ratings_test.dart fails on the old code
+2026-11-26 23:40:36 phase: check (tests-first took 23s)
+2026-11-26 23:40:42 combined check: skips protocol connection metrics look tools (no job's change reaches them)
+2026-11-26 23:44:42 phase: apply (check took 246s)
+2026-11-26 23:44:43 committed d2b: b846d268 Rate the five Arena maps: first tier from obstacle counts
+2026-11-26 23:44:44 phase: review (apply took 2s)
+2026-11-26 23:44:44 wave 2 review: wave2-review-report.md does not cover d2b, so its review is wave2-d2b
