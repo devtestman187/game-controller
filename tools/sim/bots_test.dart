@@ -22,6 +22,7 @@ const childRoadworksDraws = 500;
 
 var _failed = false;
 
+/// Prints PASS or FAIL for one case and sets the exit code on a failure.
 void check(String name, bool ok) {
   if (ok) {
     print('PASS $name');
@@ -46,6 +47,7 @@ List<double> performances(BotProfile bot, int seed, int count) {
   return [for (var i = 0; i < count; i++) bot.performance(r)];
 }
 
+/// Runs every bot check; the exit code is 1 when any fails.
 void main() {
   final sameA = performances(adultBot, testSeed, sameSeedCount);
   final sameB = performances(adultBot, testSeed, sameSeedCount);
@@ -53,6 +55,22 @@ void main() {
     'same seed gives the same $sameSeedCount performances',
     sameA.length == sameSeedCount && _same(sameA, sameB),
   );
+
+  final otherSeed = performances(adultBot, testSeed + 1, sameSeedCount);
+  check('another seed gives other performances', !_same(sameA, otherSeed));
+  var noPick = false;
+  try {
+    adultBot.chooseRoadworksTarget(
+      Random(1),
+      self: 0,
+      rivals: const [],
+      ownAvailable: false,
+      leaderGap: 0,
+    );
+  } on StateError {
+    noPick = true;
+  }
+  check('greedy with no pickable road throws', noPick);
 
   final adultMean = meanPerformance(adultBot, testSeed, performanceDraws);
   final childMean = meanPerformance(childBot, testSeed, performanceDraws);

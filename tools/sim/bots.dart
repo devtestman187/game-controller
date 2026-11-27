@@ -2,7 +2,7 @@
 ///
 /// A profile decides three things: how well a player performs in a game, what a last-place player does at a stop when
 /// Roadworks is on offer, and which road a Roadworks crew works on. The numbers of [childBot] and [adultBot] are
-/// provisional guesses, not measured values; the owner's Nov 27 rule ("greedy, child = random") is the part that is firm.
+/// provisional guesses, not measured values; the owner Nov 27 rule (greedy, child random) is the firm part.
 import 'dart:math';
 
 /// What the last-place player does at a stop: build tiles, save bolts, or send a Roadworks crew.
@@ -94,6 +94,9 @@ final class BotProfile {
     required int leaderGap,
   }) {
     if (pickPolicy == RoadworksPickPolicy.greedy) {
+      if (rivals.isEmpty && !ownAvailable) {
+        throw StateError('no road can be picked');
+      }
       if (rivals.isNotEmpty && (!ownAvailable || leaderGap >= blockGap))
         return rivals.first;
       return self;
