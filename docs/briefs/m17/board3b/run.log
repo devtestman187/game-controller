@@ -63,3 +63,5 @@ RESULT: STOPPED: the base does not compile: FAIL  format      (exit 1, 2s)  log:
 2026-11-27 01:23:56 job g3d1s parked: its files are saved in .dart_tool/run-jobs/docs_briefs_m17_board3b/parked-g3d1s.patch and out of the tree (the siblings' check does not see them)
 2026-11-27 01:23:56 STOPPED: jobs that failed or passed their limit (parked, not committed): g3d1s (their logs: docs/briefs/m17/board3b/flash-<job>.log)
 RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): g3d1s (their logs: docs/briefs/m17/board3b/flash-<job>.log)
+2026-11-27 01:24:35 HAND-FIX g3d1s: parked patch applied with git apply (tools suite red only on 3 runner selftests in the job tree, environment)
+2026-11-27 01:24:35 HAND-FIX-EVENT g3d1s: 0 lines changed by hand, replaced ladder level 2

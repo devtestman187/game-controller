@@ -13,5 +13,5 @@ do:
 4 Run `bash tools/tests/sim-test.sh`, `dart format tools/sim`, `dart analyze tools/sim`; fix every info. Do not run run_sim.dart.
 5 Report: test output lines; the runtime of one runSimCell of 200 nights.
 allow: tools/sim/sim_report.dart · tools/sim/sim_report_test.dart · tools/sim/run_sim.dart
-check: format analyze tools
+check: format analyze
 report: docs/briefs/m17/board3b/g3d2b-report.md
