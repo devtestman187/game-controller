@@ -36,7 +36,7 @@ Data: sim-results-v2.csv (364 cells x 5000 nights, seed 17). Every per-cell tabl
   - V2 reaches it earlier: game 4.24, a spread of 2.75 tiles, 100%.
   - V3 is too easy: a spread of 0.5 tiles at 5 players.
 - **The gated player:**
-  - The gated player ends +0.36 places worse on average at 2 players, +0.43 at 4, +0.58 at 5 and +0.97 at 8 (adult, V2).
+  - The gated player ends +0.36 places worse on average at 2 players, +0.43 at 4, +0.58 at 5 and +0.97 at 8 (adult, R2 rows).
   - 36% of them finish worse at 2-4 players, 59% at 8.
   - The gate lowers the midpoint leader's win rate: adult V0, 4 players 42.9 -> 37.2; 8 players 31.0 -> 23.0.
   - It lifts last-at-midpoint finishing not-last: 4 players 58.3 -> 65.1; 2 players 31.6 -> 43.1.

@@ -109,7 +109,10 @@ final class NightResult {
 NightResult simulateNight(NightConfig config, int seed) {
   final night = _Night(config, seed);
   final rules = config.rules;
-  final gateGame = (config.games + 1) ~/ 2;
+  // The shipping gate game on a shipping-length night; a shorter test night keeps the middle game.
+  final gateGame = config.games == rules.city.nightGames
+      ? rules.city.gateGame
+      : (config.games + 1) ~/ 2;
   final midGame = max(1, config.games ~/ 2);
   final tilesAfterGame = <List<int>>[];
   var midLeaders = <String>{};
@@ -264,10 +267,10 @@ final class _Night {
           place: playerCount,
           lowestPlace: playerCount,
           rules: city,
+          nextTileGated: gated[last] && rules.gateBlocksRoadworks,
         ) &&
         bolts[last] >= variant.cost &&
-        tiles[last] < city.roadLength &&
-        !(gated[last] && rules.gateBlocksRoadworks);
+        tiles[last] < city.roadLength;
     final choice = config.profiles[last].chooseLastPlace(
       choiceRandom,
       canBuild: buildActions(last, replaced: 0) > 0,

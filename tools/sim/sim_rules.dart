@@ -74,11 +74,25 @@ final class SimRules {
   /// Whether the winner of the mid-night gate game puts a gate on a rival's next unbuilt tile. A kids night has none.
   final bool targetedGate;
 
-  /// ASSUMPTION (not an owner rule): a Roadworks crew cannot lay a tile on a road whose next tile is gated.
+  /// Owner rule (Nov 27): Roadworks is not offered while the player's next tile is gated.
   final bool gateBlocksRoadworks;
 
-  /// ASSUMPTION (not an owner rule): opening a gate uses one Build and costs a tile's Bolts, with no tile laid.
+  /// Owner rule (Nov 27): opening a gate uses one Build and costs one tile's Bolts, with no tile laid.
   final bool gateOpeningCostsBolts;
+
+  /// The rules of one night of [players] players on the shipping [base] rules (owner Nov 27): the tile price of that
+  /// night size, Roadworks R2 and the targeted gate, with both gate rules on. A kids night has no gate and no Roadworks.
+  factory SimRules.forNight(
+    CityRules base, {
+    required int players,
+    bool kids = false,
+  }) => SimRules(
+    city: cityRulesWith(base.forPlayers(players), kidsPreset: kids),
+    roadworks: RoadworksVariant.r2,
+    targetedGate: true,
+    gateBlocksRoadworks: true,
+    gateOpeningCostsBolts: true,
+  );
 
   /// Whether this is a kids night.
   bool get kids => city.kidsPreset;
