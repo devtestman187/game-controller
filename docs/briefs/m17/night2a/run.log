@@ -95,3 +95,4 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-26 23:44:43 committed d2b: b846d268 Rate the five Arena maps: first tier from obstacle counts
 2026-11-26 23:44:44 phase: review (apply took 2s)
 2026-11-26 23:44:44 wave 2 review: wave2-review-report.md does not cover d2b, so its review is wave2-d2b
+2026-11-26 23:46:48 reviewed wave2-d2b: 4 finding(s)
