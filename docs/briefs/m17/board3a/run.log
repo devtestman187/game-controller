@@ -186,3 +186,9 @@ METRICS g3b3 worker=claude model=claude-haiku-5-5 turns=15 in=22 out=20593 cache
 METRICS wave4-review worker=claude model=claude-haiku-5-5 turns=17 in=20 out=13971 cache=276440 min=1.2 wall=- result=0
 2026-11-26 23:56:35 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/board3a/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 5 jobs, 17 min
+2026-11-26 23:57:01 RUN_MAX_MIN=45 min (computed backstop of the jobs still to do)
+2026-11-26 23:57:01 start at 03c2bfde on board-line
+2026-11-26 23:57:01 worker: claude
+2026-11-26 23:57:02 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-26 23:57:07 STOPPED: brief gate: brief-check failed: FAIL changes g3b4: CityRules is used in packages/party_host/test/city/board_test.dart, which no job of wave 5 or earlier allows
+RESULT: STOPPED: brief gate: brief-check failed: FAIL changes g3b4: CityRules is used in packages/party_host/test/city/board_test.dart, which no job of wave 5 or earlier allows
