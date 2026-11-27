@@ -39,8 +39,8 @@ const _shopCards = [
   ChoiceCard(id: _saveId, title: ShopText.save),
 ];
 
-/// Roadworks hits the others, so only the last player number is offered it: the demo has no scores to name a
-/// last place.
+/// Roadworks hits the others, so only the last player number is offered it, and only a phone that lists the choices
+/// capability: an old app has no card for it (its X button stays hidden). The demo has no scores to name a last place.
 const _lastPlaceCards = [..._shopCards, ChoiceCard(id: _roadworksId, title: ShopText.roadworks)];
 
 /// "Try the shop": a TV screen that runs one choice round over the joined phones so a tester sees the phone shop
@@ -80,7 +80,7 @@ class _ShopDemoScreenState extends ConsumerState<ShopDemoScreen> {
       setup: ChoiceRoundSetup(
         round: _shopRoundNumber,
         title: ShopText.title,
-        cardsFor: (id) => id == lastId ? _lastPlaceCards : _shopCards,
+        cardsFor: (id) => id == lastId && _listsChoices(host, id) ? _lastPlaceCards : _shopCards,
         defaultId: _saveId,
         currency: ShopText.currency,
       ),
@@ -95,6 +95,10 @@ class _ShopDemoScreenState extends ConsumerState<ShopDemoScreen> {
     round.start();
     _oldPhones?.start();
   }
+
+  /// Whether the phone [playerId] lists the choices capability: an old app does not, and gets no Roadworks.
+  static bool _listsChoices(ServerGameHost host, String playerId) =>
+      host.server.snapshot.controllers.any((c) => c.controllerId == playerId && c.supports(Capability.choices));
 
   void _onTick() {
     final round = _round;

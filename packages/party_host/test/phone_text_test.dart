@@ -1,3 +1,4 @@
+import 'package:connection/connection.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
 
@@ -37,5 +38,17 @@ void main() {
     expect(PhoneText.awardLine('Fastest', 'Mia', 3), 'Fastest: Mia (+3)');
     expect(PhoneText.awardLine('Cleanest', 'Dad and Ben', 3), 'Cleanest: Dad and Ben (+3)');
     expect(PhoneText.awardLine('Luckiest', PhoneText.awardNotWon, 0), 'Luckiest: Not won tonight');
+  });
+
+  test('a version mismatch says in plain words which app to update, for kids and parents', () {
+    const mismatch = ClientSnapshot(status: ClientStatus.failed, problem: ClientProblem.versionMismatch);
+    final text = PhoneText.problemText(mismatch);
+    expect(
+      text,
+      'This phone app and the TV app are not the same version. Update the Thumb Party app on the TV, or on this '
+      'phone (Android or iPhone), so both are new.',
+    );
+    expect(text!.length, lessThan(200), reason: 'a short line a phone screen fits');
+    expect(text.toLowerCase(), isNot(contains('protocol')));
   });
 }

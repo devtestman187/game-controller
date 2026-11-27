@@ -42,9 +42,11 @@ final class _Rig {
   final List<ControllerClient> phones;
   final offers = <List<ChoicesMessage>>[];
   final ends = <List<ChoicesEndMessage>>[];
+  final layouts = <List<GameLayoutMessage>>[];
 }
 
-Future<_Rig> _openRig(WidgetTester tester) async {
+/// Opens the rig: the names in [oldNames] are old apps, which list no choices capability and so get no offers.
+Future<_Rig> _openRig(WidgetTester tester, {Set<String> oldNames = const {}}) async {
   final rig = (await tester.runAsync(() async {
     final link = InProcessListener();
     final server = HostServer(
@@ -67,7 +69,7 @@ Future<_Rig> _openRig(WidgetTester tester) async {
           name: name,
           platform: 'test',
           appVersion: 'test',
-          capabilities: const [Capability.choices],
+          capabilities: oldNames.contains(name) ? const [Capability.layout] : const [Capability.choices],
         ),
         connector: InProcessConnector(link),
         heartbeatInterval: _quietLink,
@@ -75,9 +77,11 @@ Future<_Rig> _openRig(WidgetTester tester) async {
       );
       rig.offers.add([]);
       rig.ends.add([]);
+      rig.layouts.add([]);
       final index = phones.length;
       client.choices.listen(rig.offers[index].add);
       client.choicesEnds.listen(rig.ends[index].add);
+      client.layouts.listen(rig.layouts[index].add);
       phones.add(client);
       client.connect(
         HostAddress.local(hostId: server.hostId, name: 'Test TV'),
@@ -115,8 +119,13 @@ class _InFrame extends StatelessWidget {
   Widget build(BuildContext context) => hostFrameBuilder(context, child);
 }
 
-Future<_Rig> _pumpDemo(WidgetTester tester, HostLook look, {Widget screen = const ShopDemoScreen()}) async {
-  final rig = await _openRig(tester);
+Future<_Rig> _pumpDemo(
+  WidgetTester tester,
+  HostLook look, {
+  Set<String> oldNames = const {},
+  Widget screen = const ShopDemoScreen(),
+}) async {
+  final rig = await _openRig(tester, oldNames: oldNames);
   await pumpHostLook(
     tester,
     look,
@@ -124,7 +133,7 @@ Future<_Rig> _pumpDemo(WidgetTester tester, HostLook look, {Widget screen = cons
     size: _tvSize,
     overrides: [gameHostProvider.overrideWithValue(rig.host)],
   );
-  await _until(tester, () => rig.offers.every((o) => o.isNotEmpty));
+  await _until(tester, () => rig.offers.indexed.every((e) => oldNames.contains(_names[e.$1]) || e.$2.isNotEmpty));
   return rig;
 }
 
@@ -173,17 +182,36 @@ void main() {
         await _until(tester, () => rig.ends.every((e) => e.isNotEmpty));
       });
 
-      testWidgets('Roadworks is offered to the last player number only', (tester) async {
+      testWidgets('Roadworks is offered to the last player number only, and only if it lists choices', (tester) async {
         final rig = await _pumpDemo(tester, look);
 
         List<String> ids(int phone) => [for (final c in rig.offers[phone].last.cards) c.id];
         expect(ids(0), ['build', 'save'], reason: 'Ann is player 1, not last');
-        expect(ids(1), ['build', 'save', 'roadworks'], reason: 'Bea is the last number');
+        expect(ids(1), ['build', 'save', 'roadworks'], reason: 'Bea is the last number and lists choices');
         final build = rig.offers[0].last.cards.first;
         expect((build.cost, build.maxCount, rig.offers[0].last.currency), (3, 3, 'Bolts'));
         // The time left is read off the host's real stopwatch, which has run a few ms since the round started.
         final fullMs = _roundLength.inMilliseconds;
         expect(rig.offers[0].last.endsInMs, inInclusiveRange(fullMs - _startSlackMs, fullMs));
+      });
+
+      testWidgets('an old phone that is the last number gets Build and Save only, so its X button is hidden', (
+        tester,
+      ) async {
+        final rig = await _pumpDemo(tester, look, oldNames: const {'Bea'});
+        // The phone may hear other layouts first, so wait for the demo's own one (A = Build) and read that.
+        bool isDemo(GameLayoutMessage l) => l.labels[ControllerButton.a] == 'Build';
+        await _until(tester, () => rig.layouts[1].any(isDemo));
+
+        final layout = rig.layouts[1].lastWhere(isDemo);
+        expect(layout.labels[ControllerButton.a], 'Build', reason: 'the first card is on A');
+        expect(layout.labels[ControllerButton.b], 'Save +2', reason: 'the second card is on B');
+        expect(layout.labels.containsKey(ControllerButton.x), isFalse, reason: 'no Roadworks for an old app');
+        expect(layout.hidden, contains(ControllerButton.x), reason: 'the X button is hidden');
+
+        // Let the round end, so its timers are not left pending when the test is torn down.
+        await tester.pump(_roundLength);
+        await _until(tester, () => rig.ends[0].isNotEmpty);
       });
 
       testWidgets('with nothing chosen every row ends as Save +2 by default', (tester) async {
