@@ -1,0 +1,10 @@
+diff --git a/packages/party_host/lib/src/night/night_director.dart b/packages/party_host/lib/src/night/night_director.dart
+new file mode 100644
+index 00000000..33d5469b
+--- /dev/null
++++ b/packages/party_host/lib/src/night/night_director.dart
+@@ -0,0 +1,4 @@
++// probe stub
++final class NightDirector { const NightDirector(); }
++final class DirectorPick { const DirectorPick(); }
++enum DirectorReason { opening }

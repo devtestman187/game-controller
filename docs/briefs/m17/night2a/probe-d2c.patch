@@ -1,0 +1,11 @@
+diff --git a/packages/party_host/lib/src/night/variant.dart b/packages/party_host/lib/src/night/variant.dart
+new file mode 100644
+index 00000000..33d5469b
+--- /dev/null
++++ b/packages/party_host/lib/src/night/variant.dart
+@@ -0,0 +1,4 @@
++// probe stub
++enum VariantGame { shapeRace }
++final class Variant { const Variant(); }
++final launchVariants = 0;
++final variantPool = 0;

@@ -1,0 +1,4 @@
+# wave 1: map tier field (test_game), Variant model (night/), Kids cat cap (party_night, puzzle_screen): no shared files
+d2a d2c k1
+# wave 2: map ratings (needs d2a), director (needs d2c), pickers (needs d2c): no shared files
+d2b d2d d2e

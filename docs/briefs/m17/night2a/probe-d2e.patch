@@ -1,0 +1,10 @@
+diff --git a/packages/party_host/lib/src/night/night_pickers.dart b/packages/party_host/lib/src/night/night_pickers.dart
+new file mode 100644
+index 00000000..33d5469b
+--- /dev/null
++++ b/packages/party_host/lib/src/night/night_pickers.dart
+@@ -0,0 +1,4 @@
++// probe stub
++final class ShufflePicker { const ShufflePicker(); }
++final class PlaylistPicker { const PlaylistPicker(); }
++final class RotatingChooser { const RotatingChooser(); }
