@@ -11,7 +11,7 @@ const multiGateCount = 2;
 /// The metrics of one cell over its nights. A share is between 0 and 1. A metric with nothing to count is null: the
 /// field is empty in the CSV.
 final class SimCellStats {
-  /// Creates the stats of [cell]. Built by [runSimCell]; the fields are described where they are declared.
+  /// Creates the stats of [cell]. Built by runSimCell (sim_report.dart); the fields are described where they are declared.
   const SimCellStats({
     required this.cell,
     required this.plazaRate,
@@ -65,7 +65,7 @@ final class SimCellStats {
   /// The player-nights that sent a crew (null shares below when zero).
   final int rwPairs;
 
-  /// Of the Roadworks users, the share that finished better than in the same night without Roadworks; null when no crew.
+  /// Of the Roadworks users, the share that finished better than in the same night without Roadworks; null if none.
   final double? rwBetter;
 
   /// As [rwBetter], the same place.

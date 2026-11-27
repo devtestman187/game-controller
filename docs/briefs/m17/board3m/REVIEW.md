@@ -88,3 +88,6 @@ board3m run review: done, verdict one fix batch (3 must, 11 should, 10 could); o
 ## Delete
 
 - none
+
+## Status after board3f (driver, Nov 27)
+Open: must 0 (2 fixed in wave 4; must 2 valid, fixed by board3f's final rules row) · should 2 (two public types in night_adapter.dart; points chain doc-only guard; both deferred to code-health) · could 2 (dev-tools.md row for board-gate.sh; 'place' stat key constant; deferred). The sim_report.dart size could is fixed (split).

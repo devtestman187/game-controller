@@ -64,7 +64,7 @@ final class SimCell {
   final bool rwAlways;
 
   /// The exact rules of the night; when set the road variant is not applied, and [roadworks] and [gate] are not read
-  /// either. Null for a matrix cell, whose rules come from [road] on [base].
+  /// either; [rwAlways] still applies. Null for a matrix cell, whose rules come from [road] on [base].
   final SimRules? rules;
 }
 

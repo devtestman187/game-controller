@@ -98,3 +98,6 @@ Co-Authored-By: Claude Haiku 5.5 <noreply@anthropic.com>
 ## Delete
 
 - none
+
+## Status after the fixes (driver, Nov 27)
+Open after fixes: must 0 (1 invalid) · should 7 (deferred to code-health) · could 9 (deferred). Fixed 5 should, 2 invalid. Verdicts: REVIEW-VERDICTS.md.

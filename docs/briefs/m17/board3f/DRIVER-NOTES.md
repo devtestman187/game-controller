@@ -1,1 +1,2 @@
 - 13:15 briefs written (split, final-row), tests job done inline, shoulds none open. next: start runner
+- 13:25 tests job: proved inline in a temp worktree: rules_test 2 forPlayers tests FAIL on old forPlayers (tileCost copy); night_sim_test gateGame-2 check FAILs on (games+1)~/2. both pass on HEAD (1d8af754 already fixed). worktree removed, diff empty. runner started 13:17 since=1795806462. next: thumb-wait

@@ -383,7 +383,7 @@ Not built. bugs2 wave A with the 1-hour cache showed no large Sonnet cache write
 - Fail-first for the g3b tests showed compile errors only (new functions), not behaviour.
 
 ## board3b (Nov 27, board line, tools/sim)
-- sim_report.dart is 361 lines and mixes profiles, cell run, tally, CSV and matrix: split the CSV header/row/format into their own file; night_sim.dart (379) could move NightConfig/NightResult out and shorten simulateNight (49 lines).
+- sim_report.dart was split on Nov 27 (board3f): sim_report.dart 172 lines, sim_cell.dart, sim_stats.dart (211); the CSV header/row/format still live in sim_report.dart. night_sim.dart (379) could move NightConfig/NightResult out and shorten simulateNight (49 lines).
 - Missing tests: kids cell must equal a kidsRules cell (sim_report_test.dart:181), run_sim.dart argument errors and nights < 1, a zero-tile night; sim_report_test main() is long.
 - The night_games CSV column repeats games; kept because the brief names it. runSimCell takes a SimCell value object, not seven named parameters (accepted).
 - Comment lines over 120 columns in sim_report.dart (77, 189, 218, 311) and sim_report_test.dart (1, 26); five public constants in sim_report.dart could be private; blockGap lacks a unit in its name (blockGapTiles).
@@ -391,5 +391,10 @@ Not built. bugs2 wave A with the 1-hour cache showed no large Sonnet cache write
 
 ## board3m (Nov 27)
 - The 15-field CityRules(...) copy is written in rules.dart forPlayers, rules_test.dart, roadworks_offer_test.dart and tools/sim/sim_rules.dart; a copyWith (needs owner OK for a new method) or one test helper would cut it to one place.
-- board3m: night_adapter.dart holds two public types as one adapter pair; tools/sim/sim_report.dart is 423 lines (over the 380 gate, split before its next change); docs/dev-tools.md lacks a tools/board-gate.sh row; the stat key "place" is a bare string in night_adapter.dart.
+- board3m: night_adapter.dart holds two public types as one adapter pair; (sim_report.dart split done, board3f); docs/dev-tools.md lacks a tools/board-gate.sh row; the stat key "place" is a bare string in night_adapter.dart.
 - points chain in NightChampionDecider is a doc-only guard (board3m wave 4).
+
+## board3f (Nov 27, board line, tools/sim)
+- sim_final_test.dart: check (a) compares the final row to its matrix row but only adult 4 and 6 players assert road_length 6 and tile_cost; main() is 66 lines (one function per check); public check and csvFields lack dartdoc. Plain-script style is the sim convention (run with `dart run`, exit code 0/1); mine.sh does not run it, so its "No tests ran" is not a failure of the test.
+- sim_report.dart: the kidsPreset is passed only on the matrix branch of runSimCell and the gate column reads targetedGate, not gateOn (latent: no kids rules cell exists); finalRulesCells repeats the cell constructor of simMatrixCells; games: nightGames and city.nightGames are two sources of 5. Doc lines over 120 columns at 1, 2, 72, 112, 152 (also sim_cell.dart:16).
+- sim_stats.dart: CellTally's public fields and stats() have no dartdoc.
