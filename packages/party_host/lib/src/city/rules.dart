@@ -9,17 +9,24 @@ typedef FinalStanding = ({String playerId, bool reachedPlaza, int distanceTiles,
 /// One player's place in the final ranking, where 1 is first. Tied players share a place.
 typedef FinalPlace = ({String playerId, int place});
 
+/// One player's road as the gate pick sees it: the road's owner and how many of its tiles are built.
+typedef GateRoad = ({String playerId, int tilesBuilt});
+
 /// All the City Rush tunables. [standard] is the one game every night plays.
 final class CityRules {
   /// Creates a set of rules. Each field is documented where it is declared.
   const CityRules({
     required this.tileCost,
+    required this.tileCostLargeNight,
+    required this.largeNightFrom,
     required this.placementBolts,
     required this.lastGameMultiplier,
     required this.saveBonus,
     required this.buildCap,
     required this.roadLength,
-    required this.roadworksCost,
+    required this.nightGames,
+    required this.gateGame,
+    required this.gatePickSeconds,
     required this.gateTileIndex,
     required this.corners,
     required this.laneSuffix,
@@ -30,20 +37,30 @@ final class CityRules {
   /// until the owner sets them.
   static const CityRules standard = CityRules(
     tileCost: 3,
+    tileCostLargeNight: 2,
+    largeNightFrom: 5,
     // Placeholder for places 5-8 (1 Bolt each): owner-pending.
     placementBolts: [5, 3, 2, 1, 1, 1, 1, 1],
     lastGameMultiplier: 2,
     saveBonus: 2,
     buildCap: 3,
     roadLength: 6,
-    roadworksCost: 1,
+    nightGames: 5,
+    gateGame: 3,
+    gatePickSeconds: 10,
     gateTileIndex: 4,
     corners: ['cog-hill', 'candy-harbour', 'pepper-park', 'lantern-ridge'],
     laneSuffix: '-lane',
   );
 
-  /// The Bolts a tile costs to build.
+  /// The Bolts a tile costs to build on a night of 2-4 players.
   final int tileCost;
+
+  /// The Bolts a tile costs to build on a night of [largeNightFrom] or more players.
+  final int tileCostLargeNight;
+
+  /// The player count from which [tileCostLargeNight] applies.
+  final int largeNightFrom;
 
   /// The Bolts for each finishing place of a round, first place first. A place past
   /// the end of this list earns nothing.
@@ -55,14 +72,21 @@ final class CityRules {
   /// The Bolts a last-place player with Save gets on top of the Bolts they hold.
   final int saveBonus;
 
-  /// The most tiles a player may buy in one round.
+  /// The most Builds a player may make at one stop: at most 3 tiles bought per stop.
   final int buildCap;
 
   /// The number of tiles on each district's road, Plaza included.
   final int roadLength;
 
-  /// The Bolts it costs to drive through a road that is not built yet.
-  final int roadworksCost;
+  /// The number of games in one night, the last one included.
+  final int nightGames;
+
+  /// The game of the night (counted from 1) in which the game's winner picks a rival to gate:
+  /// the mid-night game, game 3 of 5.
+  final int gateGame;
+
+  /// The seconds the gate winner has to pick a rival. No pick in time means nobody is gated.
+  final int gatePickSeconds;
 
   /// The index of the tile where a gate stands on each corner road. It is before the
   /// Plaza and has no toll.
@@ -76,8 +100,35 @@ final class CityRules {
   /// this is that lane's district id.
   final String laneSuffix;
 
-  /// Whether this is a kids night, which offers no roadworks. Off on every other night.
+  /// Whether this is a kids night, which offers no roadworks and no gate. Off on every other night.
   final bool kidsPreset;
+
+  /// These rules for a night of [players] players: from [largeNightFrom] players a tile costs
+  /// [tileCostLargeNight]. Call it on the base rules; the copy keeps the tile cost it is given.
+  /// Throws [ArgumentError] when [players] is below 1 or above two per corner.
+  CityRules forPlayers(int players) {
+    final maxPlayers = corners.length * 2;
+    if (players < 1 || players > maxPlayers) {
+      throw ArgumentError.value(players, 'players', 'a night has 1 to $maxPlayers players');
+    }
+    return CityRules(
+      tileCost: players >= largeNightFrom ? tileCostLargeNight : tileCost,
+      tileCostLargeNight: tileCostLargeNight,
+      largeNightFrom: largeNightFrom,
+      placementBolts: placementBolts,
+      lastGameMultiplier: lastGameMultiplier,
+      saveBonus: saveBonus,
+      buildCap: buildCap,
+      roadLength: roadLength,
+      nightGames: nightGames,
+      gateGame: gateGame,
+      gatePickSeconds: gatePickSeconds,
+      gateTileIndex: gateTileIndex,
+      corners: corners,
+      laneSuffix: laneSuffix,
+      kidsPreset: kidsPreset,
+    );
+  }
 }
 
 /// The Bolts a player earns for finishing in [place] of a round, where 1 is first.
@@ -122,11 +173,29 @@ int driveCost() => 0;
 /// ([place] equal to [lowestPlace], the highest place number given), and never on a kids
 /// night ([CityRules.kidsPreset], the one source of that flag). When everyone is tied for
 /// first ([lowestPlace] is 1) nobody is last, so nobody is offered roadworks.
-bool roadworksOffered({required int place, required int lowestPlace, required CityRules rules}) =>
-    !rules.kidsPreset && lowestPlace > 1 && place == lowestPlace;
+/// Roadworks are free, on the player's own road only, and replace one Build: the road crew
+/// builds the next tile now. Not offered while the player's next tile is gated ([nextTileGated]).
+bool roadworksOffered({
+  required int place,
+  required int lowestPlace,
+  required CityRules rules,
+  bool nextTileGated = false,
+}) => !rules.kidsPreset && !nextTileGated && lowestPlace > 1 && place == lowestPlace;
 
-/// The Bolts a roadworks job costs, read from [CityRules.roadworksCost].
-int roadworksPrice({required CityRules rules}) => rules.roadworksCost;
+/// Whether the gate game offers its winner a gate: only in game [CityRules.gateGame], only while
+/// no gate is placed on the night ([gatesPlaced] is 0), and never on a kids night.
+bool gateOffered({required int game, required int gatesPlaced, required CityRules rules}) =>
+    game == rules.gateGame && gatesPlaced == 0 && !rules.kidsPreset;
+
+/// The rivals the gate winner may pick, in the order [roads] gives them. The winner is never
+/// one of them, and a road with every tile built ([CityRules.roadLength]) is not one either.
+List<String> gateTargets({required String winnerId, required List<GateRoad> roads, required CityRules rules}) => [
+  for (final road in roads)
+    if (road.playerId != winnerId && road.tilesBuilt < rules.roadLength) road.playerId,
+];
+
+/// The Bolts opening a gate costs: one tile's Bolts, at [CityRules.tileCost].
+int gateOpenCost({required CityRules rules}) => rules.tileCost;
 
 /// Whether a token may drive onto a tile: only onto a built tile of its own road or lane.
 bool canDriveOnto(bool builtTile) => builtTile;

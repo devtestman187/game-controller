@@ -4,6 +4,23 @@ import 'package:party_host/src/city/rules.dart';
 
 void main() {
   const rules = CityRules.standard;
+  final kidsNight = CityRules(
+    tileCost: rules.tileCost,
+    tileCostLargeNight: rules.tileCostLargeNight,
+    largeNightFrom: rules.largeNightFrom,
+    placementBolts: rules.placementBolts,
+    lastGameMultiplier: rules.lastGameMultiplier,
+    saveBonus: rules.saveBonus,
+    buildCap: rules.buildCap,
+    roadLength: rules.roadLength,
+    nightGames: rules.nightGames,
+    gateGame: rules.gateGame,
+    gatePickSeconds: rules.gatePickSeconds,
+    gateTileIndex: rules.gateTileIndex,
+    corners: rules.corners,
+    laneSuffix: rules.laneSuffix,
+    kidsPreset: true,
+  );
 
   group('tileCost', () {
     test('building one tile costs the configured tileCost Bolts', () {
@@ -20,6 +37,49 @@ void main() {
 
     test('rejects a negative tile count', () {
       expect(() => tileBuildCost(-1, tileCost: rules.tileCost), throwsArgumentError);
+    });
+  });
+
+  group('forPlayers', () {
+    test('a night of 2 players costs 3 Bolts a tile', () {
+      expect(rules.forPlayers(2).tileCost, 3);
+    });
+
+    test('a night of 4 players costs 3 Bolts a tile', () {
+      expect(rules.forPlayers(4).tileCost, 3);
+    });
+
+    test('a night of 5 players costs 2 Bolts a tile', () {
+      expect(rules.forPlayers(5).tileCost, 2);
+    });
+
+    test('a night of 8 players costs 2 Bolts a tile', () {
+      expect(rules.forPlayers(8).tileCost, 2);
+    });
+
+    test('rejects a night of 0 players', () {
+      expect(() => rules.forPlayers(0), throwsArgumentError);
+    });
+
+    test('rejects a night of 9 players, more than two per corner', () {
+      expect(() => rules.forPlayers(9), throwsArgumentError);
+    });
+
+    test('keeps every other field and the kids flag', () {
+      final eight = kidsNight.forPlayers(8);
+
+      expect(eight.kidsPreset, isTrue);
+      expect(eight.placementBolts, kidsNight.placementBolts);
+      expect(eight.lastGameMultiplier, kidsNight.lastGameMultiplier);
+      expect(eight.saveBonus, kidsNight.saveBonus);
+      expect(eight.buildCap, kidsNight.buildCap);
+      expect(eight.roadLength, kidsNight.roadLength);
+      expect(eight.nightGames, kidsNight.nightGames);
+      expect(eight.gateGame, kidsNight.gateGame);
+      expect(eight.gatePickSeconds, kidsNight.gatePickSeconds);
+      expect(eight.gateTileIndex, kidsNight.gateTileIndex);
+      expect(eight.corners, kidsNight.corners);
+      expect(eight.laneSuffix, kidsNight.laneSuffix);
     });
   });
 
@@ -81,6 +141,10 @@ void main() {
     test('the cap on tiles bought in one round is a positive configured count', () {
       expect(rules.buildCap, greaterThan(0));
     });
+
+    test('the standard cap is 3 Builds per stop', () {
+      expect(rules.buildCap, 3);
+    });
   });
 
   group('roadLength', () {
@@ -95,8 +159,76 @@ void main() {
 
   group('gate', () {
     test('the gate tile is on the road, before the Plaza', () {
-      expect(rules.gateTileIndex, greaterThanOrEqualTo(0));
-      expect(rules.gateTileIndex, lessThan(rules.roadLength - 1));
+      final gateTile = rules.roadLength - 2;
+      expect(gateTile, greaterThanOrEqualTo(0));
+      expect(gateTile, lessThan(rules.roadLength - 1));
+    });
+
+    test('the gate game is one of the games of the night', () {
+      expect(rules.gateGame, greaterThan(0));
+      expect(rules.gateGame, lessThanOrEqualTo(rules.nightGames));
+    });
+
+    test('a night plays 5 games', () {
+      expect(rules.nightGames, 5);
+    });
+
+    test('a gate is offered in the gate game when no gate is placed yet', () {
+      expect(gateOffered(game: rules.gateGame, gatesPlaced: 0, rules: rules), isTrue);
+    });
+
+    test('no gate is offered in any other game of the night', () {
+      for (final game in [1, 2, 4, 5]) {
+        expect(
+          gateOffered(game: game, gatesPlaced: 0, rules: rules),
+          isFalse,
+          reason: 'game $game',
+        );
+      }
+    });
+
+    test('no second gate is offered on a night that already has one', () {
+      expect(gateOffered(game: rules.gateGame, gatesPlaced: 1, rules: rules), isFalse);
+    });
+
+    test('a kids night offers no gate, even in the gate game', () {
+      expect(gateOffered(game: kidsNight.gateGame, gatesPlaced: 0, rules: kidsNight), isFalse);
+    });
+
+    test('the gate winner picks from the rivals in the order given, never the winner', () {
+      final targets = gateTargets(
+        winnerId: 'a',
+        roads: [
+          (playerId: 'b', tilesBuilt: 2),
+          (playerId: 'a', tilesBuilt: 1),
+          (playerId: 'c', tilesBuilt: rules.roadLength - 1),
+        ],
+        rules: rules,
+      );
+
+      expect(targets, ['b', 'c']);
+    });
+
+    test('a road with every tile built is not a gate target', () {
+      final targets = gateTargets(
+        winnerId: 'a',
+        roads: [
+          (playerId: 'a', tilesBuilt: 1),
+          (playerId: 'b', tilesBuilt: rules.roadLength),
+          (playerId: 'c', tilesBuilt: rules.roadLength - 1),
+        ],
+        rules: rules,
+      );
+
+      expect(targets, ['c']);
+    });
+
+    test('opening a gate costs one tile\'s Bolts', () {
+      expect(gateOpenCost(rules: rules), rules.tileCost);
+    });
+
+    test('on a 6 player night opening a gate costs 2 Bolts', () {
+      expect(gateOpenCost(rules: rules.forPlayers(6)), 2);
     });
   });
 
@@ -114,31 +246,6 @@ void main() {
     });
   });
 
-  group('roadworks', () {
-    CityRules withRoadworksCost(int cost) => CityRules(
-      tileCost: rules.tileCost,
-      placementBolts: rules.placementBolts,
-      lastGameMultiplier: rules.lastGameMultiplier,
-      saveBonus: rules.saveBonus,
-      buildCap: rules.buildCap,
-      roadLength: rules.roadLength,
-      roadworksCost: cost,
-      gateTileIndex: rules.gateTileIndex,
-      corners: rules.corners,
-      laneSuffix: rules.laneSuffix,
-    );
-
-    test('roadworks price is read from the configured roadworksCost, not a constant', () {
-      final cost = rules.roadworksCost + 1;
-
-      expect(roadworksPrice(rules: withRoadworksCost(cost)), cost);
-    });
-
-    test('the standard roadworks price is the standard roadworksCost', () {
-      expect(roadworksPrice(rules: rules), rules.roadworksCost);
-    });
-  });
-
   group('corner config', () {
     test('the corner roads are read from CityRules in the fixed order', () {
       expect(CityRules.standard.corners, ['cog-hill', 'candy-harbour', 'pepper-park', 'lantern-ridge']);
@@ -151,8 +258,8 @@ void main() {
 
   group('lateJoinTilePosition', () {
     test('a late join starts at the slowest player\'s tile', () {
-      final slowest = rules.gateTileIndex - 1;
-      final positions = [rules.roadLength - 1, slowest, rules.gateTileIndex];
+      final slowest = rules.roadLength - 3;
+      final positions = [rules.roadLength - 1, slowest, rules.roadLength - 2];
 
       expect(lateJoinTilePosition(positions), slowest);
     });
@@ -174,7 +281,7 @@ void main() {
 
     test('among those who did not arrive, the greater distance ranks first', () {
       final ranking = rankFinal([
-        (playerId: 'short', reachedPlaza: false, distanceTiles: rules.gateTileIndex, boltsLeft: 9),
+        (playerId: 'short', reachedPlaza: false, distanceTiles: rules.roadLength - 2, boltsLeft: 9),
         (playerId: 'long', reachedPlaza: false, distanceTiles: rules.roadLength - 1, boltsLeft: 0),
       ]);
 
@@ -183,8 +290,8 @@ void main() {
 
     test('on equal distance, the Bolts left decide', () {
       final ranking = rankFinal([
-        (playerId: 'poor', reachedPlaza: false, distanceTiles: rules.gateTileIndex, boltsLeft: 0),
-        (playerId: 'rich', reachedPlaza: false, distanceTiles: rules.gateTileIndex, boltsLeft: rules.tileCost),
+        (playerId: 'poor', reachedPlaza: false, distanceTiles: rules.roadLength - 2, boltsLeft: 0),
+        (playerId: 'rich', reachedPlaza: false, distanceTiles: rules.roadLength - 2, boltsLeft: rules.tileCost),
       ]);
 
       expect(ranking, [(playerId: 'rich', place: 1), (playerId: 'poor', place: 2)]);
@@ -192,9 +299,9 @@ void main() {
 
     test('players tied on arrival, distance and Bolts left share a place, then the next place skips past them', () {
       final ranking = rankFinal([
-        (playerId: 'first', reachedPlaza: false, distanceTiles: rules.gateTileIndex, boltsLeft: 0),
-        (playerId: 'second', reachedPlaza: false, distanceTiles: rules.gateTileIndex, boltsLeft: 0),
-        (playerId: 'third', reachedPlaza: false, distanceTiles: rules.gateTileIndex - 1, boltsLeft: 0),
+        (playerId: 'first', reachedPlaza: false, distanceTiles: rules.roadLength - 2, boltsLeft: 0),
+        (playerId: 'second', reachedPlaza: false, distanceTiles: rules.roadLength - 2, boltsLeft: 0),
+        (playerId: 'third', reachedPlaza: false, distanceTiles: rules.roadLength - 3, boltsLeft: 0),
       ]);
 
       expect(ranking, [(playerId: 'first', place: 1), (playerId: 'second', place: 1), (playerId: 'third', place: 3)]);

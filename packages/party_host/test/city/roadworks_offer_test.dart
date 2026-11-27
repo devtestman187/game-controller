@@ -5,12 +5,16 @@ void main() {
   const ordinary = CityRules.standard;
   final kids = CityRules(
     tileCost: ordinary.tileCost,
+    tileCostLargeNight: ordinary.tileCostLargeNight,
+    largeNightFrom: ordinary.largeNightFrom,
     placementBolts: ordinary.placementBolts,
     lastGameMultiplier: ordinary.lastGameMultiplier,
     saveBonus: ordinary.saveBonus,
     buildCap: ordinary.buildCap,
     roadLength: ordinary.roadLength,
-    roadworksCost: ordinary.roadworksCost,
+    nightGames: ordinary.nightGames,
+    gateGame: ordinary.gateGame,
+    gatePickSeconds: ordinary.gatePickSeconds,
     gateTileIndex: ordinary.gateTileIndex,
     corners: ordinary.corners,
     laneSuffix: ordinary.laneSuffix,
@@ -37,6 +41,14 @@ void main() {
 
     test('a kids night offers roadworks to nobody, last place included', () {
       expect(roadworksOffered(place: 4, lowestPlace: 4, rules: kids), isFalse);
+    });
+
+    test('last place is offered roadworks when the next tile is not gated', () {
+      expect(roadworksOffered(place: 4, lowestPlace: 4, rules: ordinary), isTrue);
+    });
+
+    test('roadworks are not offered while the next tile is gated, last place included', () {
+      expect(roadworksOffered(place: 4, lowestPlace: 4, rules: ordinary, nextTileGated: true), isFalse);
     });
   });
 }
