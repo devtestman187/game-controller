@@ -5,10 +5,19 @@ import 'package:party_host/party_host.dart';
 import 'package:party_host/src/night/night_flow.dart';
 import 'package:party_host/src/night/night_flow_controller.dart';
 import 'package:party_host/src/night/night_flow_provider.dart';
+import 'package:party_host/src/night/night_pick.dart';
 import 'package:party_host/src/night/night_variant.dart';
+import 'package:party_host/src/night/variant.dart';
+import 'package:puzzle_game/puzzle_game.dart' show Level;
 
 import 'support/host_harness.dart';
 import 'support/night_harness.dart';
+
+/// The Bumper Round on pinball, the pick for round 2 that the two tests below start the round with.
+const _bumperPick = NightPick(
+  round: 2,
+  variant: Variant(game: VariantGame.bumperRound, tier: Level.easy, mapId: 'pinball'),
+);
 
 /// Milliseconds for every card but the how-to card, which keeps its minimum so a player can read it.
 const _shortPacing = NightPacing(
@@ -54,7 +63,7 @@ void main() {
       tester,
       overrides: [
         nightPacingProvider.overrideWithValue(_shortPacing),
-        nightNextVariantProvider.overrideWithValue(NightVariant.bumperRound),
+        nightNextVariantProvider.overrideWithValue(_bumperPick),
       ],
     );
 
@@ -98,7 +107,7 @@ void main() {
       tester,
       overrides: [
         nightPacingProvider.overrideWithValue(_shortPacing),
-        nightNextVariantProvider.overrideWithValue(NightVariant.bumperRound),
+        nightNextVariantProvider.overrideWithValue(_bumperPick),
       ],
     );
     // A route pushed over the scoreboard, as a dialog is: the scoreboard is no longer the current route.

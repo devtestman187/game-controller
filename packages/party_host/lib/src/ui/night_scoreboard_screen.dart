@@ -11,6 +11,7 @@ import 'package:toy_look/toy_look.dart';
 
 import '../night/night_flow_controller.dart';
 import '../night/night_flow_provider.dart';
+import '../night/night_pick_provider.dart';
 import '../night/night_state.dart';
 import '../night/night_variant.dart';
 import '../night/party_night.dart';
@@ -24,6 +25,7 @@ import 'host_frame_screen.dart';
 import 'leave_round.dart';
 import 'lobby_music.dart';
 import 'night_footer_buttons.dart';
+import 'night_pick_open.dart';
 import 'night_widgets.dart';
 import 'round_segment.dart';
 import 'score_row.dart';
@@ -81,14 +83,12 @@ class _NightScoreboardScreenState extends ConsumerState<NightScoreboardScreen> i
   /// top of it.
   @override
   bool startRound(int round, bool lastRound) {
-    final variant = ref.read(nightNextVariantProvider);
-    if (variant == null || !mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return false;
-    final Widget screen = switch (variant) {
-      NightVariant.shapeRace => const ShapeRaceScreen(),
-      NightVariant.bumperRound => const GameScreen(),
-    };
-    _open(screen);
-    return true;
+    ref.read(nightPickProvider.notifier).pickFor(round);
+    final pick = ref.read(nightNextVariantProvider);
+    if (pick == null || pick.round != round || !mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) {
+      return false;
+    }
+    return openNightPick(context, ref, pick) != null;
   }
 
   /// A replay is not in this batch: a skip or a reroll gets its own screen later (plan n1g). A skipped or rerolled game

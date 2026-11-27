@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// The game a night's round plays: Shape Race, or the Bumper Round on the Arena.
-enum NightVariant { shapeRace, bumperRound }
+import 'night_pick.dart';
+import 'night_pick_provider.dart';
 
-/// The game the night's next round plays, read when the controller starts that round. A later batch's director
-/// overrides it; null means the host taps a game button, as today.
-final nightNextVariantProvider = Provider<NightVariant?>((ref) => null);
+/// The pick the controller starts the next round with, read when the round starts. Null means the host taps a game
+/// button, as today.
+final nightNextVariantProvider = Provider<NightPick?>((ref) => ref.watch(nightPickProvider));

@@ -120,7 +120,7 @@ class ShapeRaceScreen extends ConsumerWidget {
                       level: level,
                       puzzles: puzzles,
                       autofocus: level == firstLevel,
-                      onPlay: (choice) => _play(context, ref, choice),
+                      onPlay: (choice) => openShapeRacePuzzle(context, ref, choice),
                     ),
                     const SizedBox(height: ToySizes.space24),
                   ],
@@ -144,22 +144,22 @@ class ShapeRaceScreen extends ConsumerWidget {
       ),
     );
   }
+}
 
-  /// Players join and pick sides first (M11), unless a night's only player is
-  /// alone: then the round starts on a solo board (B-002). A phone that joins
-  /// during that round waits for the next one, which gets the join screen again.
-  void _play(BuildContext context, WidgetRef ref, PuzzleChoice choice) {
-    // The join screen's own-player rule: the host device's player counts only
-    // when the host plays on this device.
-    final own = ref.read(hostServiceProvider).shareView ? null : ref.read(ownPlayerIdProvider);
-    final players = [
-      for (final p in ref.read(gamePlayersProvider))
-        if (!p.away && p.id != own) p,
-    ];
-    final solo = skipsLobby(inNight: ref.read(partyNightProvider) != null, players: players.length);
-    final screen = solo
-        ? PuzzleScreen(choice: choice, teams: {players.single.id: PuzzleSide.left})
-        : JoinScreen(choice: choice);
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
-  }
+/// Players join and pick sides first (M11), unless a night's only player is
+/// alone: then the round starts on a solo board (B-002). A phone that joins
+/// during that round waits for the next one, which gets the join screen again.
+Future<void> openShapeRacePuzzle(BuildContext context, WidgetRef ref, PuzzleChoice choice) {
+  // The join screen's own-player rule: the host device's player counts only
+  // when the host plays on this device.
+  final own = ref.read(hostServiceProvider).shareView ? null : ref.read(ownPlayerIdProvider);
+  final players = [
+    for (final p in ref.read(gamePlayersProvider))
+      if (!p.away && p.id != own) p,
+  ];
+  final solo = skipsLobby(inNight: ref.read(partyNightProvider) != null, players: players.length);
+  final screen = solo
+      ? PuzzleScreen(choice: choice, teams: {players.single.id: PuzzleSide.left})
+      : JoinScreen(choice: choice);
+  return Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
 }
