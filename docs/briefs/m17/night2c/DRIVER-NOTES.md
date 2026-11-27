@@ -1,0 +1,1 @@
+- 09:45 wave1: v1a, t1 committed; c1 parked at turn cap (class capability). next: ladder 2, turns 50, restart
