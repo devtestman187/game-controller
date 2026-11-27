@@ -4,6 +4,7 @@ import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:protocol/protocol.dart';
 import 'package:toy_look/toy_look.dart';
 
 import '../night/night_awards.dart';
@@ -99,6 +100,14 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
     await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
   }
 
+  /// The phones in the night that do not list [Capability.choices]: old apps, which
+  /// play the rounds with simple buttons (M17 y0e). The host's own player has no
+  /// phone to be old, so it is not listed.
+  static Set<String> _oldAppIds(List<ControllerInfo> controllers) => {
+    for (final controller in controllers)
+      if (!controller.isLocal && !controller.supports(Capability.choices)) controller.controllerId,
+  };
+
   @override
   Widget build(BuildContext context) {
     final catVisits = NightChaos.catVisitsTonight(ref.watch(puzzleSettingsProvider));
@@ -122,6 +131,7 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
             awards: running?.awards ?? _awards,
             catVisits: catVisits,
             players: ref.watch(gamePlayersProvider),
+            oldAppIds: _oldAppIds(ref.watch(hostStateProvider).host.controllers),
           ),
         ),
         footer: [
@@ -147,7 +157,7 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
 /// 286 px of content at 4 and 6 players), and a screen that did not fit would
 /// be redesigned rather than scrolled.
 class _StartColumn extends StatelessWidget {
-  const _StartColumn({required this.awards, required this.catVisits, required this.players});
+  const _StartColumn({required this.awards, required this.catVisits, required this.players, required this.oldAppIds});
 
   /// The three awards the night plays for.
   final List<NightAward> awards;
@@ -158,6 +168,9 @@ class _StartColumn extends StatelessWidget {
 
   /// The players the host has joined, in their numbers' order.
   final List<GamePlayer> players;
+
+  /// The ids of the players whose phones are old apps (M17 y0e).
+  final Set<String> oldAppIds;
 
   @override
   Widget build(BuildContext context) {
@@ -170,7 +183,10 @@ class _StartColumn extends StatelessWidget {
         const SizedBox(height: ToySizes.space12),
         _AwardsRow(awards: awards),
         if (catVisits) ...[const SizedBox(height: ToySizes.space16), _CatLine(style: text)],
-        if (players.isNotEmpty) ...[const SizedBox(height: ToySizes.space16), NightStartNames(players: players)],
+        if (players.isNotEmpty) ...[
+          const SizedBox(height: ToySizes.space16),
+          NightStartNames(players: players, oldAppIds: oldAppIds),
+        ],
         const Spacer(),
         Text(NightText.pickRound(1), style: text),
       ],
