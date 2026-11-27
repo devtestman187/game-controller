@@ -1,3 +1,5 @@
+**Resume here (costtool, Nov 27, see docs/briefs/m17/costtool/REPORT.md):** five cost changes landed in d5c23471 (verify-batch musts check, driver context pack, one-call hand-fix, thumb-wait tail -20, agents synced); check passed.
+
 # M17 status
 **Resume here (night2d) done (Nov 27, see docs/briefs/m17/night2d/REPORT.md):** version-mismatch text reworded ("screen" instead of bare TV, tv-word guard), vote-pick test proved to fail without takeResult, owner answers recorded in night2c/REVIEW.md. **M17a coverage baseline: TOTAL 93.3 % (party_host 90.7, toy_look 88.1, controller_app 93.7; table in REPORT).** One flaky connection test seen under coverage (choice_round_test shop grace). Next: BP2 on the owner's word. No push, tag or build. Full check passed; tip: 74d79796 (code) + docs commit; choice_round grace test made race-free (both phones away -> both default).
 
