@@ -17,6 +17,8 @@
 #   fable f1 1000 in, 1000 out, 100000 read (0.025x), 10000 5m write (1.25x), at 8/40
 #          = 0.008 + 0.04 + 0.02 + 0.1 = 0.168; total 0.078 + 0.32704 + 0.0131 + 0.168 = 0.58614
 #   haiku h1 small 0.0006 + h2 200000 read (long, 0.1x) 0.0125 = 0.0131; total 0.418 without fable
+# --agents (the last cases): rows per agent with dollars by model, the rows summing to the total, the
+# driver line (3 main calls, largest context 100000, a 70-minute gap), and the same output without it.
 # Prints PASS <case> / FAIL <case> and exits 1 if any case failed.
 set -u
 cd "$(dirname "$0")/../.." || exit 2
@@ -125,5 +127,53 @@ if [ "$rc" = 2 ]; then echo "PASS no-since-exit-2"; else echo "FAIL no-since-exi
 bash tools/agent-cost.sh --root "$tmp/nope" --since 1h > "$out" 2>&1
 rc=$?
 if [ "$rc" = 2 ]; then echo "PASS missing-root-exit-2"; else echo "FAIL missing-root-exit-2 (got $rc)"; fails=$((fails + 1)); fi
+
+# --agents: one row per subagent transcript (type and description from its .meta.json, dollars by
+# model), then the headless runs and the main transcripts; the rows sum to the total. The driver line
+# gives the REPORT fields: main calls, largest context, longest gap between two main calls. Its own
+# folder, so the cases above keep their numbers.
+agroot="$tmp/agents/proj"
+mkdir -p "$agroot/subagents"
+{
+  line m1 2026-11-23T10:00:00Z claude-opus-5-5 '{"input_tokens":1000,"output_tokens":2000}'
+  line m2 2026-11-23T10:10:00Z claude-opus-5-5 '{"input_tokens":0,"output_tokens":1000,"cache_read_input_tokens":100000}'
+  line m3 2026-11-23T11:20:00Z claude-opus-5-5 '{"input_tokens":5000,"output_tokens":0,"cache_creation_input_tokens":20000,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":20000}}'
+} > "$agroot/sess.jsonl"
+{
+  line p1 2026-11-23T10:00:00Z claude-haiku-5-5 '{"input_tokens":1000,"output_tokens":1000}'
+  line p2 2026-11-23T10:05:00Z claude-sonnet-5-5 '{"input_tokens":0,"output_tokens":1000}'
+} > "$agroot/subagents/agent-a.jsonl"
+echo '{"agentType":"thumb-haiku","description":"Evidence pack"}' > "$agroot/subagents/agent-a.meta.json"
+{
+  line q1 2026-11-23T10:20:00Z claude-sonnet-5-5 '{"input_tokens":0,"output_tokens":10000}'
+  line q2 2026-11-23T10:30:00Z claude-opus-5-5 '{"input_tokens":0,"output_tokens":1000}'
+} > "$agroot/subagents/agent-b.jsonl"
+echo '{"agentType":"thumb-build","description":"Wave 2 build"}' > "$agroot/subagents/agent-b.meta.json"
+# main 0.264 (opus m1 0.044, m2 0.04, m3 0.18); agent-a 0.0106; agent-b 0.12; total 0.3946.
+# Driver: 3 main calls, largest context m2 100000 (cache read), gaps 10 min and 70 min.
+
+bash tools/agent-cost.sh --root "$tmp/agents" --since "$since" --agents > "$out" 2>&1
+check agents-rows-sum 'rows sum $0.3946'
+check agents-build-models 'opus $0.0200, sonnet $0.1000'
+check agents-evidence-models 'sonnet $0.0100, haiku $0.0006'
+check agents-main-models 'opus $0.2640'
+check driver-line 'driver: calls 3, largest context 100000 tokens, longest wait 70 min'
+b=$(grep -n 'Wave 2 build' "$out" | head -1 | cut -d: -f1)
+a=$(grep -n 'Evidence pack' "$out" | head -1 | cut -d: -f1)
+m=$(grep -n 'main transcripts' "$out" | head -1 | cut -d: -f1)
+if [ -n "$b" ] && [ -n "$a" ] && [ -n "$m" ] && [ "$b" -lt "$a" ] && [ "$a" -lt "$m" ]; then
+  echo "PASS agents-sorted-main-last"
+else
+  echo "FAIL agents-sorted-main-last (lines build=$b evidence=$a main=$m)"; sed 's/^/    | /' "$out"; fails=$((fails + 1))
+fi
+
+bash tools/agent-cost.sh --root "$tmp/agents" --since "$since" > "$out" 2>&1
+check agents-off-total 'total $0.39'
+if grep -q -e 'driver:' -e 'rows sum' "$out"; then echo "FAIL agents-off-unchanged"; fails=$((fails + 1)); else echo "PASS agents-off-unchanged"; fi
+
+# headless runs (the two logs above, 0.0236 haiku and 0.372 sonnet) are a row of their own: 0.3946 + 0.3956
+bash tools/agent-cost.sh --root "$tmp/agents" --since "$since" --flash-logs "$tmp/logs" --agents > "$out" 2>&1
+check agents-headless-row 'headless worker runs'
+check agents-headless-sum 'rows sum $0.7902'
 
 [ "$fails" = 0 ] || exit 1

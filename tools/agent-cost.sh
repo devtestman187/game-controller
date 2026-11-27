@@ -4,6 +4,13 @@
 # report: put the --line output next to job-metrics in REVIEW.md.
 #
 #   tools/agent-cost.sh --since <time> [--until <time>] [--match <text>] [--root <dir>] [--flash-logs <dir>] [--line]
+#     [--agents]
+#
+# --agents adds, after the normal output, one row per subagent transcript (agent type and description
+# from its .meta.json, calls, dollars by model; sorted by dollars), a row for headless runs when there
+# are any, and a last row for the main transcripts. The rows sum to the total. It also prints the
+# driver REPORT line: call count, largest context (input + cache read + cache write of one main call)
+# and the longest wait between two main calls, in minutes.
 #
 # <time> is ISO (2026-11-23T14:00, local unless it carries an offset or Z), `today`, or a
 # relative 30m / 2h / 1d. --match keeps transcripts whose path contains the text (a project

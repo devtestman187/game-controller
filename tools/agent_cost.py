@@ -201,11 +201,43 @@ def agent_label(path):
     return agent_meta(path).get("description") or os.path.basename(path)
 
 
+def agent_name(path):
+    """The agent type from its .meta.json, then its description (the file name when neither is set)."""
+    kind = agent_meta(path).get("agentType")
+    return f"{kind} {agent_label(path)}" if kind else agent_label(path)
+
+
 def is_waiter(path):
     """An agent whose job is waiting: thumb-wait, or thumb-haiku described as a wait."""
     m = agent_meta(path)
     return m.get("agentType") == "thumb-wait" or (
         m.get("agentType") == "thumb-haiku" and "wait" in str(m.get("description", "")).lower())
+
+
+def print_agents(owners, driver):
+    """One row per subagent transcript (agent type and description, calls, dollars by model), then the
+    headless runs, then the main transcripts last. The rows sum to the total. The driver line is the
+    REPORT fields: call count, largest context and longest wait between two main calls."""
+    def label(key):
+        return {"headless": "headless worker runs", "main": "main transcripts"}.get(key) or agent_name(key)
+
+    keys = sorted((k for k in owners if k != "main"), key=lambda k: (-owners[k]["cost"], label(k)))
+    keys.append("main")
+    print("agents (main last):")
+    print(f"{'COST':>8} {'CALLS':>6} {'AGENT':40} BY MODEL")
+    total = 0.0
+    for key in keys:
+        o = owners.get(key) or {"calls": 0, "cost": 0.0, "fams": {}}
+        total += o["cost"]
+        models = ", ".join(f"{fam} ${o['fams'][fam]:.4f}" for fam in PRICES if fam in o["fams"])
+        print(f"{o['cost']:8.4f} {o['calls']:6} {label(key):40} {models}")
+    print(f"rows sum ${total:.4f}")
+    gap = 0.0
+    for times in driver["times"].values():
+        times.sort()
+        gap = max([gap] + [later - earlier for earlier, later in zip(times, times[1:])])
+    print(f"driver: calls {driver['calls']}, largest context {driver['largest']} tokens, "
+          f"longest wait {gap / 60:.0f} min")
 
 
 def main(argv):
@@ -218,6 +250,8 @@ def main(argv):
                     "(default: this repo's docs/briefs when --root is not given; none otherwise)")
     ap.add_argument("--match", default="", help="only transcripts whose path contains this text")
     ap.add_argument("--line", action="store_true")
+    ap.add_argument("--agents", action="store_true", help="after the output, one row per subagent transcript "
+                    "(dollars by model; the rows sum to the total) and the driver REPORT line")
     try:
         a = ap.parse_args(argv)
         since = parse_time(a.since)
@@ -233,6 +267,8 @@ def main(argv):
     rows = collections.defaultdict(lambda: dict.fromkeys(keys, 0))
     unknown = collections.Counter()
     by_agent = collections.defaultdict(list)
+    owners = collections.defaultdict(lambda: {"calls": 0, "cost": 0.0, "fams": collections.defaultdict(float)})
+    driver = {"calls": 0, "largest": 0, "times": collections.defaultdict(list)}
     logs = a.flash_logs
     if logs is None and a.root == default_root:
         logs = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "docs", "briefs")
@@ -251,7 +287,16 @@ def main(argv):
         r["calls"] += 1
         for k in ("in", "out", "cr", "cw5", "cw1"):
             r[k] += c[k]
-        r["cost"] += cost(fam, c)
+        d = cost(fam, c)
+        r["cost"] += d
+        o = owners[c["path"] if c["sub"] is True else "headless" if c["sub"] else "main"]
+        o["calls"] += 1
+        o["cost"] += d
+        o["fams"][fam] += d
+        if c["sub"] is False:
+            driver["calls"] += 1
+            driver["largest"] = max(driver["largest"], c["in"] + c["cr"] + c["cw5"] + c["cw1"])
+            driver["times"][c["path"]].append(c["t"])
         if fam == "haiku" and is_long(c):
             r["long"] += 1
         if fam == "sonnet":
@@ -302,6 +347,8 @@ def main(argv):
             print(f"haiku calls over {LONG_PROMPT // 1000}K prompt (5x price): {long_calls}")
         for model, n in unknown.most_common():
             print(f"skipped (no price): {model} x{n}")
+    if a.agents:
+        print_agents(owners, driver)
     return 0
 
 
