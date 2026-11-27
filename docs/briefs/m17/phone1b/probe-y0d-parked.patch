@@ -1,0 +1,986 @@
+diff --git a/controller_app/lib/src/host/hosting.dart b/controller_app/lib/src/host/hosting.dart
+index 01699af7..de61614f 100644
+--- a/controller_app/lib/src/host/hosting.dart
++++ b/controller_app/lib/src/host/hosting.dart
+@@ -84,14 +84,15 @@ PhoneHostInputs _inputs(Ref ref) => (
+ );
+ 
+ /// The identity this phone's own player pairs with: the phone's, without
+-/// [Capability.view] (m12 §0.1). The host phone draws its own game in
+-/// `host/host_games.dart`, so the server must not send it frames, and a server
+-/// rule on `isLocal` would also have caught the connection tests' in-process
+-/// viewers.
++/// [Capability.view] (m12 §0.1) and [Capability.choices] (M17 phone1b). The host
++/// phone draws its own game in `host/host_games.dart`, so the server must not
++/// send it frames, and a server rule on `isLocal` would also have caught the
++/// connection tests' in-process viewers. Its own player plays a choice round
++/// through the old-phone buttons, as a phone without the capability does.
+ ControllerIdentity ownPlayerIdentity(ControllerIdentity identity) => identity.copyWith(
+   capabilities: [
+     for (final capability in identity.capabilities)
+-      if (capability != Capability.view) capability,
++      if (capability != Capability.view && capability != Capability.choices) capability,
+   ],
+ );
+ 
+diff --git a/controller_app/lib/src/providers.dart b/controller_app/lib/src/providers.dart
+index 5774cb5a..712fd054 100644
+--- a/controller_app/lib/src/providers.dart
++++ b/controller_app/lib/src/providers.dart
+@@ -2,6 +2,7 @@ import 'package:connection/connection.dart';
+ import 'package:flutter/foundation.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ 
++export 'providers/choices.dart';
+ export 'providers/connection.dart';
+ export 'providers/consent.dart';
+ export 'providers/controls.dart';
+diff --git a/controller_app/lib/src/providers/choices.dart b/controller_app/lib/src/providers/choices.dart
+new file mode 100644
+index 00000000..f795fe99
+--- /dev/null
++++ b/controller_app/lib/src/providers/choices.dart
+@@ -0,0 +1,178 @@
++import 'dart:async';
++
++import 'package:connection/connection.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:protocol/protocol.dart';
++
++import '../providers.dart';
++
++/// How long the result of a choice round stays on the phone after the host ended the round, in
++/// milliseconds: long enough to read "You got: Save +2", short enough not to hold up the game.
++const choicesResultHoldMs = 3000;
++
++/// What the phone knows of one choice round (M17 phone1b): the host's latest message, what this phone
++/// holds for it, and the end once it arrives.
++class ChoicesState {
++  const ChoicesState({
++    required this.message,
++    required this.receivedMs,
++    this.picked,
++    this.count = 1,
++    this.locked = false,
++    this.end,
++  });
++
++  /// The latest message of the round.
++  final ChoicesMessage message;
++
++  /// The phone's own clock ([ControllerClient.nowMs]) when [message] arrived, which the countdown runs from.
++  final int receivedMs;
++
++  /// The card this phone holds, or null when none.
++  final String? picked;
++
++  /// How many of [picked] this phone holds.
++  final int count;
++
++  /// Whether this phone holds its choice locked in.
++  final bool locked;
++
++  /// The host's end of the round, or null while the round runs.
++  final ChoicesEndMessage? end;
++
++  /// Whether the host paused the round, so the countdown stands still.
++  bool get isPaused => message.paused;
++
++  /// Whether the round is over, so nothing can be picked any more.
++  bool get isEnded => end != null;
++
++  /// The time left to choose at [nowMs] on the phone's clock, never below 0.
++  int remainingMs(int nowMs) {
++    if (isPaused) return message.endsInMs;
++    final left = message.endsInMs - (nowMs - receivedMs);
++    return left < 0 ? 0 : left;
++  }
++
++  ChoicesState copyWith({String? picked, bool clearPick = false, int? count, bool? locked, ChoicesEndMessage? end}) =>
++      ChoicesState(
++        message: message,
++        receivedMs: receivedMs,
++        picked: clearPick ? null : picked ?? this.picked,
++        count: count ?? this.count,
++        locked: locked ?? this.locked,
++        end: end ?? this.end,
++      );
++}
++
++/// The choice round the host sent this phone (M17 phone1b), or null when none shows. A message of the same
++/// round updates it, another round replaces it. A new view clears it, and so does a dropped link, as
++/// [nightEndProvider] clears its end; so does [choicesResultHoldMs] after the round's end.
++final choicesProvider = NotifierProvider<ChoicesNotifier, ChoicesState?>(ChoicesNotifier.new);
++
++class ChoicesNotifier extends Notifier<ChoicesState?> {
++  Timer? _clearTimer;
++
++  @override
++  ChoicesState? build() {
++    final client = ref.watch(clientProvider);
++    final subs = [
++      client.choices.listen((message) => _onRound(client, message)),
++      client.choicesEnds.listen(_onEnd),
++      client.view.listen((event) {
++        switch (event) {
++          case ViewStarted():
++            _clear();
++          case ViewEnded() || ViewFrame() || HostAway() || HostBack() || PlayerAway() || PlayerBack():
++            break;
++        }
++      }),
++    ];
++    ref.onDispose(() {
++      _clearTimer?.cancel();
++      for (final sub in subs) {
++        unawaited(sub.cancel());
++      }
++    });
++    ref.listen(clientStateProvider, (previous, next) {
++      if (!next.isConnected) _clear();
++    });
++    return null;
++  }
++
++  void _clear() {
++    _clearTimer?.cancel();
++    _clearTimer = null;
++    state = null;
++  }
++
++  void _onRound(ControllerClient client, ChoicesMessage message) {
++    final current = state;
++    // A message of a round that already ended is stale: the end stands.
++    if (current != null && current.message.round == message.round && current.isEnded) return;
++    _clearTimer?.cancel();
++    _clearTimer = null;
++    state = ChoicesState(
++      message: message,
++      receivedMs: client.nowMs,
++      picked: message.picked,
++      count: message.pickedCount,
++      locked: message.locked,
++    );
++  }
++
++  void _onEnd(ChoicesEndMessage end) {
++    final current = state;
++    if (current == null || current.message.round != end.round) return;
++    state = current.copyWith(end: end);
++    _clearTimer?.cancel();
++    _clearTimer = Timer(const Duration(milliseconds: choicesResultHoldMs), _clear);
++  }
++
++  /// Takes [cardId], or clears it when it is the card already held. A disabled card, a locked choice and an
++  /// ended round change nothing.
++  void pick(String cardId) {
++    final current = state;
++    if (current == null || current.isEnded || current.locked || !_isEnabled(current, cardId)) return;
++    _hold(
++      current.picked == cardId
++          ? current.copyWith(clearPick: true, count: 1)
++          : current.copyWith(picked: cardId, count: 1),
++    );
++  }
++
++  /// Moves the count of [cardId] by [delta], within 1 to the card's `maxCount`; a card not held yet is taken.
++  void step(String cardId, int delta) {
++    final current = state;
++    if (current == null || current.isEnded || current.locked || !_isEnabled(current, cardId)) return;
++    final max = current.message.cards.firstWhere((c) => c.id == cardId).maxCount;
++    final base = current.picked == cardId ? current.count : 0;
++    final next = (base + delta).clamp(1, max);
++    if (current.picked == cardId && next == current.count) return;
++    _hold(current.copyWith(picked: cardId, count: next));
++  }
++
++  /// Locks in what the phone holds.
++  void lock() {
++    final current = state;
++    if (current == null || current.isEnded || current.locked) return;
++    _hold(current.copyWith(locked: true));
++  }
++
++  /// Takes the lock back, so the choice can change until the timer ends.
++  void undo() {
++    final current = state;
++    if (current == null || current.isEnded || !current.locked) return;
++    _hold(current.copyWith(locked: false));
++  }
++
++  bool _isEnabled(ChoicesState current, String cardId) => current.message.cards.any((c) => c.id == cardId && c.enabled);
++
++  void _hold(ChoicesState next) {
++    state = next;
++    ref
++        .read(clientProvider)
++        .sendChoicePick(
++          ChoicePickMessage(round: next.message.round, pick: next.picked, count: next.count, locked: next.locked),
++        );
++  }
++}
+diff --git a/controller_app/lib/src/storage.dart b/controller_app/lib/src/storage.dart
+index 019864ba..c1ce519e 100644
+--- a/controller_app/lib/src/storage.dart
++++ b/controller_app/lib/src/storage.dart
+@@ -52,7 +52,14 @@ ControllerIdentity loadIdentity(
+     character: saved.character,
+     platform: platform,
+     appVersion: appWithBuild(appVersion, build),
+-    capabilities: const [Capability.metrics, Capability.rating, Capability.layout, Capability.status, Capability.view],
++    capabilities: const [
++      Capability.metrics,
++      Capability.rating,
++      Capability.layout,
++      Capability.status,
++      Capability.view,
++      Capability.choices,
++    ],
+     device: DeviceInfo(
+       kind: isTablet ? DeviceInfo.tablet : DeviceInfo.phone,
+       // Landscape: the long side is the width.
+diff --git a/controller_app/lib/src/ui/choices_screen.dart b/controller_app/lib/src/ui/choices_screen.dart
+new file mode 100644
+index 00000000..32956c88
+--- /dev/null
++++ b/controller_app/lib/src/ui/choices_screen.dart
+@@ -0,0 +1,286 @@
++import 'dart:async';
++
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:party_host/party_host.dart' show PhoneText, ToyButton, ToyCard, ToyLookScope, ToySizes;
++import 'package:protocol/protocol.dart';
++
++import '../providers.dart';
++
++/// The smallest a tappable control is, in dp, so a thumb hits it (design touch rule).
++const _minTouchDp = 48.0;
++
++/// How often the countdown reads the clock again, in milliseconds: once a second is as fine as "12 s" reads.
++const _countdownTickMs = 1000;
++
++/// How much of a disabled card's look is left, as an opacity share: greyed, but still readable.
++const _disabledOpacity = 0.5;
++
++/// A card's text as the player reads it: "Build 2" for a counted card holding 2, else its title.
++String _cardLabel(ChoiceCard card, int count) => card.maxCount > 1 ? '${card.title} $count' : card.title;
++
++/// The choice round over the pad (M17 phone1b): nothing while the host has sent none. It is not a game: it
++/// shows whatever round the host asks this phone to choose in.
++class ChoicesOverlay extends ConsumerWidget {
++  const ChoicesOverlay({super.key});
++
++  @override
++  Widget build(BuildContext context, WidgetRef ref) {
++    final state = ref.watch(choicesProvider);
++    if (state == null) return const SizedBox.shrink();
++    return ChoicesScreen(state: state);
++  }
++}
++
++/// The round's cards, countdown and lock-in, or its result once the host ended it.
++class ChoicesScreen extends ConsumerWidget {
++  const ChoicesScreen({super.key, required this.state});
++
++  final ChoicesState state;
++
++  @override
++  Widget build(BuildContext context, WidgetRef ref) {
++    final look = ToyLookScope.of(context);
++    final end = state.end;
++    return Material(
++      color: look.colors.background,
++      child: Padding(
++        padding: const EdgeInsets.all(ToySizes.space16),
++        child: Column(
++          crossAxisAlignment: CrossAxisAlignment.stretch,
++          children: [
++            Text(
++              state.message.title,
++              key: const Key('choicesTitle'),
++              textAlign: TextAlign.center,
++              style: look.type.title.copyWith(color: look.colors.onBackground),
++            ),
++            const SizedBox(height: ToySizes.space8),
++            if (end == null) ...[
++              _Countdown(state: state),
++              const SizedBox(height: ToySizes.space8),
++              Expanded(child: _Cards(state: state)),
++              const SizedBox(height: ToySizes.space8),
++              _LockButton(locked: state.locked),
++            ] else
++              Expanded(
++                child: Center(
++                  child: SingleChildScrollView(
++                    child: _Result(state: state, end: end),
++                  ),
++                ),
++              ),
++          ],
++        ),
++      ),
++    );
++  }
++}
++
++/// The time left, counted on the phone's own clock, and the "Paused" chip while the host holds the round.
++class _Countdown extends ConsumerStatefulWidget {
++  const _Countdown({required this.state});
++
++  final ChoicesState state;
++
++  @override
++  ConsumerState<_Countdown> createState() => _CountdownState();
++}
++
++class _CountdownState extends ConsumerState<_Countdown> {
++  Timer? _tick;
++
++  @override
++  void initState() {
++    super.initState();
++    _tick = Timer.periodic(const Duration(milliseconds: _countdownTickMs), (_) => setState(() {}));
++  }
++
++  @override
++  void dispose() {
++    _tick?.cancel();
++    super.dispose();
++  }
++
++  @override
++  Widget build(BuildContext context) {
++    final look = ToyLookScope.of(context);
++    final leftMs = widget.state.remainingMs(ref.read(clientProvider).nowMs);
++    final seconds = (leftMs / 1000).ceil();
++    return Row(
++      mainAxisAlignment: MainAxisAlignment.center,
++      children: [
++        Text(
++          PhoneText.choicesSeconds(seconds),
++          key: const Key('choicesCountdown'),
++          style: look.type.clock.copyWith(color: look.colors.onBackground),
++        ),
++        if (widget.state.isPaused) ...[
++          const SizedBox(width: ToySizes.space12),
++          DecoratedBox(
++            key: const Key('choicesPaused'),
++            decoration: BoxDecoration(
++              color: look.colors.caution,
++              borderRadius: BorderRadius.circular(ToySizes.cardCorner),
++            ),
++            child: Padding(
++              padding: const EdgeInsets.symmetric(horizontal: ToySizes.space12, vertical: ToySizes.space4),
++              child: Text(PhoneText.choicesPaused, style: look.type.button.copyWith(color: look.colors.ink)),
++            ),
++          ),
++        ],
++      ],
++    );
++  }
++}
++
++/// The cards, one column, which scrolls only when they do not fit.
++class _Cards extends StatelessWidget {
++  const _Cards({required this.state});
++
++  final ChoicesState state;
++
++  @override
++  Widget build(BuildContext context) => SingleChildScrollView(
++    child: Column(
++      crossAxisAlignment: CrossAxisAlignment.stretch,
++      children: [
++        for (final card in state.message.cards)
++          Padding(
++            padding: const EdgeInsets.only(bottom: ToySizes.space8),
++            child: _CardTile(card: card, state: state),
++          ),
++      ],
++    ),
++  );
++}
++
++class _CardTile extends ConsumerWidget {
++  const _CardTile({required this.card, required this.state});
++
++  final ChoiceCard card;
++  final ChoicesState state;
++
++  @override
++  Widget build(BuildContext context, WidgetRef ref) {
++    final look = ToyLookScope.of(context);
++    final notifier = ref.read(choicesProvider.notifier);
++    final isPicked = state.picked == card.id;
++    final detail = card.detail;
++    final cost = card.cost;
++    final lines = [
++      ?detail,
++      if (cost != null) PhoneText.choicesCostEach(cost, state.message.currency),
++      if (card.id == state.message.defaultId) PhoneText.choicesDefault,
++    ];
++    return Opacity(
++      opacity: card.enabled ? 1 : _disabledOpacity,
++      child: GestureDetector(
++        key: Key('choiceCard_${card.id}'),
++        behavior: HitTestBehavior.opaque,
++        onTap: () => notifier.pick(card.id),
++        child: ToyCard(
++          popIn: false,
++          header: _cardLabel(card, isPicked ? state.count : 1),
++          headerColor: isPicked ? look.colors.good : null,
++          padding: const EdgeInsets.all(ToySizes.space12),
++          child: Row(
++            children: [
++              Expanded(
++                child: Text(lines.join('\n'), style: look.type.body.copyWith(color: look.colors.ink)),
++              ),
++              if (card.maxCount > 1) ...[
++                _StepButton(
++                  key: Key('choiceMinus_${card.id}'),
++                  label: '-',
++                  onTap: isPicked && state.count > 1 ? () => notifier.step(card.id, -1) : null,
++                ),
++                _StepButton(
++                  key: Key('choicePlus_${card.id}'),
++                  label: '+',
++                  onTap: card.enabled && (!isPicked || state.count < card.maxCount)
++                      ? () => notifier.step(card.id, 1)
++                      : null,
++                ),
++              ],
++            ],
++          ),
++        ),
++      ),
++    );
++  }
++}
++
++/// A minus or plus on a counted card: at least 48 x 48 dp, greyed when it cannot move the count.
++class _StepButton extends StatelessWidget {
++  const _StepButton({super.key, required this.label, required this.onTap});
++
++  final String label;
++  final VoidCallback? onTap;
++
++  @override
++  Widget build(BuildContext context) {
++    final look = ToyLookScope.of(context);
++    return Opacity(
++      opacity: onTap == null ? _disabledOpacity : 1,
++      child: GestureDetector(
++        behavior: HitTestBehavior.opaque,
++        // A greyed button still takes the tap, so it does not fall through to the card under it and clear it.
++        onTap: onTap ?? () {},
++        child: SizedBox(
++          width: _minTouchDp,
++          height: _minTouchDp,
++          child: Center(
++            child: Text(label, style: look.type.title.copyWith(color: look.colors.ink)),
++          ),
++        ),
++      ),
++    );
++  }
++}
++
++/// "Lock in", which reads "Locked" once pressed and takes the lock back when pressed again.
++class _LockButton extends ConsumerWidget {
++  const _LockButton({required this.locked});
++
++  final bool locked;
++
++  @override
++  Widget build(BuildContext context, WidgetRef ref) {
++    final notifier = ref.read(choicesProvider.notifier);
++    return ToyButton(
++      key: const Key('choiceLock'),
++      label: locked ? PhoneText.choicesLocked : PhoneText.choicesLockIn,
++      onPressed: locked ? notifier.undo : notifier.lock,
++    );
++  }
++}
++
++/// What the round gave the player, once the host ended it.
++class _Result extends StatelessWidget {
++  const _Result({required this.state, required this.end});
++
++  final ChoicesState state;
++  final ChoicesEndMessage end;
++
++  @override
++  Widget build(BuildContext context) {
++    final look = ToyLookScope.of(context);
++    final result = end.result;
++    final card = result == null ? null : state.message.cards.where((c) => c.id == result).firstOrNull;
++    final label = card == null ? result : _cardLabel(card, end.count);
++    final text = label == null
++        ? PhoneText.choicesNoChoice
++        : end.byDefault
++        ? PhoneText.choicesChosenForYou(label)
++        : PhoneText.choicesYouGot(label);
++    return ToyCard(
++      key: const Key('choicesResult'),
++      child: Text(
++        text,
++        textAlign: TextAlign.center,
++        style: look.type.title.copyWith(color: look.colors.ink),
++      ),
++    );
++  }
++}
+diff --git a/controller_app/lib/src/ui/controller_screen.dart b/controller_app/lib/src/ui/controller_screen.dart
+index bcb326df..2ec66416 100644
+--- a/controller_app/lib/src/ui/controller_screen.dart
++++ b/controller_app/lib/src/ui/controller_screen.dart
+@@ -17,6 +17,7 @@ import '../providers.dart';
+ import 'abandoned_notice.dart';
+ import 'bar_connection.dart';
+ import 'bar_modes.dart';
++import 'choices_screen.dart';
+ import 'controls_layer.dart';
+ import 'diagnostics_screen.dart';
+ import 'host_chip.dart';
+@@ -189,7 +190,7 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
+     final mode = ref.watch(gyroProvider.select((g) => g.mode));
+     // The result card covers the pad (M14 design section 9): the pad is not
+     // drawn or touched while it shows.
+-    final resultShown = ref.watch(viewResultProvider) != null;
++    final resultShown = ref.watch(viewResultProvider) != null || ref.watch(choicesProvider.select((c) => c != null));
+     // Re-laid out when the button size or fixed/floating changes, so the
+     // metrics' touch areas follow.
+     ref.watch(stickSettingsProvider);
+@@ -266,6 +267,8 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
+         // This phone's own result of the round it just drew (M14 design
+         // section 9): the card over the last frame, and over the pad with it.
+         const Positioned.fill(child: _ResultOverlay()),
++        // The host's choice round (M17 phone1b), over the pad like the result card.
++        const Positioned.fill(child: ChoicesOverlay()),
+       ],
+     );
+   }
+diff --git a/controller_app/test/choices_screen_test.dart b/controller_app/test/choices_screen_test.dart
+new file mode 100644
+index 00000000..e8ba4884
+--- /dev/null
++++ b/controller_app/test/choices_screen_test.dart
+@@ -0,0 +1,267 @@
++import 'package:connection/connection.dart';
++import 'package:controller/src/haptics.dart';
++import 'package:controller/src/layout.dart';
++import 'package:controller/src/ui/choices_screen.dart';
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:party_host/party_host.dart' as party;
++import 'package:protocol/protocol.dart';
++import 'package:shared_preferences/shared_preferences.dart';
++
++import 'support/fakes.dart';
++import 'support/pump_app.dart';
++
++const _save = ChoiceCard(id: 'save', title: 'Save +2', detail: 'Keep the Bolts', cost: 0);
++const _build = ChoiceCard(id: 'build', title: 'Build', detail: 'A tower', cost: 3, maxCount: 3);
++const _locked = ChoiceCard(id: 'gone', title: 'Sold out', enabled: false);
++
++ChoicesMessage _round({
++  List<ChoiceCard> cards = const [_save, _build, _locked],
++  int endsInMs = 12000,
++  String? picked,
++  int pickedCount = 1,
++  bool locked = false,
++  bool paused = false,
++}) => ChoicesMessage(
++  round: 4,
++  title: 'What now?',
++  cards: cards,
++  endsInMs: endsInMs,
++  defaultId: 'save',
++  currency: 'Bolts',
++  picked: picked,
++  pickedCount: pickedCount,
++  locked: locked,
++  paused: paused,
++);
++
++const _screens = {'360x640': Size(360, 640), '320x640': Size(320, 640), '667x375': Size(667, 375)};
++
++/// Shows [round]. The controller screen is landscape only (it shows "too small" under
++/// [minWindowWidth]), so a narrower screen shows the overlay alone, as a widget.
++Future<TestApp> _pumpRound(
++  WidgetTester tester,
++  ChoicesMessage round, {
++  bool tv = false,
++  Size screen = const Size(667, 375),
++}) async {
++  final extra = [if (tv) party.toyTvProvider.overrideWithValue(true)];
++  final TestApp app;
++  if (screen.width >= minWindowWidth) {
++    app = await pumpApp(tester, paired: true, screen: screen, extra: extra);
++    app.client.emit(connected);
++    await settle(tester);
++  } else {
++    tester.view.physicalSize = screen;
++    tester.view.devicePixelRatio = 1;
++    addTearDown(tester.view.reset);
++    SharedPreferences.setMockInitialValues({});
++    app = TestApp(
++      FakeClient(),
++      FakeDiscovery(),
++      FakeHaptics(),
++      await SharedPreferences.getInstance(),
++      FakeMotionSensors(),
++    );
++    await pumpFaked(
++      tester,
++      Consumer(
++        builder: (context, ref, _) {
++          final look = ref.watch(party.toyLookProvider);
++          return party.ToyLookScope(
++            look: look,
++            child: MaterialApp(
++              theme: party.toyTheme(look),
++              home: const Scaffold(body: ChoicesOverlay()),
++            ),
++          );
++        },
++      ),
++      app: app,
++      extra: extra,
++    );
++  }
++  app.client.choicesRound(round);
++  await _flush(tester);
++  return app;
++}
++
++/// Unmounts the app so the countdown's timer is gone before the test ends.
++Future<void> _unmount(WidgetTester tester) async {
++  await tester.pumpWidget(const SizedBox());
++  await tester.pump(const Duration(seconds: 4));
++}
++
++/// Taps [finder] after scrolling it into view: at 667x375 the cards do not all fit.
++Future<void> _tap(WidgetTester tester, Finder finder) async {
++  await tester.ensureVisible(finder);
++  await tester.pump();
++  await tester.tap(finder);
++  await tester.pump();
++}
++
++/// Lets a message from the host reach the screen: one frame for the stream, one for the rebuild.
++Future<void> _flush(WidgetTester tester) async {
++  await tester.pump();
++  await tester.pump();
++}
++
++void main() {
++  for (final tv in [false, true]) {
++    final lookName = tv ? 'TV look' : 'menu look';
++    group('the choices screen in the $lookName', () {
++      for (final entry in _screens.entries) {
++        testWidgets('at ${entry.key} nothing overflows and every button is at least 48 dp', (tester) async {
++          final app = await _pumpRound(tester, _round(), tv: tv, screen: entry.value);
++          expect(tester.takeException(), isNull, reason: 'no overflow at ${entry.key}');
++          const buttons = [
++            'choiceLock',
++            'choiceCard_save',
++            'choiceCard_build',
++            'choiceMinus_build',
++            'choicePlus_build',
++          ];
++          for (final name in buttons) {
++            final size = tester.getSize(find.byKey(Key(name)));
++            expect(size.width, greaterThanOrEqualTo(48), reason: '$name width at ${entry.key}');
++            expect(size.height, greaterThanOrEqualTo(48), reason: '$name height at ${entry.key}');
++          }
++          expect(app.client.choicePicks, isEmpty, reason: 'showing the round sends nothing');
++          await _unmount(tester);
++        });
++      }
++
++      testWidgets('six cards scroll instead of overflowing at 667x375', (tester) async {
++        final cards = [for (var i = 0; i < 6; i++) ChoiceCard(id: 'c$i', title: 'Card $i', detail: 'Line')];
++        await _pumpRound(
++          tester,
++          _round(cards: cards),
++          tv: tv,
++          screen: _screens['667x375']!,
++        );
++        expect(tester.takeException(), isNull);
++        expect(find.byKey(const Key('choiceLock')), findsOneWidget, reason: 'the lock button stays on screen');
++        await _unmount(tester);
++      });
++
++      testWidgets('a tap picks a card and a second tap clears it', (tester) async {
++        final app = await _pumpRound(tester, _round(), tv: tv);
++        await _tap(tester, find.byKey(const Key('choiceCard_save')));
++        expect(app.client.choicePicks.last, const ChoicePickMessage(round: 4, pick: 'save'));
++        await _tap(tester, find.byKey(const Key('choiceCard_save')));
++        expect(app.client.choicePicks.last, const ChoicePickMessage(round: 4), reason: 'a null pick clears it');
++        expect(app.client.choicePicks, hasLength(2));
++        await _unmount(tester);
++      });
++
++      testWidgets('plus and minus keep a counted card between 1 and its maxCount', (tester) async {
++        final app = await _pumpRound(tester, _round(), tv: tv);
++        final picks = app.client.choicePicks;
++        for (var i = 0; i < 4; i++) {
++          await _tap(tester, find.byKey(const Key('choicePlus_build')));
++        }
++        expect([for (final p in picks) p.count], [1, 2, 3], reason: 'a fourth plus past maxCount 3 sends nothing');
++        expect(find.text('Build 3'), findsOneWidget);
++        for (var i = 0; i < 3; i++) {
++          await _tap(tester, find.byKey(const Key('choiceMinus_build')));
++        }
++        expect([for (final p in picks) p.count], [1, 2, 3, 2, 1], reason: 'minus stops at 1 and sends nothing there');
++        expect(picks.last.pick, 'build', reason: 'a greyed button does not clear the card');
++        await _unmount(tester);
++      });
++
++      testWidgets('Lock in sends locked true and Locked undoes it with locked false', (tester) async {
++        final app = await _pumpRound(tester, _round(picked: 'save'), tv: tv);
++        expect(find.text('Lock in'), findsOneWidget);
++        await _tap(tester, find.byKey(const Key('choiceLock')));
++        expect(app.client.choicePicks.last, const ChoicePickMessage(round: 4, pick: 'save', locked: true));
++        expect(find.text('Locked'), findsOneWidget);
++        await _tap(tester, find.byKey(const Key('choiceLock')));
++        expect(app.client.choicePicks.last, const ChoicePickMessage(round: 4, pick: 'save'));
++        expect(find.text('Lock in'), findsOneWidget);
++        await _unmount(tester);
++      });
++
++      testWidgets('a locked choice cannot be changed by a card tap', (tester) async {
++        final app = await _pumpRound(tester, _round(picked: 'save', locked: true), tv: tv);
++        await _tap(tester, find.byKey(const Key('choiceCard_build')));
++        expect(app.client.choicePicks, isEmpty);
++        await _unmount(tester);
++      });
++
++      testWidgets('a disabled card sends nothing', (tester) async {
++        final app = await _pumpRound(tester, _round(), tv: tv);
++        await _tap(tester, find.byKey(const Key('choiceCard_gone')));
++        expect(app.client.choicePicks, isEmpty);
++        await _unmount(tester);
++      });
++
++      testWidgets('the countdown runs on the phone clock and Paused stops it', (tester) async {
++        final app = await _pumpRound(tester, _round(), tv: tv);
++        expect(find.text('12 s'), findsOneWidget);
++        expect(find.text('Paused'), findsNothing);
++        app.client.nowMs = 3000;
++        await tester.pump(const Duration(seconds: 1));
++        expect(find.text('9 s'), findsOneWidget, reason: '12 s minus 3 s on the phone clock');
++        app.client.choicesRound(_round(endsInMs: 9000, paused: true));
++        await _flush(tester);
++        expect(find.text('Paused'), findsOneWidget);
++        app.client.nowMs = 8000;
++        await tester.pump(const Duration(seconds: 2));
++        expect(find.text('9 s'), findsOneWidget, reason: 'a paused round stands still');
++        await _unmount(tester);
++      });
++
++      testWidgets('a resend with picked and locked shows them', (tester) async {
++        await _pumpRound(tester, _round(picked: 'build', pickedCount: 2, locked: true), tv: tv);
++        expect(find.text('Build 2'), findsOneWidget, reason: 'the held count shows after a reconnect');
++        expect(find.text('Locked'), findsOneWidget);
++        await _unmount(tester);
++      });
++
++      testWidgets('the end says what the player got, what was chosen for them, or No choice', (tester) async {
++        final app = await _pumpRound(tester, _round(), tv: tv);
++        app.client.choicesEnd(const ChoicesEndMessage(round: 4, result: 'save', count: 1, byDefault: false));
++        await _flush(tester);
++        expect(find.text('You got: Save +2'), findsOneWidget);
++        await tester.pump(const Duration(seconds: 4));
++
++        app.client.choicesRound(_round());
++        await _flush(tester);
++        app.client.choicesEnd(const ChoicesEndMessage(round: 4, result: 'save', count: 1, byDefault: true));
++        await _flush(tester);
++        expect(find.text('Chosen for you: Save +2'), findsOneWidget);
++        await tester.pump(const Duration(seconds: 4));
++
++        app.client.choicesRound(_round());
++        await _flush(tester);
++        app.client.choicesEnd(const ChoicesEndMessage(round: 4, count: 1, byDefault: false));
++        await _flush(tester);
++        expect(find.text('No choice'), findsOneWidget);
++        await _unmount(tester);
++      });
++
++      testWidgets('the overlay is gone 3 s after the end and the pad is back', (tester) async {
++        final app = await _pumpRound(tester, _round(), tv: tv);
++        expect(find.byKey(const Key('dpad')), findsNothing, reason: 'the round covers the pad');
++        app.client.choicesEnd(const ChoicesEndMessage(round: 4, result: 'save', count: 1, byDefault: false));
++        await _flush(tester);
++        await tester.pump(const Duration(milliseconds: 2900));
++        expect(find.byKey(const Key('choicesResult')), findsOneWidget, reason: 'still there before 3 s');
++        await tester.pump(const Duration(milliseconds: 200));
++        expect(find.byKey(const Key('choicesResult')), findsNothing);
++        expect(find.byKey(const Key('dpad')), findsOneWidget);
++        await _unmount(tester);
++      });
++
++      testWidgets('a dropped link clears the round', (tester) async {
++        final app = await _pumpRound(tester, _round(), tv: tv);
++        app.client.emit(const ClientSnapshot(status: ClientStatus.reconnecting));
++        await _flush(tester);
++        expect(find.byKey(const Key('choicesTitle')), findsNothing);
++        await _unmount(tester);
++      });
++    });
++  }
++}
+diff --git a/controller_app/test/support/fakes.dart b/controller_app/test/support/fakes.dart
+index 9d9ade6a..c3637fe9 100644
+--- a/controller_app/test/support/fakes.dart
++++ b/controller_app/test/support/fakes.dart
+@@ -195,8 +195,32 @@ class FakeClient extends ControllerClient {
+   /// The host's night ended with [end], arriving now.
+   void nightEnd(NightEndMessage end) => _nightEnds.add(end);
+ 
++  /// The choice rounds and their ends the host sends this phone (M17 phone1b).
++  final _choices = StreamController<ChoicesMessage>.broadcast();
++  final _choicesEnds = StreamController<ChoicesEndMessage>.broadcast();
++
++  /// Every pick the phone sent, in order.
++  final choicePicks = <ChoicePickMessage>[];
++
++  @override
++  Stream<ChoicesMessage> get choices => _choices.stream;
++
++  @override
++  Stream<ChoicesEndMessage> get choicesEnds => _choicesEnds.stream;
++
++  @override
++  void sendChoicePick(ChoicePickMessage pick) => choicePicks.add(pick);
++
++  /// The host sends a choice round, arriving now.
++  void choicesRound(ChoicesMessage round) => _choices.add(round);
++
++  /// The host ends a choice round, arriving now.
++  void choicesEnd(ChoicesEndMessage end) => _choicesEnds.add(end);
++
+   @override
+   Future<void> dispose() async {
++    await _choices.close();
++    await _choicesEnds.close();
+     await _nightEnds.close();
+     await _view.close();
+     await _changes.close();
+diff --git a/docs/briefs/m17/phone1b/y0d-report.md b/docs/briefs/m17/phone1b/y0d-report.md
+new file mode 100644
+index 00000000..7e97b668
+--- /dev/null
++++ b/docs/briefs/m17/phone1b/y0d-report.md
+@@ -0,0 +1,77 @@
++# y0d report: the phone's choices screen
++
++## Summary
++
++Added `choicesProvider`, `ChoicesOverlay`/`ChoicesScreen`, the `PhoneText.choices*` strings, `Capability.choices` in the
++phone's hello, and dropped it again from `ownPlayerIdentity`. New test file `choices_screen_test.dart`: 28 tests (14 per
++look, menu and TV), all pass. `tools/mine.sh`: format, analyze and party_host pass; controller_app has ONE failure,
++below.
++
++**Blocked:** `controller_app/test/phone_metrics_test.dart:305-315` pins the hello's capability list
++(`metrics, rating, layout, status, view, identity, night`). `Capability.choices` after `view` (the brief's item 4)
++breaks it. The file is not in `allow:`, so I did not touch it. The fix is one line: add `Capability.choices,` after
++`Capability.view,` in that list (and "seven" in the test name becomes "eight"). Until then mine.sh fails on that one test.
++
++Files:
++- `providers/choices.dart` (new, exported from `providers.dart`): `ChoicesState` and `ChoicesNotifier`; methods `pick`,
++  `step`, `lock`, `undo` send a `ChoicePickMessage` with the full held state. Cleared on ViewStarted, on a dropped link,
++  and `choicesResultHoldMs` (3000 ms) after the end. A same-round message updates it (held state taken from the
++  message), another round replaces it; a message of an already ended round is ignored.
++- `ui/choices_screen.dart` (new): cards, countdown + "Paused" chip, lock button, result. Toy look tokens only.
++- `ui/controller_screen.dart`: import, `resultShown` also true while a round shows, `ChoicesOverlay` in the Stack
++  (5 changed lines; file ends at 372 lines).
++- `storage.dart`: `Capability.choices` in the hello list. `host/hosting.dart`: `ownPlayerIdentity` drops it too (dartdoc).
++- `phone_text.dart`: `choicesPaused/LockIn/Locked/Default/NoChoice/Seconds/CostEach/YouGot/ChosenForYou`.
++- `test/support/fakes.dart`: FakeClient `choicePicks`, `choicesRound(...)`, `choicesEnd(...)`, `sendChoicePick`.
++  The brief's name `choices(ChoicesMessage)` would clash with the client's `choices` stream getter, so the feed is
++  `choicesRound`.
++
++## Decisions
++- ControllerScreen shows "too small" under 540 dp width (`minWindowWidth`), so 360x640 and 320x640 are tested with
++  `ChoicesOverlay` alone as a widget; 667x375 is tested inside the app (and the pad-back and dropped-link tests too).
++- Countdown clock is `client.nowMs` (fake-able), ticked by a 1 s timer in the widget; paused shows `endsInMs` as is.
++- Minus at 1 and plus at maxCount are greyed and swallow the tap (a no-op `onTap`), so the tap does not fall through to
++  the card and clear it. Plus on an unpicked counted card picks it with 1.
++- Lock with nothing picked is allowed (sends pick null, locked true). Picks while the round is paused are allowed.
++- The result card sits in a scroll view: the pop-in's first frames overflowed 17 px in the TV look at 667x375.
++
++## Computed values (tests)
++Counts after four plus taps on maxCount 3: [1, 2, 3]; then three minus taps: [1, 2, 3, 2, 1]. Countdown: 12000 ms,
++nowMs 3000 -> "9 s"; paused 9000 ms, nowMs 8000 -> still "9 s". Result visible at 2900 ms, gone at 3100 ms.
++
++## Self-check (R part A)
++1. Host setups: phone joined to a TV (every test, via `pumpApp`); host phone's own player: `ownPlayerIdentity` drops
++   choices (joined_view_test pin unchanged and passes); "Show on this device" and an older peer: not tested here (the
++   host sends the round only to phones that list the capability).
++2. State starts at a ChoicesMessage, ends 3 s after the end, on ViewStarted or a dropped link: "the overlay is gone 3 s
++   after the end", "a dropped link clears the round". Nothing going on: overlay is `SizedBox.shrink`.
++3. Pause menu / host away / "Get ready": not covered; the round pauses via the message's `paused` flag ("countdown ...
++   Paused"). Dropped link and leaving: clears. Results: the end texts test.
++4. Stayed in allow:, except Blocked above.
++5. Stopped on phone_metrics_test.dart (not in allow).
++6. Every look: all tests run in the menu look and the TV look; no fixed pixel height on cards; the 48 dp rule is tested
++   at 360x640, 320x640, 667x375.
++
++## Questions
++1. Q1/Q3 defaults from the brief are host-side; nothing here depends on them.
++2. Should the round cover the top bar (it does now), or leave it visible?
++
++## Hand-over
++Update `phone_metrics_test.dart` as above, then mine.sh is green. No `tests-first` proof needed beyond the new file.
++
++## Commit message
++
++phone: generic choices screen (cards, countdown, lock-in, result)
++
++choicesProvider keeps the host's choice round and what this phone holds;
++ChoicesOverlay shows it over the pad (cards, counted cards, countdown,
++Paused, Lock in/Locked, result lines). The phone lists Capability.choices;
++the host phone's own player drops it and plays through the old buttons.
++
++## Status row
++
++phone1b y0d: phone choices screen, provider, strings and capability done; open: phone_metrics_test.dart hello pin needs `Capability.choices` (outside allow).
++
++## Delete
++
++- none
+diff --git a/packages/party_host/lib/src/text/phone_text.dart b/packages/party_host/lib/src/text/phone_text.dart
+index 9b154f2f..63b48d05 100644
+--- a/packages/party_host/lib/src/text/phone_text.dart
++++ b/packages/party_host/lib/src/text/phone_text.dart
+@@ -261,6 +261,25 @@ abstract final class PhoneText {
+     _ => tag,
+   };
+ 
++  // The choice round's screen (M17 phone1b).
++  static const choicesPaused = 'Paused';
++  static const choicesLockIn = 'Lock in';
++  static const choicesLocked = 'Locked';
++  static const choicesDefault = 'Default';
++  static const choicesNoChoice = 'No choice';
++
++  /// The countdown: "12 s".
++  static String choicesSeconds(int seconds) => '$seconds s';
++
++  /// A card's cost line: "3 Bolts each", or "3 each" when the round names no currency.
++  static String choicesCostEach(int cost, String? currency) => currency == null ? '$cost each' : '$cost $currency each';
++
++  /// What the round gave the player when the player chose it.
++  static String choicesYouGot(String card) => 'You got: $card';
++
++  /// What the round gave the player when the default applied.
++  static String choicesChosenForYou(String card) => 'Chosen for you: $card';
++
+   // The host start sheet.
+   static const playOnThisPhone = 'Play on this phone';
+   static const playOnThisPhoneWhy = 'Play here with the controls on the screen';

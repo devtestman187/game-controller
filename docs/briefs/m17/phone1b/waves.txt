@@ -1,4 +1,8 @@
 # wave 1: y0p (round pause, protocol paused field) and y0dc (client plumbing + docs): no shared files
 y0p y0dc
 # wave 2: phone screen (needs y0dc and y0p), lobby names, shop demo; the party_host files differ
-y0d y0e y0f
+y0e y0f
+# wave 3: y0d retried (ladder 3, parked patch committed as probe-y0d-parked.patch), fix y0h (connection/protocol/docs), fix y0h2 (games screen button)
+y0d y0h y0h2
+# wave 4: fix y0h3 (lobby tests), fix y0h4 (shop demo files)
+y0h3 y0h4

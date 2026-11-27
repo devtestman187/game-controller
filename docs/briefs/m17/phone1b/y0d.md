@@ -4,8 +4,8 @@ read: docs/briefs/templates/COMMON.md · docs/briefs/m17/phone1a/contract.md (Wi
 changes: choicesProvider · ChoicesScreen · ChoicesOverlay · PhoneText.choices* strings · Capability.choices in the phone's hello list · ownPlayerIdentity drops Capability.choices
 model: sonnet
 turns: 100
-ladder: 2
-repair: the first attempt (95 turns, over its cap) is saved as E:/AI/game-controller-m17side/.dart_tool/run-jobs/docs_briefs_m17_phone1b/parked-y0d.patch; Read it and re-create its files (do not explore again), then fix what stopped it: the hello now lists eight capabilities, so controller_app/test/phone_metrics_test.dart:305-315 (hello lists seven) must list Capability.choices after view and say eight. Decisions for its three open questions: the feed methods are named choices(msg) and choicesEnd(msg); the overlay covers the pad area only and leaves the top bar visible; at 540 dp and wider the card column stays centred at most 480 dp wide.
+ladder: 3
+repair: the first attempt (95 turns, over its cap) is saved as docs/briefs/m17/phone1b/probe-y0d-parked.patch; Read it and re-create its files (do not explore again), then fix what stopped it: the hello now lists eight capabilities, so controller_app/test/phone_metrics_test.dart:305-315 (hello lists seven) must list Capability.choices after view and say eight. Decisions for its three open questions: the feed methods are named choices(msg) and choicesEnd(msg); the overlay covers the pad area only and leaves the top bar visible; at 540 dp and wider the card column stays centred at most 480 dp wide.
 expected-min: 45
 tests-first: exempt new widget with no earlier behaviour; its new test file is the first test
 touch-target: the card buttons and the lock button are at least 48 dp high and wide, tested at 320 and 360 px width
