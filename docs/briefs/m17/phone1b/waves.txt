@@ -8,3 +8,5 @@ y0d y0h y0h2
 y0h3 y0h4 y0h5
 # wave 5: fix y0h6 (phone choices screen)
 y0h6
+# wave 6: second fix round (wave 4 and 5 review): y0h7 connection, y0h8 phone screen
+y0h7 y0h8

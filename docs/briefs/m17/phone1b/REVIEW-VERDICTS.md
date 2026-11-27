@@ -22,3 +22,8 @@ Wave 3 review (wave3-review-report.md, 16 findings, 3 must):
 - protocol.md:263 "24 code points" - trivial, fixed by hand.
 - y0d/y0h2 report part A self-check - minor, code-health (reports of finished jobs).
 - Decisions: card heights are 294/140 in code (not 308/154; 308 does not fit 568x320): owner question, default accept. Shop button scale falls back to 1 outside HostFrame: accepted. Countdown reads phone clock in build: accepted for this non-game screen. start() assert debug only: accepted (brief). choicesRound fake name: accepted. Host phone drops choices cap: accepted (deliberate, see REPORT).
+Wave 4 review (12 findings, 2 must) and wave 5 review (8, 2 must):
+- pick() keeps phone picks over resume (choice_round.dart:145) must; pause test lost its wait (:172) should; dartdoc 124 cols, pick dartdoc, test :331 name - y0h7.
+- pause test :198 "keeps after resume" and choices_screen_test :312/:320 pass on old code: invalid as defects, accepted as regression guards (old code already behaved so); REPORT says so.
+- _Result file size, 512 dp doc, leave path test, HostAway with result, host screen test (wave 5 should) - y0h8.
+- phoneInfo six parameters (samples.dart:85), job id in comment :78, literal strings in shop_demo_test (reason accepted: constants would compare the words with themselves), reports' "not run" suites (games_screen_frame_test, night_screens_test: run in the full check), y0h6 Summary block, mutation runs of the old-app guard - code-health / full check.
