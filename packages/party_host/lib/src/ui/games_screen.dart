@@ -15,6 +15,7 @@ import 'game_screen.dart';
 import 'host_button.dart';
 import 'host_card_button.dart';
 import 'host_card_focus.dart';
+import 'host_frame.dart';
 import 'host_frame_screen.dart';
 import 'host_screen.dart';
 import 'join_screen.dart';
@@ -61,12 +62,14 @@ class GamesScreen extends ConsumerWidget {
           child: _PickerBody(
             autofocusShapeRace: touchFirst,
             autofocusNight: !touchFirst,
-            onShapeRace: () => _open(context, const ShapeRaceScreen()),
-            onArena: () => _open(context, const GameScreen()),
-            onShop: () => _open(context, const ShopDemoScreen()),
-            onNight: () => _open(
-              context,
-              night != null && night.round > 0 ? const NightScoreboardScreen() : const NightStartScreen(),
+            actions: _PickerActions(
+              onShapeRace: () => _open(context, const ShapeRaceScreen()),
+              onArena: () => _open(context, const GameScreen()),
+              onShop: () => _open(context, const ShopDemoScreen()),
+              onNight: () => _open(
+                context,
+                night != null && night.round > 0 ? const NightScoreboardScreen() : const NightStartScreen(),
+              ),
             ),
           ),
         ),
