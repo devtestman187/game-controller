@@ -6,6 +6,7 @@
   "line": "The first arena: walls, four bumpers and a goal to race for.",
   "notes": "Today's field, word for word (M14 k1b): the race plays on it as it always has, and its Bumper section is the first four-spot arena.",
   "theme": "playroom",
+  "tier": "easy",
   "walls": [
     {"from": [0.24, 0], "to": [0.24, 0.56]},
     {"from": [0.47, 0.44], "to": [0.47, 1]},

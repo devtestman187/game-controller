@@ -6,6 +6,7 @@
   "line": "A toy pinball table: pop bumpers, slingshots, flippers and a drain.",
   "notes": "M14 k2b (party-night §7b): the two rails and the four top-lane posts are the mock-up's table; the three springs are its pop bumpers, the two bouncy walls its slingshots, the two swing movers its flippers and the still hazard its drain. No race section: the Bumper Round only.",
   "theme": "pinball",
+  "tier": "easy",
   "walls": [
     {"from": [0.1188, 0.2667], "to": [0.1188, 0.8667]},
     {"from": [0.8813, 0.2667], "to": [0.8813, 0.8667]},

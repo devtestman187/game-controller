@@ -6,6 +6,7 @@
   "line": "A round rug with a ring of spinning tops and a carousel in the middle.",
   "notes": "M14 k2b (party-night §7b): the mock-up's rug, its dashed ring of eight tops (orbit hazards, set 22.5° apart) and the carousel in the middle, a cross of two spin movers round a post. Coin zones sit in the four quarters between the arms, just beyond their sweep. No race section.",
   "theme": "tops",
+  "tier": "medium",
   "hazards": [
     {"orbit": {"centre": [0.6486, 0.6094], "radius": 0.05}, "periodS": 3.0},
     {"orbit": {"centre": [0.5615, 0.7641], "radius": 0.05}, "periodS": 3.0, "phase": 0.125},

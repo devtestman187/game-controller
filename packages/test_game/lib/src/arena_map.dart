@@ -132,6 +132,7 @@ final class ArenaMap {
     id: playroomId,
     name: 'Playroom',
     line: 'The first arena: walls, four bumpers and a goal to race for.',
+    tier: 'easy',
     walls: [
       WallSpec(Offset(0.24, 0), Offset(0.24, 0.56)),
       WallSpec(Offset(0.47, 0.44), Offset(0.47, 1)),

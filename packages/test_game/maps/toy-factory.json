@@ -6,6 +6,7 @@
   "line": "A workshop floor: a belt loop, a stamping press and sliding crates.",
   "notes": "M14 k2b (party-night §7b): the mock-up's four belts join into one loop around the floor, the press slides between its two columns, the sliding crates are hazards with red warning stripes, and the gears and columns are painted round the play. Coin zones sit beside the belts, never on them. The race runs across the open floor from the west side to the pad in the top-east bay.",
   "theme": "factory",
+  "tier": "medium",
   "walls": [
     {"from": [0.66, 0.34], "to": [0.66, 0.66]},
     {"from": [0.84, 0.34], "to": [0.84, 0.66]}
