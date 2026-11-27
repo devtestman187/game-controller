@@ -4,3 +4,5 @@ g3a g3s
 f3a
 # wave 3: rules engine (after g3a types); owner answer on the rule values pending
 g3b2
+# fix round 2 (main verdicts on wave3-g3b2)
+g3b3
