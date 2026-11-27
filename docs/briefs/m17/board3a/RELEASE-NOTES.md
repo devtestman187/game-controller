@@ -1,3 +1,1 @@
-# Release notes (board line, in progress)
-
-No visible change. City Rush board model (in progress): internal building blocks for a future City Rush night, not yet in any game. Please check nothing else changed.
+No visible change. Internal groundwork for the City Rush board (not in any game yet): the board's road, tile and gate types, and stand-in parts for the round placing and champion rules. Please check that nothing else changed.

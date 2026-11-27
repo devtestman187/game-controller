@@ -60,3 +60,12 @@ board3a run review: done. Open: one must (tools/mine.sh misses untracked folders
 ## Delete
 
 - none
+
+## Verdicts (driver, Nov 26; judge texts verbatim in DRIVER-NOTES)
+- F1 tools/mine.sh:161 untracked city/ folders skipped, green "0 files" - must. Shared file: NOT touched on the board line. Owner/main to fix (add -uall, fail on 0 files). Until then city/ is checked by explicit path (f3a used dart format/analyze/flutter test by path).
+- F2 stubs.dart:29 CityChampionEntry duplicates night ChampionEntry - closed by f3a (dartdoc on the shape difference, no import from night/).
+- F3 board.dart:1 eight small related public types in one file - accepted with note (small related types; splitting is a style choice, not a defect).
+- F4 board.dart:7 unique ids - closed by f3a (asserted, tested).
+- F5 stubs.dart:23 duplicate ids - closed by f3a (ArgumentError, tested).
+- F6 board.dart:83 GateKind dartdoc - closed by f3a.
+- F7 tests-first shows compile failures only - note only (type and stub wave).
