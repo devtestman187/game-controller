@@ -11,7 +11,7 @@ Three fixes to the night save, as the brief asks. Only the three allowed files c
    - (b) NEW: a night saved with round 0 is not resumed by a second container, and its key is cleared.
    - (c) NEW: p2 joins after a round and leaves; a second container loading the save still has p2 in `seen` with nickname "Sam".
 
-Test counts: `tools/mine.sh` ran the 8 tests in `night_save_test.dart`: 8 passed, 0 failed.
+Test counts: `tools/mine.sh` ran night_save_test.dart (7 `test(` calls; the run counted the shared mine.sh total of the touched files), 0 failed.
 
 Two test-side adjustments were needed beyond the brief:
 - The existing "garbled, mistyped or unknown save" test saved a round-0 night as its "valid" save. Under fix 1 that night is cleared, so the test failed. Its valid save now has one round recorded (`record(roundResult(points: {'p1': 5}))`). The broken-save mutations are unchanged.
@@ -56,3 +56,11 @@ night1b e0g: done — night save drops a round-0 night on load, saves roster cha
 ## Delete
 
 - none
+
+## Self-check (part A, added by the driver)
+- A1 hosts: the save is host-side prefs, so phone and TV hosts share it; night_save_test.dart round trip.
+- A2 state start/end: start saves, end clears (clear test, now asserts the save exists first).
+- A3 combinations: a round-0 night is dropped, a roster change is saved (the two new tests); pause and away states touch no saved field.
+- A4 folder: only the three allowed files changed.
+- A5 stop rather than overstep: the new tests sit in the existing test file as the brief said (kept).
+- A6 looks: no UI change.

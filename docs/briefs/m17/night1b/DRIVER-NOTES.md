@@ -1,3 +1,4 @@
 - 17:12 briefs committed 59580541; start 1795734773; waves n1c+e0e / n1d / e0c; place/pause: settled (n1d pins only)
 - 17:18 STOPPED base check >5min waiting for side line's machine lock (class environment); restart with RUN_BASE_CHECK_MAX_MIN=45, since 1795735107
 - 18:03 e0c parked rc5 class brief (23 existing tests lacked prefs override; allow too narrow). ladder 2 with widened allow. n1c e390700f e0e 016bad75 n1d b4459fef done
+- 18:34 fix round e0g started 1795739676

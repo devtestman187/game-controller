@@ -11,7 +11,7 @@ import 'night_awards.dart';
 import 'night_state.dart';
 
 /// The party night kept on this host between starts (design section 2 N5): the
-/// night is saved after each change, so a host that restarts resumes it, and the
+/// night is saved after each change, so a host that restarts resumes a night with a round played, and the
 /// save is cleared when the night ends.
 final class NightSave {
   const NightSave(this._prefs);

@@ -7,3 +7,4 @@
 - should n1d-report counts - trivial - fixed by hand
 - could (12): fake_prefs doc fixed by hand; rest - minor - code-health; championsAmong not wired yet (second champion rule): wire with n1f/n1g (B4)
 - Open questions 1,4,7,9,10: settled by e0g or code-health. 3,5,6,8: kept as built.
+- wave4 (e0g): 0 must. Self-check line and test count fixed by hand; night_save.dart doc sentence fixed by hand; new tests stay in night_save_test.dart (accepted; brief said so); reflow/local-bind/line-47 could items - minor - code-health.
