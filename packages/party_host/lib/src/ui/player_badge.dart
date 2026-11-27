@@ -5,6 +5,7 @@ import 'package:protocol/protocol.dart' show PlayerCharacter;
 import 'package:toy_look/toy_look.dart';
 
 import 'host_frame.dart';
+import 'player_badge_ring.dart';
 
 /// How wide a screen's row draws its badge, as a share of the look's button
 /// height: the join screen's rows, the away card's and the results' (three
@@ -54,13 +55,27 @@ class PlayerBadge extends StatelessWidget {
   final PlayerCharacter? character;
 
   @override
-  Widget build(BuildContext context) =>
-      ToyBadge(number: number, diameter: _diameter(context), character: ToyCharacter.of(character, number));
-
-  /// The disc to draw: [size], or [badgeNumberMinDiameterPx] when the frame
-  /// would otherwise draw the number under its floor.
-  double _diameter(BuildContext context) =>
-      HostFrameInfo.maybeOf(context) == null ? size : math.max(size, badgeNumberMinDiameterPx);
+  Widget build(BuildContext context) {
+    final inFrame = HostFrameInfo.maybeOf(context) != null;
+    if (!badgeNeedsRing(number)) {
+      return ToyBadge(
+        number: number,
+        diameter: inFrame ? math.max(size, badgeNumberMinDiameterPx) : size,
+        character: ToyCharacter.of(character, number),
+      );
+    }
+    // The ring box holds the disc at badgeRingDiscShare, so inside the frame it
+    // grows until that disc clears the number floor.
+    final box = inFrame ? math.max(size, badgeNumberMinDiameterPx / badgeRingDiscShare) : size;
+    return PlayerBadgeRing(
+      size: box,
+      child: ToyBadge(
+        number: number,
+        diameter: box * badgeRingDiscShare,
+        character: ToyCharacter.of(character, number),
+      ),
+    );
+  }
 }
 
 /// How big Robo's robot head is against its disc, which fills a row's badge.
