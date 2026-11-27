@@ -23,3 +23,7 @@
 2026-11-27 09:42:08 committed v1a: 645cfbca night2c v1a: Vote engine and the vote pick
 2026-11-27 09:42:10 committed t1: fb20f723 agent-cost: per-agent split and driver REPORT line (--agents)
 2026-11-27 09:42:10 phase: review (apply took 4s)
+2026-11-27 09:42:11 STOPPED: jobs that failed or passed their limit (parked, not committed): c1 (their logs: docs/briefs/m17/night2c/flash-<job>.log)
+2026-11-27 09:42:55 RUN_MAX_MIN=238 min (computed backstop of the jobs still to do)
+2026-11-27 09:45:14 reviewed wave1: 15 finding(s)
+RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): c1 (their logs: docs/briefs/m17/night2c/flash-<job>.log)
