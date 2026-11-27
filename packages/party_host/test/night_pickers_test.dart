@@ -20,11 +20,25 @@ void main() {
       final played = <Variant>[];
       for (var draw = 0; draw < _pool.length; draw++) {
         final next = picker.next(pool: _pool, played: played, random: random);
-        expect(next, isNotNull);
+        if (next == null) fail('no pick');
         expect(played, isNot(contains(next)), reason: 'draw $draw repeated a variant');
-        played.add(next!);
+        played.add(next);
       }
       expect(played.toSet(), _pool.toSet());
+    });
+
+    test('ten draws in a row never repeat a variant until all four were played', () {
+      final random = Random(7);
+      final played = <Variant>[];
+      for (var draw = 0; draw < 10; draw++) {
+        final next = picker.next(pool: _pool, played: played, random: random);
+        if (next == null) fail('no pick');
+        if (played.toSet().length < _pool.length) {
+          expect(played, isNot(contains(next)), reason: 'draw $draw repeated before all four were played');
+        }
+        played.add(next);
+      }
+      expect(played.take(_pool.length).toSet(), _pool.toSet());
     });
 
     test('after a full pass never repeats the variant just played', () {
@@ -32,9 +46,9 @@ void main() {
       final played = <Variant>[..._pool];
       for (var draw = 0; draw < 10; draw++) {
         final next = picker.next(pool: _pool, played: played, random: random);
-        expect(next, isNotNull);
+        if (next == null) fail('no pick');
         expect(next, isNot(played.last), reason: 'draw $draw repeated the last variant');
-        played.add(next!);
+        played.add(next);
       }
     });
 
@@ -53,7 +67,8 @@ void main() {
         final played = <Variant>[];
         return List<Variant?>.generate(8, (_) {
           final next = picker.next(pool: _pool, played: played, random: random);
-          played.add(next!);
+          if (next == null) fail('no pick');
+          played.add(next);
           return next;
         });
       }
