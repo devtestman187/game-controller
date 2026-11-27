@@ -102,3 +102,14 @@ RESULT: STOPPED: checks failed twice on the combined tree after g3d2
 2026-11-27 01:52:01 tests-first ok: tools/sim/night_sim_test.dart fails on the old code
 2026-11-27 01:52:03 hand-fixed g3d2: tests-first proof and worker review done (marked in done.txt)
 2026-11-27 01:52:03 skip g3d2 (already done)
+2026-11-27 01:52:25 phase: worker (worker took 30s)
+2026-11-27 01:54:54 start g3d2b
+2026-11-27 02:01:57 g3d2b finished: result 0 (42 turns, 6 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 64/1914039/78095/52299
+2026-11-27 02:01:57 phase: tests-first (worker took 572s)
+2026-11-27 02:02:02 tests-first ok: tools/sim/sim_report_test.dart fails on the old code
+2026-11-27 02:02:31 phase: check (tests-first took 34s)
+2026-11-27 02:02:37 combined check: skips protocol connection metrics kit look arena puzzle host phone tv (no job's change reaches them)
+2026-11-27 02:11:34 checks failed; fetching packages and trying once more
+2026-11-27 02:21:13 STOPPED: checks failed twice on the combined tree after g3d2b
+2026-11-27 02:21:14 reviewed wave2: 10 finding(s)
+RESULT: STOPPED: checks failed twice on the combined tree after g3d2b
