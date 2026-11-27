@@ -69,3 +69,6 @@ board3a run review: done. Open: one must (tools/mine.sh misses untracked folders
 - F5 stubs.dart:23 duplicate ids - closed by f3a (ArgumentError, tested).
 - F6 board.dart:83 GateKind dartdoc - closed by f3a.
 - F7 tests-first shows compile failures only - note only (type and stub wave).
+
+## Superseded (Nov 26 late, owner road model)
+The nine findings of the g3b run-1 review (commit 50b963e3, shared road model) are superseded by the rework brief; not verdicted.
