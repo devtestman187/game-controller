@@ -30,8 +30,8 @@ abstract final class NightSetupText {
   static const pickerDirector = 'Night director';
   static const pickerShuffle = 'Shuffle';
   static const pickerPlaylist = 'Playlist';
-  static const pickerHostHelp = 'You choose each game yourself.';
-  static const pickerDirectorHelp = 'The night director picks each game and says why.';
+  static const pickerHostHelp = 'You choose each game yourself, every time.';
+  static const pickerDirectorHelp = 'The usual way: the night director picks each game and says why.';
   static const pickerShuffleHelp = 'A game picked by luck, none twice until all have been played.';
   static const pickerPlaylistHelp = 'Your chosen games, one after another, in the order listed.';
   static const pickerRotating = 'Rotating';

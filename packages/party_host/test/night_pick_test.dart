@@ -83,6 +83,7 @@ void main() {
   test('the host picks: pickFor gives null and records nothing', () async {
     final prefs = FakePrefs();
     final container = await _loaded(prefs: prefs);
+    _useSettings(container, const NightSettings(picker: NightPicker.host));
     expect(container.read(nightPickProvider.notifier).pickFor(1), isNull);
     expect(container.read(nightPickProvider), isNull);
     await pumpEventQueue();
@@ -91,7 +92,7 @@ void main() {
 
   test('the director opens a night at the easiest tier when round 1 is asked for', () async {
     final container = await _loaded();
-    _useSettings(container, const NightSettings(picker: NightPicker.director));
+    _useSettings(container, const NightSettings());
     final pick = container.read(nightPickProvider.notifier).pickFor(1);
     expect(pick?.reason, DirectorReason.opening);
     expect(pick?.variant.tier, Level.easy);
@@ -111,7 +112,7 @@ void main() {
 
   test('the director opens at medium when the night starts at medium, with no easier game', () async {
     final container = await _loaded();
-    _useSettings(container, const NightSettings(picker: NightPicker.director, difficultyMin: Level.medium));
+    _useSettings(container, const NightSettings(difficultyMin: Level.medium));
     final pick = container.read(nightPickProvider.notifier).pickFor(1);
     expect(pick?.reason, DirectorReason.opening);
     expect(pick?.variant.tier, Level.medium);
@@ -120,7 +121,7 @@ void main() {
   test('the director never picks the variant played last while another is left, for seeds 0 to 19', () async {
     for (var seed = 0; seed < 20; seed++) {
       final container = await _loaded(random: Random(seed));
-      _useSettings(container, const NightSettings(picker: NightPicker.director));
+      _useSettings(container, const NightSettings());
       final notifier = container.read(nightPickProvider.notifier);
       final first = notifier.pickFor(1);
       final second = notifier.pickFor(2);
@@ -132,7 +133,7 @@ void main() {
   test('pickFor for the same round twice gives the same pick and records it once', () async {
     final prefs = FakePrefs();
     final container = await _loaded(prefs: prefs);
-    _useSettings(container, const NightSettings(picker: NightPicker.director));
+    _useSettings(container, const NightSettings());
     final notifier = container.read(nightPickProvider.notifier);
     final first = notifier.pickFor(1);
     final again = notifier.pickFor(1);
@@ -159,14 +160,14 @@ void main() {
 
   test('a pool of bumper rounds only never yields a Shape Race', () async {
     final container = await _loaded();
-    _useSettings(container, const NightSettings(picker: NightPicker.director, pool: {'bumperRound'}));
+    _useSettings(container, const NightSettings(pool: {'bumperRound'}));
     final ids = _idsOf(_picksFor(container, 10));
     expect(ids.every((id) => id.startsWith('bumperRound:')), isTrue, reason: '$ids');
   });
 
   test('with no pool set, Arena Race is never picked', () async {
     final container = await _loaded();
-    _useSettings(container, const NightSettings(picker: NightPicker.director));
+    _useSettings(container, const NightSettings());
     final ids = _idsOf(_picksFor(container, 10));
     expect(ids.every((id) => !id.startsWith('arenaRace:')), isTrue, reason: '$ids');
   });
@@ -174,7 +175,7 @@ void main() {
   test('a pool of only Arena Race gives no pick, and records nothing', () async {
     final prefs = FakePrefs();
     final container = await _loaded(prefs: prefs);
-    _useSettings(container, const NightSettings(picker: NightPicker.director, pool: {'arenaRace'}));
+    _useSettings(container, const NightSettings(pool: {'arenaRace'}));
     expect(container.read(nightPickProvider.notifier).pickFor(1), isNull);
     await pumpEventQueue();
     expect(prefs.containsKey(_playedKey), isFalse);

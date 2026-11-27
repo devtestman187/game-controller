@@ -266,7 +266,7 @@ void main() {
 
     testWidgets('with the host picking it has the two game buttons and the Set up button', (tester) async {
       await forEachLook(tester, (look) async {
-        await pumpStart(tester, look, const NightSettings());
+        await pumpStart(tester, look, const NightSettings(picker: NightPicker.host));
         expect(find.byKey(const Key('nightShapeRace')), findsOneWidget);
         expect(find.byKey(const Key('nightBumper')), findsOneWidget);
         expect(find.byKey(const Key('nightStartPick')), findsNothing);
@@ -286,7 +286,7 @@ void main() {
 
     testWidgets('with the director picking it has one start button and says the games are picked', (tester) async {
       await forEachLook(tester, (look) async {
-        await pumpStart(tester, look, const NightSettings(picker: NightPicker.director));
+        await pumpStart(tester, look, const NightSettings());
         expect(find.byKey(const Key('nightStartPick')), findsOneWidget);
         expect(find.byKey(const Key('nightShapeRace')), findsNothing);
         expect(find.byKey(const Key('nightBumper')), findsNothing);
@@ -295,10 +295,19 @@ void main() {
       });
     });
 
+    testWidgets('the app default, with nothing saved, is the director start card', (tester) async {
+      // The real settings notifier, not the harness's host-picks one, over empty prefs.
+      await pumpHost(tester, screen: const NightStartScreen(seed: 7), hostPicks: false);
+      expect(appContainer(tester).read(nightSettingsProvider).picker, NightPicker.director);
+      expect(find.byKey(const Key('nightStartPick')), findsOneWidget);
+      expect(find.byKey(const Key('nightShapeRace')), findsNothing);
+      expect(find.text(NightSetupText.gamesPickedForYou), findsOneWidget);
+    });
+
     testWidgets('the start button with a Bumper Round pool opens the Arena waiting card, one variant played', (
       tester,
     ) async {
-      await pumpStart(tester, HostLook.menu, const NightSettings(picker: NightPicker.director, pool: {'bumperRound'}));
+      await pumpStart(tester, HostLook.menu, const NightSettings(pool: {'bumperRound'}));
       await tester.tap(find.byKey(const Key('nightStartPick')));
       await tester.pumpAndSettle();
       expect(find.byType(GameScreen), findsOneWidget);
@@ -308,7 +317,7 @@ void main() {
     });
 
     testWidgets('the start button with a Shape Race pool and one player opens the puzzle', (tester) async {
-      await pumpStart(tester, HostLook.menu, const NightSettings(picker: NightPicker.director, pool: {'shapeRace'}));
+      await pumpStart(tester, HostLook.menu, const NightSettings(pool: {'shapeRace'}));
       await tester.tap(find.byKey(const Key('nightStartPick')));
       // The puzzle's clock keeps running, so the route is let in with a few frames instead of settling.
       await tester.pump();

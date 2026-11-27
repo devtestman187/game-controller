@@ -26,7 +26,9 @@ final class TestRoster extends GamePlayersNotifier {
 /// A container whose roster the test sets by hand; the night is
 /// [partyNightProvider] in it.
 ({ProviderContainer container, TestRoster roster}) nightContainer({List<Override> overrides = const []}) {
-  final container = ProviderContainer(overrides: [gamePlayersProvider.overrideWith(TestRoster.new), ...overrides]);
+  final container = ProviderContainer(
+    overrides: [gamePlayersProvider.overrideWith(TestRoster.new), hostPicksOverride, ...overrides],
+  );
   addTearDown(container.dispose);
   final roster = container.read(gamePlayersProvider.notifier) as TestRoster;
   return (container: container, roster: roster);

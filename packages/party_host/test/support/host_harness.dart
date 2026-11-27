@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
+import 'package:party_host/src/night/night_settings.dart';
 import 'package:party_host/testing.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -36,6 +37,16 @@ void restoreLifecycle(WidgetTester tester) {
   });
 }
 
+/// Night settings whose picker is the host, as before the night director became the default: the tests that
+/// are about the host-picks start card keep it, and one that wants another picker overrides it.
+final class HostPicksNightSettings extends NightSettingsNotifier {
+  @override
+  NightSettings build() => const NightSettings(picker: NightPicker.host);
+}
+
+/// The override that gives a harness the host-picks settings.
+final hostPicksOverride = nightSettingsProvider.overrideWith(HostPicksNightSettings.new);
+
 /// The time the harness's clock says: midday, so the look is Sunny unless a
 /// test overrides [lookClockProvider] with a time of its own (M13).
 final harnessNow = DateTime(2026, 11, 8, 12);
@@ -47,6 +58,9 @@ final harnessNow = DateTime(2026, 11, 8, 12);
 ///
 /// [framed] puts the app in the host frame (HostFrame, as both host apps do),
 /// for a test that draws a screen at a phone size without its scroll net.
+///
+/// [hostPicks] gives the night settings whose picker is the host ([hostPicksOverride]); a test that wants the app's
+/// own default passes false, since a provider can be overridden only once.
 ///
 /// [stillSky] puts a [ToyStillSky] above the app, as every widget test that
 /// settles needs (the sky drifts for as long as a menu is open): a test about
@@ -62,6 +76,7 @@ Future<FakeHostService> pumpHost(
   bool stillSky = true,
   PuzzleLibrary? library,
   bool framed = false,
+  bool hostPicks = true,
 }) async {
   sounds = FakeSoundPlayer();
   awake = FakeScreenAwake();
@@ -83,6 +98,7 @@ Future<FakeHostService> pumpHost(
         soundPlayerProvider.overrideWithValue(sounds),
         screenAwakeProvider.overrideWithValue(awake),
         lookClockProvider.overrideWithValue(clock ?? () => harnessNow),
+        if (hostPicks) hostPicksOverride,
         ...overrides,
       ],
       child: Shortcuts(

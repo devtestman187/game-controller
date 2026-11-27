@@ -135,7 +135,7 @@ void main() {
       ],
     ).container;
     await container.read(arenaMapLibraryProvider.future);
-    container.read(nightSettingsProvider.notifier).update(const NightSettings(picker: NightPicker.director));
+    container.read(nightSettingsProvider.notifier).update(const NightSettings());
     container.read(partyNightProvider.notifier).start(length: NightLength.three, awards: threeAwards);
     container.read(partyNightProvider.notifier).recordRound(roundResult(points: {'a': 0, 'b': 0}));
 
@@ -160,7 +160,7 @@ void main() {
       ],
     ).container;
     await container.read(arenaMapLibraryProvider.future);
-    container.read(nightSettingsProvider.notifier).update(const NightSettings());
+    container.read(nightSettingsProvider.notifier).update(const NightSettings(picker: NightPicker.host));
     container.read(partyNightProvider.notifier).start(length: NightLength.three, awards: threeAwards);
     container.read(partyNightProvider.notifier).recordRound(roundResult(points: {'a': 0, 'b': 0}));
 

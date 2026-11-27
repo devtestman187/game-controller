@@ -28,7 +28,7 @@ ProviderContainer _containerOver(SharedPreferences prefs) {
 
 void main() {
   group('NightSettings', () {
-    test('the defaults: three rounds, every game, easy to hard, Chaos off, lively cat, host picks', () {
+    test('the defaults: three rounds, every game, easy to hard, Chaos off, lively cat, director picks', () {
       const settings = NightSettings();
       expect(settings.length, NightLength.three);
       expect(settings.pool, isEmpty);
@@ -37,7 +37,7 @@ void main() {
       expect(settings.chaos, Chaos.off);
       expect(settings.cat, CatPreset.lively);
       expect(settings.timerScale, 1.0);
-      expect(settings.picker, NightPicker.host);
+      expect(settings.picker, NightPicker.director);
       expect(settings.isKids, isFalse);
     });
 
@@ -62,7 +62,7 @@ void main() {
       expect(back!.isKids, isTrue);
     });
 
-    test('Kids is pinned: three rounds, easy to easy, Chaos little, a calm cat, timers at 1.5, host picks', () {
+    test('Kids is pinned: three rounds, easy to easy, Chaos little, a calm cat, timers at 1.5, director picks', () {
       const kids = NightSettings.kids;
       expect(kids.length, NightLength.three);
       expect(kids.pool, isEmpty);
@@ -71,7 +71,7 @@ void main() {
       expect(kids.chaos, Chaos.little);
       expect(kids.cat, CatPreset.calm);
       expect(kids.timerScale, 1.5);
-      expect(kids.picker, NightPicker.host);
+      expect(kids.picker, NightPicker.director);
       expect(kids.copyWith(timerScale: 1.0).isKids, isFalse);
     });
 
@@ -121,6 +121,19 @@ void main() {
       await pumpEventQueue();
 
       expect(_containerOver(prefs).read(nightSettingsProvider), NightSettings.kids);
+    });
+
+    test('a saved host picker stays host: only a night with no saved picker takes the director default', () async {
+      SharedPreferences.setMockInitialValues({
+        _key: jsonEncode({..._validJson(), 'picker': NightPicker.host.name}),
+      });
+      final prefs = await SharedPreferences.getInstance();
+      expect(_containerOver(prefs).read(nightSettingsProvider).picker, NightPicker.host);
+
+      final withoutPicker = {..._validJson()}..remove('picker');
+      SharedPreferences.setMockInitialValues({_key: jsonEncode(withoutPicker)});
+      final older = await SharedPreferences.getInstance();
+      expect(_containerOver(older).read(nightSettingsProvider).picker, NightPicker.director);
     });
 
     test('a broken saved string loads the defaults and is removed', () async {

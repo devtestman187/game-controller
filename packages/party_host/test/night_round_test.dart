@@ -1,7 +1,10 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
+import 'package:party_host/src/night/night_pick_provider.dart';
 import 'package:party_host/src/night/night_settings.dart';
 import 'package:party_host/testing.dart';
 import 'package:protocol/protocol.dart';
@@ -11,17 +14,32 @@ import 'package:test_game/test_game.dart';
 import 'support/host_harness.dart';
 import 'support/night_harness.dart';
 
+/// The random seed with which the director's first pick for a Kids night is a Shape Race round (found by running
+/// the picks, not derived).
+const _kidsShapeRaceSeed = 1;
+
 void main() {
   /// A night's first Shape Race round, played solo by P1 from the start card:
   /// the card starts the round itself (B-002), so no join screen is pressed on,
   /// and the round is running when this returns. The host's Chaos setting is
   /// [chaos] when the round starts; a [kids] night is the Kids preset.
   Future<FakeHostService> openNightRound(WidgetTester tester, {Chaos chaos = Chaos.little, bool kids = false}) async {
-    final fake = await pumpHost(tester, screen: const StubHome());
+    final fake = await pumpHost(
+      tester,
+      screen: const StubHome(),
+      // The Kids preset is the director's now, and with this seed it opens on Shape Race.
+      overrides: [if (kids) nightRandomProvider.overrideWithValue(Random(_kidsShapeRaceSeed))],
+    );
     appContainer(tester).read(puzzleSettingsProvider.notifier).set(withChaos(chaos));
     if (kids) appContainer(tester).read(nightSettingsProvider.notifier).useKids();
     await neutral(tester, fake, ['p1']);
     await openNight(tester);
+    if (kids) {
+      await tester.tap(find.byKey(const Key('nightStartPick')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      return fake;
+    }
     await pickShapeRaceRound(tester);
     await tester.tap(find.byKey(const Key('puzzle-house')));
     await tester.pump();

@@ -18,11 +18,11 @@ const _timerScaleMax = 3.0;
 const _kidsTimerScale = 1.5;
 
 /// How the night picks each game (M17 plan n1h). The later batches fill in the rest; [host] is the host taps each
-/// game, which is today's behaviour.
+/// game.
 enum NightPicker {
   host,
 
-  /// The rule-based night director picks each game and says why.
+  /// The rule-based night director picks each game and says why; the default.
   director,
 
   shuffle,
@@ -42,7 +42,7 @@ final class NightSettings {
     this.chaos = Chaos.off,
     this.cat = CatPreset.lively,
     this.timerScale = _timerScaleMin,
-    this.picker = NightPicker.host,
+    this.picker = NightPicker.director,
   }) : assert(timerScale >= _timerScaleMin && timerScale <= _timerScaleMax, 'the timer is 1.0 to 3.0');
 
   /// The Kids preset: a short night of easy games, the cat calm, and timers at 1.5 so younger players have time.

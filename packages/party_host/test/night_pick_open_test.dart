@@ -30,10 +30,10 @@ const _shortPacing = NightPacing(
 );
 
 /// A director that picks from the Bumper Round only, so round 2 is a Bumper Round on one of its maps.
-const _bumperOnly = NightSettings(picker: NightPicker.director, pool: {'bumperRound'});
+const _bumperOnly = NightSettings(pool: {'bumperRound'});
 
 /// A director that picks from Shape Race only.
-const _shapeRaceOnly = NightSettings(picker: NightPicker.director, pool: {'shapeRace'});
+const _shapeRaceOnly = NightSettings(pool: {'shapeRace'});
 
 /// A roster of [players], as the joined phones report it.
 final class _Roster extends GamePlayersNotifier {
@@ -144,7 +144,7 @@ void main() {
     tester,
   ) async {
     await forEachLook(tester, (look) async {
-      await _openRoundOneScoreboard(tester, look, settings: const NightSettings());
+      await _openRoundOneScoreboard(tester, look, settings: const NightSettings(picker: NightPicker.host));
       await _endHowTo(tester);
 
       expect(_pick(tester), isNull, reason: 'the host picks, so the night makes no pick');
