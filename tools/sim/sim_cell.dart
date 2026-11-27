@@ -29,6 +29,7 @@ final class SimCell {
     required this.seed,
     required this.base,
     this.rwAlways = false,
+    this.rules,
   });
 
   /// The population name.
@@ -40,7 +41,8 @@ final class SimCell {
   /// The number of games in each night.
   final int games;
 
-  /// The road variant.
+  /// The road variant. A cell with [rules] set does not apply it: the field is required only so every cell has one, so
+  /// a rules cell keeps whatever value it was given (the final-rules row passes v0).
   final RoadVariant road;
 
   /// The Roadworks variant.
@@ -60,6 +62,10 @@ final class SimCell {
 
   /// Whether every bot always picks Roadworks when it can.
   final bool rwAlways;
+
+  /// The exact rules of the night; when set the road variant is not applied, and [roadworks] and [gate] are not read
+  /// either. Null for a matrix cell, whose rules come from [road] on [base].
+  final SimRules? rules;
 }
 
 /// The bots of a night's players for [name], in player order.

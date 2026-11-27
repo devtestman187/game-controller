@@ -32,16 +32,16 @@ const simCsvHeader =
 SimCellStats runSimCell(SimCell cell) {
   if (cell.nights < 1)
     throw ArgumentError.value(cell.nights, 'nights', 'must be at least 1');
-  final kids = cell.population == kidsPopulation;
-  final city = cityRulesWith(
-    cityRulesForRoad(cell.base, cell.road),
-    kidsPreset: kids,
-  );
-  final rules = SimRules(
-    city: city,
-    roadworks: cell.roadworks,
-    targetedGate: cell.gate,
-  );
+  final rules =
+      cell.rules ??
+      SimRules(
+        city: cityRulesWith(
+          cityRulesForRoad(cell.base, cell.road),
+          kidsPreset: cell.population == kidsPopulation,
+        ),
+        roadworks: cell.roadworks,
+        targetedGate: cell.gate,
+      );
   var profiles = populationProfiles(cell.population, cell.players);
   if (cell.rwAlways)
     profiles = [
@@ -73,16 +73,17 @@ SimCellStats runSimCell(SimCell cell) {
 /// is an empty field.
 String simCsvRow(SimCellStats stats) {
   final cell = stats.cell;
+  final rules = cell.rules;
   return [
     cell.population,
     '${cell.players}',
     '${cell.games}',
-    cell.road.name,
-    '${cell.road.roadLength}',
-    '${cell.road.tileCost}',
-    cell.roadworks.name,
+    rules == null ? cell.road.name : 'final',
+    '${rules?.city.roadLength ?? cell.road.roadLength}',
+    '${rules?.city.tileCost ?? cell.road.tileCost}',
+    (rules?.roadworks ?? cell.roadworks).name,
     '${cell.rwAlways}',
-    '${cell.gate}',
+    '${rules?.targetedGate ?? cell.gate}',
     '${cell.nights}',
     '${cell.seed}',
     _csvNumber(stats.plazaRate),
@@ -146,6 +147,26 @@ List<SimCell> simMatrixCells(int nights, int seed, CityRules base) {
           cell(population, players, road, RoadworksVariant.off, gate: false),
   ];
 }
+
+/// The final-rules row of the report: for every adult and mixed player count, the owner's night built by
+/// [SimRules.forNight] from [base] (Roadworks R2, the targeted gate on). Never built from a road-variant copy of [base],
+/// because a copy leaves the large-night tile price alone.
+List<SimCell> finalRulesCells(int nights, int seed, CityRules base) => [
+  for (final population in [adultPopulation, mixedPopulation])
+    for (final players in matrixPlayerCounts)
+      SimCell(
+        population: population,
+        players: players,
+        games: nightGames,
+        road: RoadVariant.v0,
+        roadworks: RoadworksVariant.r2,
+        gate: true,
+        nights: nights,
+        seed: seed,
+        base: base,
+        rules: SimRules.forNight(base, players: players),
+      ),
+];
 
 String _csvNumber(double? value) =>
     value == null ? '' : value.toStringAsFixed(csvDecimalPlaces);

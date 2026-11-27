@@ -1,4 +1,4 @@
-// The City Rush night simulator's command line: plays the v2 matrix of sim_report.dart and writes one CSV row per cell.
+// The City Rush night simulator's command line: plays the v2 matrix and the final-rules cells, one CSV row per cell.
 // Run from the repository root:
 //   dart run tools/sim/run_sim.dart [--nights N] [--seed S] [--out <path>]
 import 'dart:io';
@@ -37,7 +37,10 @@ void main(List<String> args) {
     return;
   }
   final rows = [
-    for (final cell in simMatrixCells(nights, seed, CityRules.standard))
+    for (final cell in [
+      ...simMatrixCells(nights, seed, CityRules.standard),
+      ...finalRulesCells(nights, seed, CityRules.standard),
+    ])
       runSimCell(cell),
   ];
   final file = File(outPath)..parent.createSync(recursive: true);
