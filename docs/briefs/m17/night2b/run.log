@@ -76,3 +76,6 @@ RESULT: STOPPED: PAUSED after wave 1 (RUN_PAUSE_AFTER_WAVE=1): its review is com
 2026-11-27 01:57:56 committed d2i: 08e0178d Setup: offer only what a night can play (d2i)
 2026-11-27 01:57:58 committed d2x: c6c669af party_host: a night's next round opens the game its pick chose
 2026-11-27 01:57:58 phase: review (apply took 5s)
+2026-11-27 01:57:59 STOPPED: PAUSED after wave 2 (RUN_PAUSE_AFTER_WAVE=1): its review is committed; verdict it, add fix jobs to the next wave of waves.txt, commit, restart
+2026-11-27 02:00:41 reviewed wave2: 8 finding(s)
+RESULT: STOPPED: PAUSED after wave 2 (RUN_PAUSE_AFTER_WAVE=1): its review is committed; verdict it, add fix jobs to the next wave of waves.txt, commit, restart
