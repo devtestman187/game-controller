@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
+import 'package:party_host/src/night/night_settings.dart';
 import 'package:party_host/testing.dart';
 import 'package:protocol/protocol.dart';
 import 'package:puzzle_game/puzzle_game.dart';
@@ -14,10 +15,11 @@ void main() {
   /// A night's first Shape Race round, played solo by P1 from the start card:
   /// the card starts the round itself (B-002), so no join screen is pressed on,
   /// and the round is running when this returns. The host's Chaos setting is
-  /// [chaos] when the round starts.
-  Future<FakeHostService> openNightRound(WidgetTester tester, {Chaos chaos = Chaos.little}) async {
+  /// [chaos] when the round starts; a [kids] night is the Kids preset.
+  Future<FakeHostService> openNightRound(WidgetTester tester, {Chaos chaos = Chaos.little, bool kids = false}) async {
     final fake = await pumpHost(tester, screen: const StubHome());
     appContainer(tester).read(puzzleSettingsProvider.notifier).set(withChaos(chaos));
+    if (kids) appContainer(tester).read(nightSettingsProvider.notifier).useKids();
     await neutral(tester, fake, ['p1']);
     await openNight(tester);
     await pickShapeRaceRound(tester);
@@ -54,6 +56,12 @@ void main() {
     await openNightRound(tester, chaos: Chaos.party);
     final settings = tester.widget<PuzzlePlayView>(find.byType(PuzzlePlayView)).settings();
     expect(settings.chaos, Chaos.party);
+  });
+
+  testWidgets('a Kids night with the host\'s Chaos on Party plays at A little', (tester) async {
+    await openNightRound(tester, chaos: Chaos.party, kids: true);
+    final settings = tester.widget<PuzzlePlayView>(find.byType(PuzzlePlayView)).settings();
+    expect(settings.chaos, Chaos.little);
   });
 
   testWidgets('the night\'s last round plays at scale 2, with the cat sitting out', (tester) async {

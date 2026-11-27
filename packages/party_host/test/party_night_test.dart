@@ -241,6 +241,25 @@ void main() {
       expect(last.timeLimitS, 90, reason: 'the rest is the host\'s own settings');
     });
 
+    test('a Kids night caps the cat at A little and never raises it', () {
+      final party = NightChaos.settingsForRound(withChaos(Chaos.party), lastRound: false, kids: true);
+      expect(party.chaos, Chaos.little, reason: 'owner Nov 26: Kids nights are capped at A little');
+      final little = NightChaos.settingsForRound(withChaos(Chaos.little), lastRound: false, kids: true);
+      expect(little.chaos, Chaos.little, reason: 'A little stays A little');
+      final off = NightChaos.settingsForRound(withChaos(Chaos.off), lastRound: false, kids: true);
+      expect(off.chaos, Chaos.off, reason: 'Off stays Off');
+    });
+
+    test('a non-Kids night keeps the host\'s Party cat', () {
+      final round = NightChaos.settingsForRound(withChaos(Chaos.party), lastRound: false);
+      expect(round.chaos, Chaos.party);
+    });
+
+    test('a Kids night\'s last round still has the cat sitting out', () {
+      final last = NightChaos.settingsForRound(withChaos(Chaos.party), lastRound: true, kids: true);
+      expect(last.chaos, Chaos.off, reason: 'G3: never in a night\'s last round');
+    });
+
     test('a night can pick a Bumper Round now that the Arena reports rounds', () {
       expect(nightBumperRoundReady, isTrue);
     });

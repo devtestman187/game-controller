@@ -34,14 +34,16 @@ abstract final class NightChaos {
   /// A night round's settings (design sections 4 and 5): the game counts points
   /// because it is a night, at the night's scale, doubled in the last round
   /// (N3), and the last round has the cat sit it out (G3: "none in a night's
-  /// last round"). Everything else is the host's own settings, so a round of a
-  /// night plays the game with the host's tolerances, speeds, time limit and
-  /// Chaos.
-  static PuzzleSettings settingsForRound(PuzzleSettings settings, {required bool lastRound}) {
+  /// last round"). A Kids night caps the cat at A little (owner, Nov 26): it
+  /// never raises a setting, so Off stays Off. Everything else is the host's
+  /// own settings, so a round of a night plays the game with the host's
+  /// tolerances, speeds, time limit and Chaos.
+  static PuzzleSettings settingsForRound(PuzzleSettings settings, {required bool lastRound, bool kids = false}) {
     final night = settings
         .withValue('night', true)
         .withValue('pointsScale', lastRound ? lastRoundPointsScale : nightPointsScale);
-    return lastRound ? night.withValue('chaos', Chaos.off.name) : night;
+    final capped = kids && settings.chaos == Chaos.party ? night.withValue('chaos', Chaos.little.name) : night;
+    return lastRound ? capped.withValue('chaos', Chaos.off.name) : capped;
   }
 }
 

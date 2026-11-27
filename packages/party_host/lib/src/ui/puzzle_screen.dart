@@ -16,6 +16,7 @@ import '../controls.dart';
 import '../local_player_source.dart';
 import '../look_providers.dart';
 import '../night/night_flow_provider.dart';
+import '../night/night_settings.dart';
 import '../night/party_night.dart';
 import '../night/round_results.dart';
 import '../players_away.dart';
@@ -248,14 +249,14 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
     Navigator.of(context).pushReplacement(MaterialPageRoute<void>(builder: (_) => screen));
   }
 
-  /// The settings this round plays with (M14 c1): a night's round counts its
-  /// points and doubles them in the night's last round (design section 2 N3),
-  /// where the cat also sits out (G3). Outside a night it is the host's own
-  /// settings, as it always was.
+  /// The settings this round plays with (M14 c1): a night's round counts its points, doubled in its last round
+  /// (N3), with the cat capped by Kids or sitting out there (G3). Outside a night, the host's own settings.
   PuzzleSettings _roundSettings() {
     final settings = ref.read(puzzleSettingsProvider);
     final night = ref.read(partyNightProvider);
-    return night == null ? settings : NightChaos.settingsForRound(settings, lastRound: night.isNextRoundTheLast);
+    if (night == null) return settings;
+    final kids = ref.read(nightSettingsProvider).isKids;
+    return NightChaos.settingsForRound(settings, lastRound: night.isNextRoundTheLast, kids: kids);
   }
 
   /// The same camera rule as a viewer's (m12-phone-layout §3): this phone's
