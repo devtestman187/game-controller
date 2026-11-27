@@ -17,8 +17,11 @@
 # and exits 1 if any case failed.
 set -u
 # The caller's limit and poll settings must not reach the runner: each case sets its own below.
+# The runner is started with WORKER=claude MAX_JOBS=n (tools/run-jobs.sh header); the stub worker FLASH_CMD must run as flash, so
+# those settings must not reach the nested runner (board3c s0: run-wave/run-wire2 failed in every runner check).
 unset RUN_CHECK_MAX_MIN RUN_REVIEW_MAX_MIN RUN_POLL_S RUN_LIMIT_UNIT_S RUN_JOB_FACTOR_PCT \
   RUN_EXPECT_DEFAULT_MIN RUN_TURN_CAP RUN_BASE_CHECK_MAX_MIN BRIEF_CHECK_SKIP
+unset WORKER MAX_JOBS
 cd "$(dirname "$0")/../.." || exit 2
 loc=$(pwd)
 tmp="$(mktemp -d "${TMPDIR:-${TEMP:-/tmp}}/run-wave-test-XXXXXX")" || exit 2

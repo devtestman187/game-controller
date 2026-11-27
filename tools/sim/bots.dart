@@ -1,18 +1,17 @@
-/// Bot profiles for the City Rush night simulator (see docs/briefs/m17/board3b/sim-model.md).
+/// Bot profiles for the City Rush night simulator (see docs/briefs/m17/board3c/sim-model-v2.md).
 ///
-/// A profile decides three things: how well a player performs in a game, what a last-place player does at a stop when
-/// Roadworks is on offer, and which road a Roadworks crew works on. The numbers of [childBot] and [adultBot] are
-/// provisional guesses, not measured values; the owner Nov 27 rule (greedy, child random) is the firm part.
+/// A profile decides how well a player performs in a game, what a last-place player does at a stop when Roadworks is on
+/// offer, and whom the winner of the gate game gates. The numbers of [childBot] and [adultBot] are provisional guesses,
+/// not measured values.
 import 'dart:math';
 
 /// What the last-place player does at a stop: build tiles, save bolts, or send a Roadworks crew.
 enum LastPlaceChoice { build, save, roadworks }
 
-/// How a bot picks the road a Roadworks crew works on.
+/// How a bot picks the rival the gate goes against.
 ///
-/// [greedy] works the player's own road unless blocking the leader gains more; [randomAny] picks uniformly among the
-/// own road (when available) and every rival road.
-enum RoadworksPickPolicy { greedy, randomAny }
+/// [leader] gates the best rival (the leader, or the nearest rival when the bot leads); [randomRival] picks any rival.
+enum GatePolicy { leader, randomRival }
 
 /// Draws a standard normal value (mean 0, deviation 1) with the Box-Muller transform.
 ///
@@ -26,16 +25,16 @@ double standardNormal(Random r) {
 /// One bot's play style for the night simulator.
 final class BotProfile {
   /// Creates a profile. [skill] is the mean game performance, [noise] its spread; [saveChance] and [roadworksChance]
-  /// are the odds of a save and of a Roadworks choice when those are possible; [blockGap] is the tile lead of the
-  /// leader over the placer at which a greedy crew blocks the leader instead of working its own road.
+  /// are the odds of a save and of a Roadworks choice when those are possible; [gatePolicy] says whom a gate goes against
+  /// and [noGateChance] the odds that the winner lets the 10 s run out and gates nobody.
   const BotProfile({
     required this.name,
     required this.skill,
     required this.noise,
     required this.saveChance,
     required this.roadworksChance,
-    required this.pickPolicy,
-    required this.blockGap,
+    required this.gatePolicy,
+    required this.noGateChance,
   });
 
   /// Name shown in logs and reports.
@@ -53,12 +52,22 @@ final class BotProfile {
   /// Chance that a last-place player picks Roadworks when it is on offer.
   final double roadworksChance;
 
-  /// How this bot picks the road a Roadworks crew works on.
-  final RoadworksPickPolicy pickPolicy;
+  /// How this bot picks the gate's target.
+  final GatePolicy gatePolicy;
 
-  /// Tile lead of the leader over the placer at which a greedy crew blocks the leader.
-  /// Unused by [RoadworksPickPolicy.randomAny].
-  final int blockGap;
+  /// Chance that this bot makes no gate pick.
+  final double noGateChance;
+
+  /// A copy that picks Roadworks with chance [chance] (the "always use it" sensitivity).
+  BotProfile withRoadworksChance(double chance) => BotProfile(
+    name: '$name-rw',
+    skill: skill,
+    noise: noise,
+    saveChance: saveChance,
+    roadworksChance: chance,
+    gatePolicy: gatePolicy,
+    noGateChance: noGateChance,
+  );
 
   /// One game performance: [skill] plus [noise] times a standard normal draw from [r].
   double performance(Random r) => skill + noise * standardNormal(r);
@@ -79,55 +88,41 @@ final class BotProfile {
     return LastPlaceChoice.build;
   }
 
-  /// The player index whose road a Roadworks crew works on; [self] is the placer's own road.
-  ///
-  /// [rivals] are the pickable rival indices, best first; [ownAvailable] says whether the own road can be picked; and
-  /// [leaderGap] is the tile lead of the best pickable rival over the placer. The caller guarantees that at least one
-  /// road can be picked.
-  /// Greedy: the first rival when there is one and the own road is not available or the gap reaches [blockGap];
-  /// otherwise [self]. Random: a uniform pick among [self] (when available) and [rivals].
-  int chooseRoadworksTarget(
-    Random r, {
-    required int self,
-    required List<int> rivals,
-    required bool ownAvailable,
-    required int leaderGap,
-  }) {
-    if (pickPolicy == RoadworksPickPolicy.greedy) {
-      if (rivals.isEmpty && !ownAvailable) {
-        throw StateError('no road can be picked');
-      }
-      if (rivals.isNotEmpty && (!ownAvailable || leaderGap >= blockGap))
-        return rivals.first;
-      return self;
-    }
-    final options = [if (ownAvailable) self, ...rivals];
-    return options[r.nextInt(options.length)];
+  /// The rival to gate, or null for no pick. [rivals] are the gate-able rival indices, best first; the caller passes
+  /// none when nobody can be gated (no draw is made then).
+  int? chooseGateTarget(Random r, {required List<int> rivals}) {
+    if (rivals.isEmpty) return null;
+    if (r.nextDouble() < noGateChance) return null;
+    return switch (gatePolicy) {
+      GatePolicy.leader => rivals.first,
+      GatePolicy.randomRival => rivals[r.nextInt(rivals.length)],
+    };
   }
 }
 
-/// A child: performs at random (no skill), saves and picks Roadworks rarely, and picks any road at random.
+/// A child: performs at random (no skill), saves and picks Roadworks rarely, gates a random rival, and lets the pick run
+/// out 30% of the time.
 ///
-/// Provisional guesses (not measured): skill 0, noise 1.4, save 10%, Roadworks 10%.
+/// Provisional guesses (not measured): skill 0, noise 1.4, save 10%, Roadworks 10%, no pick 30%.
 const childBot = BotProfile(
   name: 'child',
   skill: 0.0,
   noise: 1.4,
   saveChance: 0.1,
   roadworksChance: 0.1,
-  pickPolicy: RoadworksPickPolicy.randomAny,
-  blockGap: 0,
+  gatePolicy: GatePolicy.randomRival,
+  noGateChance: 0.3,
 );
 
-/// An adult: performs better and more steadily, saves and picks Roadworks more often, and crews play greedily.
+/// An adult: performs better and more steadily, saves and picks Roadworks more often, and gates the leader.
 ///
-/// Provisional guesses (not measured): skill 0.6, noise 0.8, save 40%, Roadworks 50%, block gap 2 tiles.
+/// Provisional guesses (not measured): skill 0.6, noise 0.8, save 40%, Roadworks 50%, no pick 10%.
 const adultBot = BotProfile(
   name: 'adult',
   skill: 0.6,
   noise: 0.8,
   saveChance: 0.4,
   roadworksChance: 0.5,
-  pickPolicy: RoadworksPickPolicy.greedy,
-  blockGap: 2,
+  gatePolicy: GatePolicy.leader,
+  noGateChance: 0.1,
 );

@@ -20,6 +20,7 @@
 set -u
 # The caller's run settings must not reach the runner (RUN_PAUSE_AFTER_WAVE leaked into two tests, Nov 25).
 for v in $(compgen -e | grep -E '^(RUN_|STUB_|BRIEF_CHECK|CHECK_|WAIT_)'); do unset "$v"; done
+unset WORKER MAX_JOBS # the runner start line sets them (board3c s0)
 cd "$(dirname "$0")/../.." || exit 2
 loc=$(pwd)
 tmp="$(mktemp -d "${TMPDIR:-${TEMP:-/tmp}}/run-stops-test-XXXXXX")" || exit 2

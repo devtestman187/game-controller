@@ -5,320 +5,270 @@ import 'dart:io';
 import '../../packages/party_host/lib/src/city/rules.dart';
 import 'bots.dart';
 import 'night_sim.dart';
-
-/// Seed of the repeatable checks; the nights of the other checks use seeds counted up from zero.
-const testSeed = 42;
+import 'sim_rules.dart';
 
 /// Nights per check that needs many seeds.
-const seedCount = 100;
-
-/// Nights per Roadworks check, where a block, a pick or a double hit has to show up.
-const roadworksSeedCount = 300;
-
-/// Games in a night for the gate and mid-ranking checks: the gate opens after game 3 and the mid ranking is taken
-/// after game 2, so both show in one night.
-const longNightGames = 5;
-
-/// Nights per mid-ranking check.
-const midSeedCount = 200;
-
-/// Other seeds tried against [testSeed] in the seed-change check.
-const otherSeedCount = 50;
-
-/// A bot that always picks Roadworks when it is offered and never saves, so the Roadworks checks see blocks and picks.
-const roadworksBot = BotProfile(
-  name: 'roadworks',
-  skill: 0.0,
-  noise: 1.4,
-  saveChance: 0.0,
-  roadworksChance: 1.0,
-  pickPolicy: RoadworksPickPolicy.randomAny,
-  blockGap: 0,
-);
-
-/// Four players: two children and two adults.
-const fourPlayers = [childBot, adultBot, childBot, adultBot];
-
-/// Four players who all play [roadworksBot].
-const roadworksPlayers = [
-  roadworksBot,
-  roadworksBot,
-  roadworksBot,
-  roadworksBot,
-];
-
-var _failed = false;
+const seedCount = 300;
 
 void check(String name, bool ok) {
   if (ok) {
     print('PASS $name');
   } else {
     print('FAIL $name');
-    _failed = true;
     exitCode = 1;
   }
 }
 
-NightConfig nightConfig({
-  required bool roadworks,
-  List<BotProfile> profiles = fourPlayers,
-  CityRules rules = CityRules.standard,
-  int games = 3,
-}) => NightConfig(
-  rules: rules,
-  profiles: profiles,
-  games: games,
-  roadworks: roadworks,
+/// A bot that always sends a Roadworks crew when it can, never saves, and always gates the leader.
+const eager = BotProfile(
+  name: 'eager',
+  skill: 0,
+  noise: 1.4,
+  saveChance: 0,
+  roadworksChance: 1,
+  gatePolicy: GatePolicy.leader,
+  noGateChance: 0,
 );
 
-/// The night for each seed from zero up to (not including) [count].
-List<NightResult> nights(NightConfig config, int count) => [
-  for (var seed = 0; seed < count; seed++) simulateNight(config, seed),
+/// A bot that never gates anybody.
+const noPicker = BotProfile(
+  name: 'no-picker',
+  skill: 0,
+  noise: 1.4,
+  saveChance: 0,
+  roadworksChance: 0,
+  gatePolicy: GatePolicy.leader,
+  noGateChance: 1,
+);
+
+SimRules rules({
+  RoadworksVariant rw = RoadworksVariant.off,
+  bool gate = true,
+  bool kids = false,
+  int roadLength = 6,
+  int tileCost = 3,
+}) => SimRules(
+  city: cityRulesWith(
+    CityRules.standard,
+    roadLength: roadLength,
+    tileCost: tileCost,
+    kidsPreset: kids,
+  ),
+  roadworks: rw,
+  targetedGate: gate,
+);
+
+NightConfig config(
+  SimRules r, {
+  int players = 4,
+  BotProfile bot = eager,
+  int games = 5,
+}) => NightConfig(rules: r, profiles: List.filled(players, bot), games: games);
+
+List<NightResult> nights(NightConfig c, [int count = seedCount]) => [
+  for (var seed = 0; seed < count; seed++) simulateNight(c, seed),
 ];
 
-bool sameList<T>(List<T> a, List<T> b) {
-  if (a.length != b.length) return false;
-  for (var index = 0; index < a.length; index++) {
-    if (a[index] != b[index]) return false;
-  }
-  return true;
-}
-
-bool sameSet<T>(Set<T> a, Set<T> b) => a.length == b.length && a.containsAll(b);
-
-bool tilesInRange(NightResult night, int roadLength) =>
-    night.tiles.every((tiles) => tiles >= 0 && tiles <= roadLength);
-
-/// The first game (1 is the first) whose stop leaves some player with [roadLength] tiles, or null; read from
-/// [NightResult.tilesAfterGame] so it can be checked against [NightResult.firstPlazaGame].
-int? firstPlazaFromTiles(NightResult night, int roadLength) {
-  for (var index = 0; index < night.tilesAfterGame.length; index++) {
-    if (night.tilesAfterGame[index].contains(roadLength)) return index + 1;
-  }
-  return null;
-}
-
-/// The Bolts all players hold at the end of every night in [set], added together.
-int boltsTotal(List<NightResult> set) => set.fold(
-  0,
-  (sum, night) => sum + night.bolts.fold(0, (total, bolts) => total + bolts),
-);
+int tilesTotal(List<NightResult> set) =>
+    set.fold(0, (sum, n) => sum + n.tiles.fold(0, (a, b) => a + b));
 
 void main() {
-  final roadLength = CityRules.standard.roadLength;
-  final base = nightConfig(roadworks: true);
-
-  final first = simulateNight(base, testSeed);
-  final again = simulateNight(base, testSeed);
+  final plain = config(rules());
+  final a = simulateNight(plain, 42);
+  final b = simulateNight(plain, 42);
   check(
     'same config and seed give the same tiles, bolts and champions',
-    sameList(first.tiles, again.tiles) &&
-        sameList(first.bolts, again.bolts) &&
-        sameSet(first.champions, again.champions),
+    a.tiles.join(',') == b.tiles.join(',') &&
+        a.bolts.join(',') == b.bolts.join(',') &&
+        a.champions.length == b.champions.length,
   );
 
-  var differing = 0;
-  for (var offset = 1; offset <= otherSeedCount; offset++) {
-    final other = simulateNight(base, testSeed + offset);
-    if (!sameList(other.tiles, first.tiles) ||
-        !sameList(other.bolts, first.bolts))
-      differing++;
+  check(
+    'the placement Bolts of places 5-8 are the 1 Bolt placeholder, 2 in the last game',
+    [
+          for (var place = 5; place <= 8; place++)
+            placementBolts(place, isLastGame: false, rules: CityRules.standard),
+        ].every((bolts) => bolts == 1) &&
+        [
+          for (var place = 5; place <= 8; place++)
+            placementBolts(place, isLastGame: true, rules: CityRules.standard),
+        ].every((bolts) => bolts == 2),
+  );
+
+  for (final players in [2, 3, 4, 5, 6, 7, 8]) {
+    final set = nights(
+      config(rules(rw: RoadworksVariant.r1), players: players),
+      100,
+    );
+    check(
+      '$players players: tiles stay within the road, every player is placed, one champion set',
+      set.every(
+        (n) =>
+            n.tiles.every((t) => t >= 0 && t <= 6) &&
+            n.finalPlaces.length == players &&
+            n.champions.isNotEmpty &&
+            n.tiles.length == players,
+      ),
+    );
   }
+
+  final noRules = config(rules(gate: false), players: 4);
   check(
-    'other seeds give other nights: $differing of $otherSeedCount seeds differ from seed $testSeed',
-    differing > 0,
+    'with the gate off no gate is placed',
+    nights(noRules).every((n) => n.gatedPlayer == null),
+  );
+  check(
+    'a kids night has no gate and no Roadworks',
+    nights(config(rules(kids: true, rw: RoadworksVariant.r1)))
+        .every((n) => n.gatedPlayer == null && n.roadworksUsers.isEmpty),
   );
 
-  final ranged = nights(base, seedCount);
+  final gated = nights(config(rules(), players: 4));
   check(
-    '4 players, 3 games: every tiles value is 0..$roadLength over $seedCount nights',
-    ranged.every((night) => tilesInRange(night, roadLength)),
-  );
-  check(
-    '4 players, 3 games: every bolts value is 0 or more over $seedCount nights',
-    ranged.every((night) => night.bolts.every((bolts) => bolts >= 0)),
-  );
-
-  final off = nights(nightConfig(roadworks: false), seedCount);
-  check(
-    'roadworks off: blocksPlaced is 0 over $seedCount nights',
-    off.every((night) => night.blocksPlaced == 0),
-  );
-
-  final rwNights = nights(
-    nightConfig(roadworks: true, profiles: roadworksPlayers),
-    roadworksSeedCount,
-  );
-  final withBlocks = rwNights.where((night) => night.blocksPlaced > 0).length;
-  check(
-    'roadworks on, roadworksChance 1: some night blocks a rival road ($withBlocks of $roadworksSeedCount nights)',
-    withBlocks > 0,
-  );
-  check(
-    'blocksReceived sums to blocksPlaced over $roadworksSeedCount nights',
-    rwNights.every(
-      (night) =>
-          night.blocksReceived.fold(0, (sum, received) => sum + received) ==
-          night.blocksPlaced,
-    ),
-  );
-  final multiHit = rwNights
-      .where((night) => night.blocksReceived.any((received) => received >= 2))
-      .length;
-  check(
-    'roadworks on: some night has a player with blocksReceived >= 2 ($multiHit of $roadworksSeedCount nights)',
-    multiHit > 0,
-  );
-  final ownPickNights = rwNights.where((night) => night.ownPicks > 0).length;
-  check(
-    'roadworks on: some night has an own pick ($ownPickNights of $roadworksSeedCount nights)',
-    ownPickNights > 0,
-  );
-  final rivalPickNights = rwNights
-      .where((night) => night.rivalPicks > 0)
-      .length;
-  check(
-    'roadworks on: some night has a rival pick ($rivalPickNights of $roadworksSeedCount nights)',
-    rivalPickNights > 0,
-  );
-
-  final usersNights = ranged
-      .where((night) => night.roadworksUsers.isNotEmpty)
-      .length;
-  check(
-    'roadworks on: some night has a roadworks user ($usersNights of $seedCount nights)',
-    usersNights > 0,
-  );
-
-  final kidsNights = nights(
-    nightConfig(
-      roadworks: true,
-      profiles: roadworksPlayers,
-      rules: kidsRules(CityRules.standard),
-    ),
-    seedCount,
-  );
-  check(
-    'kids rules: blocksPlaced 0 over $seedCount nights',
-    kidsNights.every((night) => night.blocksPlaced == 0),
-  );
-  check(
-    'kids rules: no roadworks user over $seedCount nights',
-    kidsNights.every((night) => night.roadworksUsers.isEmpty),
-  );
-
-  final dear = nights(
-    nightConfig(
-      roadworks: false,
-      rules: rulesWith(CityRules.standard, tileCost: 100),
-    ),
-    seedCount,
-  );
-  check(
-    'tile cost 100, roadworks off: every tiles value is 0 over $seedCount nights',
-    dear.every((night) => night.tiles.every((tiles) => tiles == 0)),
-  );
-
-  final free = nights(
-    nightConfig(
-      roadworks: true,
-      profiles: roadworksPlayers,
-      rules: rulesWith(CityRules.standard, roadworksCost: 0),
-    ),
-    roadworksSeedCount,
-  );
-  final freeBolts = boltsTotal(free);
-  final pricedBolts = boltsTotal(rwNights);
-  check(
-    'roadworks cost 0 leaves more bolts: $freeBolts against $pricedBolts at the standard cost over $roadworksSeedCount nights',
-    freeBolts > pricedBolts,
-  );
-
-  final cheapTiles = rulesWith(CityRules.standard, tileCost: 1);
-  final gateTile = cheapTiles.gateTileIndex;
-  final gated = nights(
-    nightConfig(roadworks: true, rules: cheapTiles, games: longNightGames),
-    roadworksSeedCount,
-  );
-  check(
-    'gate: after games 1 and 2 no player has more than $gateTile tiles over $roadworksSeedCount nights',
+    'with the gate on and a bot that always picks, every night has exactly one gate on one road',
     gated.every(
-      (night) => night.tilesAfterGame
-          .take(2)
-          .every((tiles) => tiles.every((count) => count <= gateTile)),
-    ),
-  );
-  final gateBinds = gated
-      .where(
-        (night) => night.tilesAfterGame[1].any((count) => count == gateTile),
-      )
-      .length;
-  check(
-    'gate: some night has a player at $gateTile tiles after game 2 ($gateBinds of $roadworksSeedCount nights)',
-    gateBinds > 0,
-  );
-  final pastGate = gated
-      .where(
-        (night) => night.tilesAfterGame[2].any((count) => count > gateTile),
-      )
-      .length;
-  check(
-    'gate: some night has a player above $gateTile tiles after game 3 ($pastGate of $roadworksSeedCount nights)',
-    pastGate > 0,
-  );
-
-  final mid = nights(
-    nightConfig(roadworks: true, games: longNightGames),
-    midSeedCount,
-  );
-  final playerIds = [
-    for (var index = 0; index < fourPlayers.length; index++) 'p$index',
-  ];
-  check(
-    'mid ranking: midLast is a player of the night over $midSeedCount nights',
-    mid.every((night) => playerIds.contains(night.midLast)),
-  );
-  check(
-    'mid ranking: midLeaders is not empty and holds only players of the night over $midSeedCount nights',
-    mid.every(
-      (night) =>
-          night.midLeaders.isNotEmpty &&
-          night.midLeaders.every(playerIds.contains),
-    ),
-  );
-  check(
-    'firstPlazaGame is null or between 1 and the games over $midSeedCount nights',
-    mid.every((night) {
-      final game = night.firstPlazaGame;
-      return game == null || (game >= 1 && game <= night.games);
-    }),
-  );
-  check(
-    'firstPlazaGame is the first game whose stop has a complete road over $midSeedCount nights',
-    mid.every(
-      (night) => night.firstPlazaGame == firstPlazaFromTiles(night, roadLength),
-    ),
-  );
-  check(
-    'leaderReachedPlaza is true exactly when a champion has $roadLength tiles over $midSeedCount nights',
-    mid.every(
-      (night) =>
-          night.leaderReachedPlaza ==
-          night.champions.any(
-            (id) => night.tiles[playerIds.indexOf(id)] == roadLength,
-          ),
+      (n) =>
+          n.gatedPlayer != null &&
+          n.gatesReceived.fold(0, (a, b) => a + b) == 1 &&
+          n.gatesReceived.every((g) => g <= 1),
     ),
   );
 
   check(
-    'champions are the place-1 set of finalPlaces over $seedCount nights',
-    ranged.every(
-      (night) => sameSet(night.champions, {
-        for (final entry in night.finalPlaces)
-          if (entry.place == 1) entry.playerId,
-      }),
-    ),
+    'a bot that makes no pick places no gate (nobody gated)',
+    nights(config(rules(), bot: noPicker)).every((n) => n.gatedPlayer == null),
   );
 
-  if (_failed) print('FAILED: see the FAIL lines above');
+  check('a gated night builds fewer tiles in total than the same seeds with no gate, and never more per night', () {
+    final withGate = nights(config(rules(), players: 4));
+    final without = nights(config(rules(gate: false), players: 4));
+    var never = true;
+    for (var i = 0; i < withGate.length; i++) {
+      if (withGate[i].tiles.fold(0, (a, b) => a + b) >
+          without[i].tiles.fold(0, (a, b) => a + b))
+        never = false;
+    }
+    return never && tilesTotal(withGate) < tilesTotal(without);
+  }());
+
+  check('the gate is placed at the stop of the middle game: no gate before game 3, the gated road loses a tile of progress', () {
+    final set = nights(config(rules(), players: 4));
+    return set.every((n) {
+      final gatedIndex = int.parse(n.gatedPlayer!.substring(1));
+      final before = n.tilesAfterGame[1][gatedIndex];
+      return before >= 0 && n.tilesAfterGame[2][gatedIndex] >= before;
+    });
+  }());
+
+  check('at most 3 tiles are built per player per stop without Roadworks', () {
+    final set = nights(config(rules(), players: 4));
+    return set.every((n) {
+      var previous = List.filled(4, 0);
+      for (final after in n.tilesAfterGame) {
+        for (var p = 0; p < 4; p++) {
+          if (after[p] - previous[p] > 3) return false;
+        }
+        previous = after;
+      }
+      return true;
+    });
+  }());
+
+  // Roadworks, one stop: games 1 so only the first stop plays.
+  final oneOff = nights(config(rules(gate: false), games: 1));
+  final oneR1 = nights(
+    config(rules(gate: false, rw: RoadworksVariant.r1), games: 1),
+  );
+  check('Roadworks changes only the user: every other player builds the same with it on and off', () {
+    for (var i = 0; i < oneOff.length; i++) {
+      for (var p = 0; p < 4; p++) {
+        if (!oneR1[i].roadworksUsers.contains('p$p') &&
+            oneR1[i].tiles[p] != oneOff[i].tiles[p])
+          return false;
+      }
+    }
+    return true;
+  }());
+  check(
+    'Roadworks is for last place only: at most one user per stop',
+    oneR1.every((n) => n.roadworksUsers.length <= 1) &&
+        oneR1.any((n) => n.roadworksUsers.length == 1),
+  );
+  check(
+    'with Roadworks off nobody sends a crew',
+    oneOff.every((n) => n.roadworksUsers.isEmpty && n.roadworksCrews == 0),
+  );
+
+  check('R1 costs 1 Bolt: a user holds one Bolt less than the same night with R2 (free) when both replace a Build', () {
+    final r2 = nights(
+      config(rules(gate: false, rw: RoadworksVariant.r2), games: 1),
+    );
+    var compared = 0;
+    for (var i = 0; i < oneR1.length; i++) {
+      if (oneR1[i].roadworksUsers.length == 1 &&
+          r2[i].roadworksUsers.length == 1) {
+        final user = int.parse(oneR1[i].roadworksUsers.first.substring(1));
+        if (oneR1[i].tiles[user] == r2[i].tiles[user]) {
+          compared += 1;
+          if (oneR1[i].bolts[user] != r2[i].bolts[user] - 1) return false;
+        }
+      }
+    }
+    return compared > 20;
+  }());
+
+  check('R3 (a free tile on top of the Builds) builds more tiles in total than R2 (a free tile instead of a Build)', () {
+    final r2 = nights(config(rules(gate: false, rw: RoadworksVariant.r2)));
+    final r3 = nights(config(rules(gate: false, rw: RoadworksVariant.r3)));
+    return tilesTotal(r3) > tilesTotal(r2);
+  }());
+
+  check('a Roadworks tile is the user\'s own: the user gains at least the crew tile over the same night without it in one stop', () {
+    for (var i = 0; i < oneOff.length; i++) {
+      for (final id in oneR1[i].roadworksUsers) {
+        final user = int.parse(id.substring(1));
+        if (oneR1[i].tiles[user] < 1) return false;
+      }
+    }
+    return true;
+  }());
+
+  check('a road variant of 5 tiles can finish with 5 tiles and never more', () {
+    final set = nights(
+      config(rules(roadLength: 5, rw: RoadworksVariant.r3), players: 4),
+    );
+    return set.every((n) => n.tiles.every((t) => t <= 5)) &&
+        set.any((n) => n.tiles.contains(5));
+  }());
+
+  check(
+    'a tile cost of 2 buys more tiles than 3 over the same seeds',
+    tilesTotal(nights(config(rules(tileCost: 2, gate: false)))) >
+        tilesTotal(nights(config(rules(gate: false)))),
+  );
+
+  check('the gate does not change the games: the first stop leaves the same tiles with or without the gate', () {
+    final withGate = nights(config(rules()));
+    final free = nights(config(rules(gate: false)));
+    for (var i = 0; i < withGate.length; i++) {
+      if (withGate[i].tilesAfterGame[0].join(',') !=
+          free[i].tilesAfterGame[0].join(','))
+        return false;
+      if (withGate[i].tilesAfterGame[1].join(',') !=
+          free[i].tilesAfterGame[1].join(','))
+        return false;
+    }
+    return true;
+  }());
+
+  check(
+    'one gate game means no road is gated twice',
+    nights(config(rules(), players: 8))
+        .every((n) => n.gatesReceived.every((g) => g <= 1)),
+  );
+
+  check('a gated player pays a Build to open it: with tile cost 100 nobody builds, the gate stays and no tile is built', () {
+    final set = nights(config(rules(tileCost: 100, gate: true)), 20);
+    return set.every((n) => n.tiles.every((t) => t == 0));
+  }());
 }

@@ -1,250 +1,142 @@
-// Checks for the bot profiles in bots.dart. A plain Dart script: run with `dart run tools/sim/bots_test.dart`.
+// Checks for the bots in bots.dart. A plain Dart script: run with `dart run tools/sim/bots_test.dart`.
 // Prints PASS or FAIL per check and sets the exit code to 1 when any check fails.
 import 'dart:io';
 import 'dart:math';
 
 import 'bots.dart';
 
-/// Seed for every random stream in this file, so the checks are repeatable.
-const testSeed = 42;
-
-/// Game performances drawn per bot in the same-seed and mean checks.
-const performanceDraws = 2000;
-
-/// Performances listed in the same-seed check.
-const sameSeedCount = 20;
-
-/// Draws used for the random-policy coverage checks.
-const pickDraws = 300;
-
-/// Draws used for the childBot Roadworks check.
-const childRoadworksDraws = 500;
-
-var _failed = false;
-
-/// Prints PASS or FAIL for one case and sets the exit code on a failure.
 void check(String name, bool ok) {
   if (ok) {
     print('PASS $name');
   } else {
     print('FAIL $name');
-    _failed = true;
     exitCode = 1;
   }
 }
 
-double meanPerformance(BotProfile bot, int seed, int draws) {
-  final r = Random(seed);
-  var sum = 0.0;
-  for (var i = 0; i < draws; i++) {
-    sum += bot.performance(r);
-  }
-  return sum / draws;
-}
+const sure = BotProfile(
+  name: 'sure',
+  skill: 0,
+  noise: 1,
+  saveChance: 0,
+  roadworksChance: 1,
+  gatePolicy: GatePolicy.leader,
+  noGateChance: 0,
+);
 
-List<double> performances(BotProfile bot, int seed, int count) {
-  final r = Random(seed);
-  return [for (var i = 0; i < count; i++) bot.performance(r)];
-}
+const never = BotProfile(
+  name: 'never',
+  skill: 0,
+  noise: 1,
+  saveChance: 0,
+  roadworksChance: 0,
+  gatePolicy: GatePolicy.randomRival,
+  noGateChance: 1,
+);
 
-/// Runs every bot check; the exit code is 1 when any fails.
+const randomPicker = BotProfile(
+  name: 'random',
+  skill: 0,
+  noise: 1,
+  saveChance: 0,
+  roadworksChance: 0,
+  gatePolicy: GatePolicy.randomRival,
+  noGateChance: 0,
+);
+
 void main() {
-  final sameA = performances(adultBot, testSeed, sameSeedCount);
-  final sameB = performances(adultBot, testSeed, sameSeedCount);
-  check(
-    'same seed gives the same $sameSeedCount performances',
-    sameA.length == sameSeedCount && _same(sameA, sameB),
-  );
-
-  final otherSeed = performances(adultBot, testSeed + 1, sameSeedCount);
-  check('another seed gives other performances', !_same(sameA, otherSeed));
-  var noPick = false;
-  try {
-    adultBot.chooseRoadworksTarget(
-      Random(1),
-      self: 0,
-      rivals: const [],
-      ownAvailable: false,
-      leaderGap: 0,
-    );
-  } on StateError {
-    noPick = true;
-  }
-  check('greedy with no pickable road throws', noPick);
-
-  final adultMean = meanPerformance(adultBot, testSeed, performanceDraws);
-  final childMean = meanPerformance(childBot, testSeed, performanceDraws);
-  check(
-    'adult mean ${adultMean.toStringAsFixed(3)} is higher than child mean ${childMean.toStringAsFixed(3)}',
-    adultMean > childMean,
-  );
+  check('standardNormal has mean near 0 and deviation near 1', () {
+    final r = Random(1);
+    final draws = [for (var i = 0; i < 20000; i++) standardNormal(r)];
+    final mean = draws.reduce((a, b) => a + b) / draws.length;
+    final variance =
+        draws.map((d) => (d - mean) * (d - mean)).reduce((a, b) => a + b) /
+        draws.length;
+    return mean.abs() < 0.05 && (variance - 1).abs() < 0.05;
+  }());
 
   check(
-    'cannot build and no roadworks gives save',
-    _lastPlace(adultBot, canBuild: false, roadworks: false) ==
-        LastPlaceChoice.save,
-  );
-  check(
-    'roadworks available with roadworksChance 1 gives roadworks',
-    _lastPlace(
-          _profileWith(roadworksChance: 1),
-          canBuild: true,
-          roadworks: true,
-        ) ==
-        LastPlaceChoice.roadworks,
-  );
-  check(
-    'saveChance 1, can build, roadworks unavailable gives save',
-    _lastPlace(_profileWith(saveChance: 1), canBuild: true, roadworks: false) ==
-        LastPlaceChoice.save,
-  );
-  check(
-    'saveChance 0 and roadworksChance 0 gives build',
-    _lastPlace(_profileWith(), canBuild: true, roadworks: true) ==
-        LastPlaceChoice.build,
+    'performance is the same for the same seed',
+    adultBot.performance(Random(5)) == adultBot.performance(Random(5)),
   );
 
-  var childRoadworks = 0;
-  final childRandom = Random(testSeed);
-  for (var i = 0; i < childRoadworksDraws; i++) {
-    if (childBot.chooseLastPlace(
-          childRandom,
-          canBuild: true,
+  check('an adult performs better on average than a child', () {
+    final r = Random(2);
+    double mean(BotProfile p) =>
+        [for (var i = 0; i < 5000; i++) p.performance(r)]
+            .reduce((a, b) => a + b) /
+        5000;
+    return mean(adultBot) > mean(childBot) + 0.4;
+  }());
+
+  check(
+    'the leader policy gates the first (best) rival',
+    sure.chooseGateTarget(Random(1), rivals: [4, 2, 7]) == 4,
+  );
+
+  check('the random policy reaches every rival', () {
+    final r = Random(3);
+    final seen = {
+      for (var i = 0; i < 200; i++)
+        randomPicker.chooseGateTarget(r, rivals: [4, 2, 7]),
+    };
+    return seen.length == 3 && seen.containsAll({4, 2, 7});
+  }());
+
+  check(
+    'a bot that always lets the 10 s run out gates nobody',
+    never.chooseGateTarget(Random(1), rivals: [1, 2]) == null,
+  );
+
+  check('with no rival to gate there is no pick and no draw', () {
+    final r = Random(9);
+    final probe = Random(9);
+    final pick = sure.chooseGateTarget(r, rivals: []);
+    return pick == null && r.nextInt(1000) == probe.nextInt(1000);
+  }());
+
+  check('the adult leader bot makes no pick about 10% of the time and the child about 30%', () {
+    double none(BotProfile p) {
+      final r = Random(4);
+      var count = 0;
+      for (var i = 0; i < 10000; i++) {
+        if (p.chooseGateTarget(r, rivals: [1, 2]) == null) count += 1;
+      }
+      return count / 10000;
+    }
+
+    return (none(adultBot) - 0.1).abs() < 0.02 &&
+        (none(childBot) - 0.3).abs() < 0.02;
+  }());
+
+  check(
+    'Roadworks wins when available and the chance is 1; not when unavailable',
+    sure.chooseLastPlace(Random(1), canBuild: true, roadworksAvailable: true) ==
+            LastPlaceChoice.roadworks &&
+        sure.chooseLastPlace(
+              Random(1),
+              canBuild: true,
+              roadworksAvailable: false,
+            ) ==
+            LastPlaceChoice.build,
+  );
+
+  check(
+    'a player who cannot build saves',
+    never.chooseLastPlace(
+          Random(1),
+          canBuild: false,
           roadworksAvailable: false,
         ) ==
-        LastPlaceChoice.roadworks) {
-      childRoadworks++;
-    }
-  }
-  check(
-    'childBot never picks roadworks when unavailable ($childRoadworks in $childRoadworksDraws draws)',
-    childRoadworks == 0,
+        LastPlaceChoice.save,
   );
 
-  // Greedy adult crew: self 0, rivals best first [3, 1, 2].
-  final greedyRival = adultBot.chooseRoadworksTarget(
-    Random(testSeed),
-    self: 0,
-    rivals: const [3, 1, 2],
-    ownAvailable: true,
-    leaderGap: 2,
-  );
-  check(
-    'greedy, leader gap 2 (block gap 2) blocks the leader, gives 3',
-    greedyRival == 3,
-  );
-
-  final greedyOwn = adultBot.chooseRoadworksTarget(
-    Random(testSeed),
-    self: 0,
-    rivals: const [3, 1, 2],
-    ownAvailable: true,
-    leaderGap: 1,
-  );
-  check(
-    'greedy, leader gap 1 with own road available works own road, gives 0',
-    greedyOwn == 0,
-  );
-
-  var noOwnGaps = true;
-  for (final gap in const [0, 1, 2, 5]) {
-    final target = adultBot.chooseRoadworksTarget(
-      Random(testSeed),
-      self: 0,
-      rivals: const [3, 1, 2],
-      ownAvailable: false,
-      leaderGap: gap,
-    );
-    if (target != 3) noOwnGaps = false;
-  }
-  check(
-    'greedy, own road unavailable gives 3 at every gap (0, 1, 2, 5)',
-    noOwnGaps,
-  );
-
-  final greedyNoRivals = adultBot.chooseRoadworksTarget(
-    Random(testSeed),
-    self: 0,
-    rivals: const [],
-    ownAvailable: true,
-    leaderGap: 0,
-  );
-  check('greedy, no rivals gives own road 0', greedyNoRivals == 0);
-
-  // Random child crew: self 0, rivals [3, 1], own road available.
-  final seen = <int>{};
-  final pickRandom = Random(testSeed);
-  for (var i = 0; i < pickDraws; i++) {
-    seen.add(
-      childBot.chooseRoadworksTarget(
-        pickRandom,
-        self: 0,
-        rivals: const [3, 1],
-        ownAvailable: true,
-        leaderGap: 0,
-      ),
-    );
-  }
-  check(
-    'random, own available: picks 0, 3 and 1 and nothing else (seen ${seen.toList()..sort()})',
-    seen.length == 3 && seen.containsAll(const [0, 3, 1]),
-  );
-
-  final neverOwn = <int>{};
-  final unavailableRandom = Random(testSeed);
-  for (var i = 0; i < pickDraws; i++) {
-    neverOwn.add(
-      childBot.chooseRoadworksTarget(
-        unavailableRandom,
-        self: 0,
-        rivals: const [3, 1],
-        ownAvailable: false,
-        leaderGap: 0,
-      ),
-    );
-  }
-  check(
-    'random, own unavailable: never picks 0 (seen ${neverOwn.toList()..sort()})',
-    !neverOwn.contains(0),
-  );
-
-  if (_failed) {
-    print('bots_test: FAILED');
-  } else {
-    print('bots_test: all checks passed');
-  }
-}
-
-bool _same(List<double> a, List<double> b) {
-  if (a.length != b.length) return false;
-  for (var i = 0; i < a.length; i++) {
-    if (a[i] != b[i]) return false;
-  }
-  return true;
-}
-
-/// A last-place choice from a fixed seed; [roadworks] says whether Roadworks is on offer.
-LastPlaceChoice _lastPlace(
-  BotProfile bot, {
-  required bool canBuild,
-  required bool roadworks,
-}) {
-  return bot.chooseLastPlace(
-    Random(testSeed),
-    canBuild: canBuild,
-    roadworksAvailable: roadworks,
-  );
-}
-
-/// A copy of the adult profile with the given chances, the rest as in [adultBot].
-BotProfile _profileWith({double saveChance = 0, double roadworksChance = 0}) {
-  return BotProfile(
-    name: 'test',
-    skill: adultBot.skill,
-    noise: adultBot.noise,
-    saveChance: saveChance,
-    roadworksChance: roadworksChance,
-    pickPolicy: adultBot.pickPolicy,
-    blockGap: adultBot.blockGap,
-  );
+  check('withRoadworksChance changes only the Roadworks chance', () {
+    final copy = adultBot.withRoadworksChance(1);
+    return copy.roadworksChance == 1 &&
+        copy.saveChance == adultBot.saveChance &&
+        copy.gatePolicy == adultBot.gatePolicy &&
+        copy.noGateChance == adultBot.noGateChance &&
+        copy.skill == adultBot.skill;
+  }());
 }

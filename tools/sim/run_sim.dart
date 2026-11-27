@@ -1,4 +1,4 @@
-// The City Rush night simulator's command line: plays the matrix of sim_report.dart and writes one CSV row per cell.
+// The City Rush night simulator's command line: plays the v2 matrix of sim_report.dart and writes one CSV row per cell.
 // Run from the repository root:
 //   dart run tools/sim/run_sim.dart [--nights N] [--seed S] [--out <path>]
 import 'dart:io';
@@ -13,7 +13,7 @@ const defaultNights = 5000;
 const defaultSeed = 17;
 
 /// Where the CSV goes when --out is not given.
-const defaultOutPath = 'docs/briefs/m17/city/sim-results.csv';
+const defaultOutPath = 'docs/briefs/m17/city/sim-results-v2.csv';
 
 /// The options this command line knows; each takes one value.
 const knownOptions = {'--nights', '--seed', '--out'};
@@ -36,7 +36,10 @@ void main(List<String> args) {
     exitCode = 2;
     return;
   }
-  final rows = simMatrixRows(nights, seed, CityRules.standard);
+  final rows = [
+    for (final cell in simMatrixCells(nights, seed, CityRules.standard))
+      runSimCell(cell),
+  ];
   final file = File(outPath)..parent.createSync(recursive: true);
   file.writeAsStringSync('$simCsvHeader\n${rows.map(simCsvRow).join('\n')}\n');
   print('wrote $outPath');
