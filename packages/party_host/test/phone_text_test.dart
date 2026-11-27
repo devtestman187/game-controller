@@ -45,8 +45,8 @@ void main() {
     final text = PhoneText.problemText(mismatch) ?? '';
     expect(
       text,
-      'This phone app and the Thumb Party TV app are not the same version. Update the Thumb Party TV app, or '
-      'this phone app (Android or iPhone), so both are new.',
+      'This phone and the screen have different versions of Thumb Party. Update the Thumb Party app on this phone and on the screen, '
+      'so both are the same version.',
     );
     expect(text.length, lessThan(200), reason: 'a short line a phone screen fits');
     expect(text.toLowerCase(), isNot(contains('protocol')));
