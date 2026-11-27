@@ -108,3 +108,8 @@ full check: All checks passed (182s, 8 cached). Logs: C:\Users\mrman\AppData\Loc
 2026-11-26 23:13:49 phase: apply (check took 213s)
 2026-11-26 23:13:50 committed g3b: 50b963e3 board3a g3b: CityRules config and pure rule functions
 2026-11-26 23:13:51 phase: review (apply took 2s)
+2026-11-26 23:15:40 reviewed wave3: 9 finding(s)
+METRICS g3b worker=claude model=claude-haiku-5-5 turns=12 in=24 out=26531 cache=359462 min=3.8 wall=7.8 result=0
+METRICS wave3-review worker=claude model=claude-haiku-5-5 turns=10 in=10 out=19216 cache=127908 min=1.5 wall=- result=0
+2026-11-26 23:15:43 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/board3a/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 4 jobs, 16 min
