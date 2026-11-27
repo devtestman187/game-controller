@@ -145,3 +145,6 @@ RESULT: STOPPED: commit of y0d refused (see .dart_tool/run-jobs/docs_briefs_m17_
 2026-11-26 20:07:45 finding: y0d's report has no Summary block in its first 40 lines
 2026-11-26 20:07:47 committed y0d: bbfc9664 phone: generic choices screen with lock-in, undo and result
 2026-11-26 20:07:47 phase: review (apply took 6s)
+2026-11-26 20:07:48 STOPPED: PAUSED after wave 3 (RUN_PAUSE_AFTER_WAVE=1): its review is committed; verdict it, add fix jobs to the next wave of waves.txt, commit, restart
+2026-11-26 20:11:54 reviewed wave3: 16 finding(s)
+RESULT: STOPPED: PAUSED after wave 3 (RUN_PAUSE_AFTER_WAVE=1): its review is committed; verdict it, add fix jobs to the next wave of waves.txt, commit, restart
