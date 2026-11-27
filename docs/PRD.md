@@ -178,7 +178,7 @@ Milestone 0 proves that every build and install path works, including iOS in the
 
 - Monorepo scaffold (/controller\_app, /tv\_test\_app, /packages/protocol, /docs, /assets) in a GitHub repository.
 - Shared protocol package with one placeholder message and a passing unit test.
-- CI: analyze and tests on every pull request and push to main. An unsigned iOS check build runs only when files under /controller\_app or /packages/protocol change. The build also packages an unsigned .ipa as a downloadable artifact on tags and manual triggers, ready to sign and install from Windows. Superseded builds are cancelled, caches are enabled, and builds stop after about 30 minutes.
+- CI: analyze and tests on every pull request and push to main. The unsigned iOS check build on main is a manual start only (since Nov 26; see docs/ios-setup.md "When to run the iOS check by hand"), and on pull requests it runs only when files under /controller\_app or /packages/protocol change. The build also packages an unsigned .ipa as a downloadable artifact on tags and manual triggers, ready to sign and install from Windows. Superseded builds are cancelled, caches are enabled, and builds stop after about 30 minutes.
 - /docs/ios-setup.md with the manual steps only the developer can do: installing Apple's iTunes (not the Microsoft Store version) and iLoader on the Windows PC, turning on Developer Mode on the iPhone, connecting the repo to Codemagic, downloading the .ipa artifact, importing it into iLoader to sign and install it with a free Apple ID, trusting the developer profile, and re-installing it every 7 days.
 - Android TV manifest, banner icon and remote navigation (T1).
 - /assets with CREDITS.md, and placeholder shapes instead of art.

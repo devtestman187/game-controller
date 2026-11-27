@@ -1,7 +1,7 @@
 # Codemagic: iOS builds of Thumb Party (the phone and tablet app).
 #
 # Workflows:
-#   ios-check-main   push to main   } analyze + test + unsigned build, no artifact,
+#   ios-check-main   manual start   } analyze + test + unsigned build, no artifact,
 #   ios-check-pr     PRs into main  } only when controller_app/, packages/protocol/ or packages/connection/ change
 #   ios-testflight   any tag (e.g. m8), and manual start: signed App Store build, uploaded to
 #                    TestFlight (PRD v2 M8). Replaces the unsigned .ipa for iLoader.
@@ -72,15 +72,7 @@ workflows:
     max_build_duration: 30
     environment: *environment
     cache: *cache
-    triggering:
-      events:
-        - push
-      branch_patterns:
-        - pattern: 'main'
-          include: true
-          source: true
-      cancel_previous_builds: true
-    when: *changeset
+    # Manual start only (owner, Nov 26): the TestFlight tag build covers releases. Start it by hand per docs/ios-setup.md 'When to run the iOS check by hand'.
     scripts:
       - *pub_get
       - *analyze
