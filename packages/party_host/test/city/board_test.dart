@@ -2,8 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/src/city/board.dart';
 import 'package:party_host/src/city/rules.dart';
 
-/// The four corner roads, one per player 1-4, in the order the brief names them.
-const _cornerIds = ['cog-hill', 'candy-harbour', 'pepper-park', 'lantern-ridge'];
+/// The four corner roads, one per player 1-4, in the order [CityRules.corners] names them.
+final _cornerIds = CityRules.standard.corners;
 
 /// One road of [CityRules.standard.roadLength] tiles, ids prefixed by [prefix] so no
 /// two roads share a tile.
@@ -15,9 +15,11 @@ List<Tile> _roadTiles(String prefix) => [
 /// The four corner roads, each with a gate on its gate tile, and one lane beside each
 /// corner for players 5-8.
 Board _cityBoard() {
+  final laneSuffix = CityRules.standard.laneSuffix;
   final districts = <District>[
     for (final corner in _cornerIds) District(id: corner, road: _roadTiles(corner)),
-    for (final corner in _cornerIds) District(id: '$corner-lane', laneOf: corner, road: _roadTiles('$corner-lane')),
+    for (final corner in _cornerIds)
+      District(id: '$corner$laneSuffix', laneOf: corner, road: _roadTiles('$corner$laneSuffix')),
   ];
   final gates = [
     for (final corner in _cornerIds)

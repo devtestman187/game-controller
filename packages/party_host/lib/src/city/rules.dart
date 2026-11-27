@@ -21,6 +21,9 @@ final class CityRules {
     required this.roadLength,
     required this.roadworksCost,
     required this.gateTileIndex,
+    required this.corners,
+    required this.laneSuffix,
+    this.kidsPreset = false,
   });
 
   /// The rules every night plays. The place Bolts past the fourth are placeholders
@@ -35,6 +38,8 @@ final class CityRules {
     roadLength: 6,
     roadworksCost: 1,
     gateTileIndex: 4,
+    corners: ['cog-hill', 'candy-harbour', 'pepper-park', 'lantern-ridge'],
+    laneSuffix: '-lane',
   );
 
   /// The Bolts a tile costs to build.
@@ -62,6 +67,17 @@ final class CityRules {
   /// The index of the tile where a gate stands on each corner road. It is before the
   /// Plaza and has no toll.
   final int gateTileIndex;
+
+  /// The corner roads a night's players start on, in slot order. The first four players
+  /// take these; players 5-8 take the lane beside each corner, in the same order.
+  final List<String> corners;
+
+  /// The suffix that names the lane beside a corner: a corner [corners] entry followed by
+  /// this is that lane's district id.
+  final String laneSuffix;
+
+  /// Whether this is a kids night, which offers no roadworks. Off on every other night.
+  final bool kidsPreset;
 }
 
 /// The Bolts a player earns for finishing in [place] of a round, where 1 is first.
@@ -100,9 +116,13 @@ int tilesToBuy({required int bolts, required CityRules rules}) {
 
 /// The Bolts a token pays to drive one move. Always nothing: a token never pays to drive,
 /// and it only drives onto built tiles (see [canDriveOnto]).
-int driveCost({required bool onBuiltRoad, required CityRules rules}) {
-  return 0;
-}
+int driveCost() => 0;
+
+/// Whether roadworks are offered on a night. They are not offered on a kids night.
+bool roadworksOffered({required bool kidsPreset}) => !kidsPreset;
+
+/// The Bolts a roadworks job costs, read from [CityRules.roadworksCost].
+int roadworksPrice({required CityRules rules}) => rules.roadworksCost;
 
 /// Whether a token may drive onto a tile: only onto a built tile of its own road or lane.
 bool canDriveOnto(bool builtTile) => builtTile;
@@ -136,15 +156,13 @@ List<FinalPlace> rankFinal(List<FinalStanding> players) {
   return ranked;
 }
 
-/// The corner roads a night's players start on, in slot order. The first four players
-/// take these; players 5-8 take the lane beside each corner, in the same order.
-const List<String> startCorners = ['cog-hill', 'candy-harbour', 'pepper-park', 'lantern-ridge'];
-
-/// The start tile for each player by slot order: [startCorners] for the first four,
+/// The start tile for each player by slot order: [CityRules.corners] for the first four,
 /// then the lane beside each corner. Throws [ArgumentError] when there are more players
 /// than starts.
 Map<String, String> assignStarts(List<String> playerIdsInSlotOrder) {
-  final starts = [...startCorners, for (final corner in startCorners) '$corner-lane'];
+  final corners = CityRules.standard.corners;
+  final laneSuffix = CityRules.standard.laneSuffix;
+  final starts = [...corners, for (final corner in corners) '$corner$laneSuffix'];
   if (playerIdsInSlotOrder.length > starts.length) {
     throw ArgumentError.value(playerIdsInSlotOrder.length, 'players', 'there are only ${starts.length} starts');
   }

@@ -101,12 +101,12 @@ void main() {
   });
 
   group('driving', () {
-    test('driving onto a built tile costs nothing', () {
-      expect(driveCost(onBuiltRoad: true, rules: rules), 0);
+    test('driveCost takes no arguments and returns nothing for a move onto a built tile', () {
+      expect(driveCost(), 0);
     });
 
-    test('driving onto a tile that is not built costs nothing either, so roadworks never charge a token', () {
-      expect(driveCost(onBuiltRoad: false, rules: rules), 0);
+    test('driveCost returns nothing for a tile that is not built, so roadworks never charge a token', () {
+      expect(driveCost(), 0);
     });
 
     test('a token may move onto a built tile', () {
@@ -115,6 +115,49 @@ void main() {
 
     test('a token may not move onto a tile that is not built', () {
       expect(canDriveOnto(false), isFalse);
+    });
+  });
+
+  group('roadworks', () {
+    CityRules withRoadworksCost(int cost) => CityRules(
+      tileCost: rules.tileCost,
+      placementBolts: rules.placementBolts,
+      lastGameMultiplier: rules.lastGameMultiplier,
+      saveBonus: rules.saveBonus,
+      buildCap: rules.buildCap,
+      roadLength: rules.roadLength,
+      roadworksCost: cost,
+      gateTileIndex: rules.gateTileIndex,
+      corners: rules.corners,
+      laneSuffix: rules.laneSuffix,
+    );
+
+    test('roadworks are offered on an ordinary night', () {
+      expect(roadworksOffered(kidsPreset: false), isTrue);
+    });
+
+    test('roadworks are not offered on a kids night', () {
+      expect(roadworksOffered(kidsPreset: true), isFalse);
+    });
+
+    test('roadworks price is read from the configured roadworksCost, not a constant', () {
+      final cost = rules.roadworksCost + 1;
+
+      expect(roadworksPrice(rules: withRoadworksCost(cost)), cost);
+    });
+
+    test('the standard roadworks price is the standard roadworksCost', () {
+      expect(roadworksPrice(rules: rules), rules.roadworksCost);
+    });
+  });
+
+  group('corner config', () {
+    test('the corner roads are read from CityRules in the fixed order', () {
+      expect(CityRules.standard.corners, ['cog-hill', 'candy-harbour', 'pepper-park', 'lantern-ridge']);
+    });
+
+    test('the lane beside each corner is named by the configured laneSuffix', () {
+      expect(CityRules.standard.laneSuffix, '-lane');
     });
   });
 
@@ -193,7 +236,7 @@ void main() {
     });
 
     test('more players than there are starts is rejected', () {
-      final players = [for (var slot = 1; slot <= startCorners.length * 2 + 1; slot++) 'p$slot'];
+      final players = [for (var slot = 1; slot <= CityRules.standard.corners.length * 2 + 1; slot++) 'p$slot'];
 
       expect(() => assignStarts(players), throwsArgumentError);
     });
