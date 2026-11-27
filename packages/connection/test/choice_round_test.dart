@@ -328,6 +328,7 @@ void main() {
           await _untilLocked(s.round);
 
           expect(s.round.lockedIds, {'phone-1'});
+          expect(s.round.defaultId, 'save');
           s.round.pick('phone-1', pickId: 'build', count: 2);
           expect(s.round.close()['phone-1'], const ChoiceOutcome(cardId: 'build', count: 2, byDefault: false));
         },

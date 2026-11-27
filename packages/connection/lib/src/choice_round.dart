@@ -36,7 +36,7 @@ final class ChoiceRound {
   List<ChoiceCard> Function(String playerId) get cardsFor => setup.cardsFor;
 
   /// The card that applies when nothing is chosen, or null when nothing does. The build stop must set it to
-  /// the Save +2 card; with null an away player's pick is removed and the player abstains (the away timer).
+  /// the build stop's default card; with null an away player's pick is removed and the player abstains (the away timer).
   String? get defaultId => setup.defaultId;
 
   /// The unit the costs are in, or null when there are none.
@@ -45,6 +45,8 @@ final class ChoiceRound {
   final _picks = <String, _Pick>{};
   final _awayTimers = <String, Timer>{};
   final _connected = <String>{};
+  // Players whose pick was stored during a pause; resume() must not overwrite them with the default.
+  final _pickedWhilePaused = <String>{};
   final _changes = StreamController<void>.broadcast();
   Map<String, ChoiceOutcome>? _outcomes;
   Timer? _endTimer;
@@ -109,8 +111,9 @@ final class ChoiceRound {
   }
 
   /// Ends a pause: the end timer runs for the time left, every player who is
-  /// not connected and not already set to the default gets a full grace again,
-  /// and the phones are told. Does nothing unless the round is paused.
+  /// not connected, not already set to the default and not picked during the
+  /// pause gets a full grace again, and the phones are told. A pick made during
+  /// the pause is kept, not overwritten. Does nothing unless the round is paused.
   void resume() {
     final left = _pausedLeftMs;
     if (left == null || _isDisposed || isClosed) return;
@@ -118,8 +121,11 @@ final class ChoiceRound {
     _endsAtMs = timing.nowMs() + left;
     _endTimer = Timer(Duration(milliseconds: left), close);
     for (final id in players) {
-      if (!_connected.contains(id) && _picks[id]?.byDefault != true) _startAwayTimer(id);
+      if (!_connected.contains(id) && _picks[id]?.byDefault != true && !_pickedWhilePaused.contains(id)) {
+        _startAwayTimer(id);
+      }
     }
+    _pickedWhilePaused.clear();
     _sendToConnected();
   }
 
@@ -136,6 +142,7 @@ final class ChoiceRound {
     final card = cardsFor(playerId).where((c) => c.id == pickId).firstOrNull;
     if (card == null || !card.enabled) return;
     _picks[playerId] = _Pick(cardId: pickId, count: count.clamp(1, card.maxCount), locked: locked);
+    if (isPaused) _pickedWhilePaused.add(playerId);
     _changes.add(null);
   }
 

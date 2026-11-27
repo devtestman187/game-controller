@@ -42,6 +42,9 @@ const _wellBeforeFullLength = Duration(milliseconds: 1500);
 /// The most time a test waits for the round to reach a state, so a stuck test fails.
 const _waitLimit = Duration(seconds: 5);
 
+/// How many players the pause tests' round has.
+const _playerCount = 2;
+
 final class _Setup {
   _Setup(this.server, this.capable, this.old, this.round, this.clock);
 
@@ -89,6 +92,11 @@ Future<_Setup> _setup(TestTransport t, {Duration duration = _longRound, bool sta
 Future<void> _untilLocked(ChoiceRound round) async {
   if (round.lockedIds.contains('phone-1')) return;
   await round.changes.firstWhere((_) => round.lockedIds.contains('phone-1')).timeout(_waitLimit);
+}
+
+Future<void> _untilAllLocked(ChoiceRound round) async {
+  if (round.lockedIds.length == _playerCount) return;
+  await round.changes.firstWhere((_) => round.lockedIds.length == _playerCount).timeout(_waitLimit);
 }
 
 Future<void> _untilClosed(ChoiceRound round) async {
@@ -163,10 +171,9 @@ void main() {
 
       test('a player already away when the pause starts is not defaulted during the pause', () async {
         final s = await _setup(t);
+        // The drop is awaited on the server snapshot; the round subscribed to the server's changes first,
+        // so it has handled the drop before this test continues.
         await _dropPhones(s);
-        // The round has no signal for a drop, so wait less than the grace: the drop is seen well inside it,
-        // and the grace has not run out before the pause.
-        await Future<void>.delayed(_insideGrace);
 
         s.round.pause();
         await Future<void>.delayed(_pastEnd);
@@ -177,25 +184,58 @@ void main() {
       test('a player already set to the default before the pause keeps it after resume', () async {
         final s = await _setup(t);
         await _dropPhones(s);
-        await _untilLocked(s.round);
+        await _untilAllLocked(s.round);
+        // Both players are away, so both get a default; the change events from those are over before the pause.
+        var changes = 0;
+        final sub = s.round.changes.listen((_) => changes++);
+        addTearDown(sub.cancel);
 
         s.round.pause();
         s.round.resume();
         await Future<void>.delayed(_pastEnd);
 
+        // The grace would end inside _pastEnd and add a change; no change means no second grace was started.
+        expect(changes, 0);
         expect(s.round.lockedIds, contains('phone-1'));
         expect(s.round.close()['phone-1'], const ChoiceOutcome(cardId: 'save', count: 1, byDefault: true));
       });
 
-      test('a host pick made during the pause survives resume', () async {
-        final s = await _setup(t);
-        s.round.pause();
-        s.round.pick('phone-2', pickId: 'build', count: 3);
+      test('a host pick made during the pause for a player away before it survives resume', () async {
+        // Only phone-1 ever connects, so phone-2 is away from the start; a dropped phone may reconnect by itself.
+        final server = await startHost(t);
+        final capable = await WirePhone.open(
+          server,
+          t,
+          controllerId: 'phone-1',
+          capabilities: const [Capability.choices],
+          code: server.pairingCode,
+        );
+        final round = ChoiceRound(
+          server: server,
+          players: const ['phone-1', 'phone-2'],
+          setup: ChoiceRoundSetup(
+            round: 7,
+            title: 'Shop',
+            cardsFor: (_) => _cards,
+            defaultId: 'save',
+            currency: 'Bolts',
+          ),
+          timing: ChoiceTiming(
+            duration: _longRound,
+            grace: const Duration(milliseconds: _graceMs),
+            nowMs: () => 0,
+          ),
+        );
+        addTearDown(round.dispose);
+        await capable.drain();
+        round.start();
 
-        s.round.resume();
+        round.pause();
+        round.pick('phone-2', pickId: 'build', count: 3);
+        round.resume();
         await Future<void>.delayed(_pastEnd);
 
-        expect(s.round.close()['phone-2'], const ChoiceOutcome(cardId: 'build', count: 3, byDefault: false));
+        expect(round.close()['phone-2'], const ChoiceOutcome(cardId: 'build', count: 3, byDefault: false));
       });
 
       test('the paused and resumed states reach the capable phone with the frozen time left', () async {
