@@ -6,7 +6,7 @@ Done. Added `NightState.championsAmong(players)`, the night's champion under the
 
 Files changed:
 - `packages/party_host/lib/src/night/night_state.dart`: new getter `championsAmong` (after `rows`), and `import 'champion.dart'`. It maps `rows(players)` to `ChampionEntry(id, points: total)` and returns `ChampionChain.quickNight.champions(...)`. File is 356 lines (limit 380).
-- `packages/party_host/test/night_scoring_test.dart` (new, 90 lines): 6 tests, listed below.
+- `packages/party_host/test/night_scoring_test.dart` (new, 90 lines): 8 tests, listed below.
 - `docs/briefs/m17/night1b/n1d-report.md` (this file).
 
 Decisions:
@@ -14,7 +14,7 @@ Decisions:
 - The champion is computed from `row.total`, so the +3 award points count, as they do in the rows.
 - Test (d) compares `championsAmong` with the ids of `NightRow.place == 1` in every case, as the brief asks.
 
-Tests-first: the new file was written first and run on the base. It failed to compile there (`championsAmong` undefined), so all 6 tests failed together. That means tests (a) to (c) were not separately shown to fail on the base; they are the brief's "exempt" pins and they pass now. (d) is the test that fails on the base by construction.
+Tests-first: the new file was written first and run on the base. It failed to compile there (`championsAmong` undefined), so all 8 tests failed together. That means tests (a) to (c) were not separately shown to fail on the base; they are the brief's "exempt" pins and they pass now. (d) is the test that fails on the base by construction.
 
 Computed values (from the tests, all passing):
 - (a) `nightPointsScale` = 1, `lastRoundPointsScale` = 2.
@@ -27,7 +27,7 @@ Computed values (from the tests, all passing):
 
 Checks:
 - `tools/mine.sh` (base, before the change): FAILED, the new test file did not compile (`championsAmong` undefined). Expected.
-- `tools/mine.sh` (after the change): `OK 26 tests packages/party_host`, `ok: 2 file(s) formatted, 1 package(s) analyzed, 1 package(s) tested`.
+- `tools/mine.sh` (after the change): `OK 28 tests packages/party_host`, `ok: 2 file(s) formatted, 1 package(s) analyzed, 1 package(s) tested`.
 - `dart analyze` on the two changed files: No issues found.
 - Note: the format step reformatted the new test file (the `NightState.start(...)` calls are split across lines).
 
@@ -56,7 +56,7 @@ its points, and the champion against place 1 in four cases.
 
 ## Status row
 
-n1d done: x2 last round, no random bonuses, and championsAmong (Quick night champion = place 1, ties share) pinned by 6 tests; open: no lib caller uses championsAmong yet.
+n1d done: x2 last round, no random bonuses, and championsAmong (Quick night champion = place 1, ties share) pinned by 8 tests; open: no lib caller uses championsAmong yet.
 
 ## Delete
 
