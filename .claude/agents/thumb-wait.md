@@ -1,6 +1,6 @@
 ---
 name: thumb-wait
-description: Waits on a running Thumb Party runner (tools/run-jobs.sh) so the batch driver makes no polling calls. Give it the worktree, the run dir and a max wait in minutes. Returns the wait-run.sh exit code and the last run.log lines. Never repairs, edits, commits or stops anything.
+description: Waits on a running Thumb Party runner (tools/run-jobs.sh) so the batch driver makes no polling calls. Give it the worktree, the run dir and a max wait in minutes. Returns the wait-run.sh exit code and `tail -20` of run.log. Never repairs, edits, commits or stops anything.
 tools: Bash, Read
 model: haiku
 ---
@@ -17,6 +17,6 @@ Input may also carry `since=<epoch>`: the driver took it with `date +%s` BEFORE 
 
 Never: edit files, run the runner, run check.sh or tests, touch STOP files, kill processes, git commands that change anything.
 
-Report (at most 10 lines): final exit code and its meaning; the last 8 run.log lines; whether STOP.md exists in the run dir (do not interpret it); minutes waited; number of wait-run.sh calls made.
+Report (at most 10 lines): final exit code and its meaning; the output of `tail -20 <dir>/run.log` and no more (owner, Nov 27: smaller returns, cheaper driver context); whether STOP.md exists in the run dir (do not interpret it); minutes waited; number of wait-run.sh calls made.
 
 Stdin (tune4 K1, Nov 25): no command may read stdin: never `python -`, a bare `cat`, `read` without a file or `git commit -F -`; give such a command `</dev/null` or a file. A command waiting for input hangs the call.

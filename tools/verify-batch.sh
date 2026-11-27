@@ -19,6 +19,9 @@
 #             fixed template, see docs/driver-kit.md section 12)
 #   tree      git status shows nothing but known churn (tools/churn.sh CHURN_REGEX), tracked or untracked
 #   tracker   every --claim row exists in --tracker-dir with that status
+#   musts     the batch REVIEW.md: every finding line starting `must` (`- **must** ...`, `3. must: ...`) must say
+#             fixed, closed or answered (any case) on the same line; otherwise FAIL with the count and the
+#             REVIEW.md line numbers (board3m left 3 open musts, Nov 27). No REVIEW.md is a SKIP.
 #   status    <milestone>/STATUS.md has a block (lines from the first one naming the batch to the next
 #             blank line) that names the tip commit (8-character prefix); when the tip itself edits
 #             STATUS.md it cannot name itself, so its parent counts
@@ -86,6 +89,15 @@ else
     [ "$got" = "$st" ] || tb="$tb $id(row: ${got:-?}, claimed: $st)"
   done
   if [ -n "$tb" ]; then say FAIL tracker "mismatch:$tb"; else say OK tracker "${#claims[@]} rows match the claims"; fi
+fi
+
+# musts
+if [ ! -f "$batch/REVIEW.md" ]; then say SKIP musts "no $batch/REVIEW.md"
+else
+  om="$(grep -n -i -E '^[[:space:]]*([-*]|[0-9]+[.)])?[[:space:]]*(\*\*must\*\*|must:)' "$batch/REVIEW.md" | grep -v -i -E 'fixed|closed|answered' | cut -d: -f1 | tr '
+' ' ')"
+  if [ -n "$om" ]; then say FAIL musts "$(echo $om | wc -w | tr -d ' ') open must finding(s) in $batch/REVIEW.md at line(s): $om"
+  else say OK musts "no open must finding"; fi
 fi
 
 # status

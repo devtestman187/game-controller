@@ -53,6 +53,24 @@ echo y > "$r/real.txt"
 v "$base..$tip" --no-tracker
 expect dirty-tree 1 "FAIL tree: not churn: real.txt"
 rm "$r/real.txt"
+v "$base..$tip" --no-tracker
+expect musts-skip 0 "SKIP musts"
+printf -- '- **must** a.dart:1 bad -> fix it
+2. must: b.dart:2 other
+3. **must** c.dart:3 done (fixed in w2)
+- **should** d
+' > "$r/docs/briefs/m1/b1/REVIEW.md"
+v "$base..$tip" --no-tracker
+expect musts-open 1 "FAIL musts: 2 open must finding(s)"
+expect musts-lines 1 "line(s): 1 2"
+# (rc 1 below: the untracked REVIEW.md is a dirty tree; only the musts line matters)
+printf -- '- **must** a.dart:1 bad (FIXED)
+2. must: b.dart:2 other, answered by owner
+- **must** c closed
+' > "$r/docs/briefs/m1/b1/REVIEW.md"
+v "$base..$tip" --no-tracker
+expect musts-closed 1 "OK musts"
+rm "$r/docs/briefs/m1/b1/REVIEW.md"
 GIT_AUTHOR_EMAIL=t@t GIT_COMMITTER_EMAIL=t@t git -C "$r" commit -q --allow-empty -m foreign
 bad="$(git -C "$r" rev-parse HEAD)"
 v "$base..$bad" --no-tracker
