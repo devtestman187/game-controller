@@ -341,10 +341,11 @@ Not built. bugs2 wave A with the 1-hour cache showed no large Sonnet cache write
 - night_save.dart: log a corrupt save and a failed write through LogSink; add a `version` field; split the reader (file is 187 lines); thin round-trip test (lastRoundPoints, isEndedEarly, maps, seen); one broken map per reader branch.
 - night_harness.dart: delete unused `nightContainer()` (savingNightContainer in fake_prefs.dart does the job).
 - join screen: `_JoinBody` has 9 parameters (group the roster fields); rename `full` to `isFull` and drop HostText.notJoined's unused default; join_screen_full_test.dart should use all_looks.dart and fix the phoneInfo labels; drop job ids from comments.
-- night_state.dart: championsAmong has no lib caller (wire it in B4 so the scoreboard and the champion share one rule); SavedNight typedef makes night_state.dart and night_save.dart import each other.
+- night_state.dart: SavedNight typedef makes night_state.dart and night_save.dart import each other.
 - Tests: night_round_cap_test merge lines 13/17; night_scoring_test add an awarded-player champion case.
 
 ## night1c (Nov 26)
 - night_settings.dart:36: the const constructor accepts difficultyMin above difficultyMax (tryFromJson and copyWith guard it): make it unreachable (private ctor plus validating factory).
 - night_settings.dart and night_save.dart: a broken saved value is dropped silently; log it through LogSink in both.
 - night_flow_controller_test.dart:154: the how-to bounds test repeats the pacing constants; keep only the behavioural lines.
+- night1c review: night_settings_test.dart:109,121,131 pumpEventQueue waits on queue timing, not the write (await prefs reload instead); new tests of f3 sit in puzzle_pick_test.dart:128 and night_controls_test.dart:263 (move to a new file); night_flow_controller.dart declares five public types and night_settings.dart three more (one public type per file; split with the roster handling, file is 326 lines); the three-line controller call in puzzle_pick.dart:227 repeats game_screen.dart:269 (one helper); puzzle_screen.dart (379) and game_screen.dart (366) sit near the 380 limit: split before the next change.

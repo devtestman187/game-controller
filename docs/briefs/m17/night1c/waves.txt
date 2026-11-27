@@ -6,3 +6,5 @@ n1g n1i n1j
 f1 f2
 # fix round 1b (review of wave 2; f3 touches no file of f1/f2)
 f3
+# fix round 2 (run review: ceremony must, ring on phone, dead branch)
+f4

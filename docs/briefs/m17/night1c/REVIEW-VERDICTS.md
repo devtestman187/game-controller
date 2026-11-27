@@ -19,3 +19,14 @@
 - _howTo always arms a timer (n1g question 2) - answered: not reachable
 - controller file 326 lines - minor - code-health (split roster handling later)
 - Coordinator addition (Fable review): 5-round night plays 5 games after skips/rerolls - f3 item 4; skipped-game points: partial points can reach the scoreboard today only because replaceRound is a stub (the old game keeps running and records at its end); rule needs replaceRound, so pinned as a dartdoc + REPORT note
+# Run review verdicts (10 findings, driver Nov 26)
+- provider drops controller on last round (night_flow_provider.dart:19) - must, real (f1's own rule) - f4
+- provider test real Timer (:130) - should - f4 (same file)
+- night_settings_test pumpEventQueue (:109) - minor - code-health (a delay on the mock write; f2 round 2 not worth it)
+- dead bumper branch (night_scoreboard_screen.dart:86) - should - f4 (variant-specific guard stays: only the flag line goes)
+- ring on phone (player_badge.dart:60) - should, real (e0d said host only) - f4
+- new tests in existing files (puzzle_pick_test, night_controls_test) - minor - code-health
+- five public types in controller file, three in settings - minor - code-health (split later)
+- code-health.md:344 false clause - trivial - fixed by hand
+- helper for the three-line controller call; puzzle_screen/game_screen near 380 lines - minor - code-health
+- Open questions: ring decided host-only; addPausable-during-pause (n1g Q1) and chaos default stay pending/notes; rest as built
