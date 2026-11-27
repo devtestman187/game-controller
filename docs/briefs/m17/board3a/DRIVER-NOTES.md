@@ -1,2 +1,3 @@
 - 21:51 setup: judge (Sonnet) wrote g3a and g3s briefs; waves.txt wave 1 = g3a g3s; g3b and g3f held: owner question on tile cost, draft effect and drive cost (rules, design stop)
 - 21:59 run 1: g3a result 5 (analyze info test:82 prefer_const; worker mine.sh checked 0 files; environment+minor). g3s result 2 (runner snapshot failed on absent g3a-report.md; gate). Judge repair note applied to g3a as repair:, ladder 2. Restart run 2.
+- 22:34 f3a run 1: result 5, host suite red on existing live_stats_answer_kept_test.dart (pause/resume, 1 of 1278 tests); format, analyze and the city tests passed; the same test passes alone (flutter test by file, All tests passed). Class: environment (flaky under the combined check). Retry once unchanged; a second red stops the job.
