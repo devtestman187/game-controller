@@ -36,3 +36,30 @@ wave1-review    claude claude-haiku-5-5     19  22 30470  543208     2.6    - 0 
 wave2-review    claude claude-haiku-5-5     23  28 21585  564996     1.8    - 0 (subtype=success, terminal_reason=completed)
 wave3-review    claude claude-haiku-5-5     32  42 33997 1199420     2.8    - 0 (subtype=success, terminal_reason=completed)
 ```
+
+## Judgement (resumed driver)
+Range 1d73a359..tip. Jobs: v1a c1 t1 (wave 1), v2 t2 d1 (wave 2), v1b v1c f1 (wave 3); all committed. The Vote is complete: engine (v1a), setup offer (v1b), Vote on the TV (v1c), tests and dispose fix (f1). The director is the default picker (v2). No protocol or wire change. No push, tag or build.
+Findings (REVIEW-VERDICTS.md): real and fixed by hand with a test: isKids ignores the picker (wave 2 must); stale Vote strip on the last scoreboard (should); c1 wording, `text!`, test name, report numbers; VoteHandle.done doc. The must at night_pick_test.dart:256 was proved by mutation (test fails when takeResult is ignored); no change needed. Rest deferred to docs/code-health.md "night2c run review".
+Stops: one check-failed stop (tools/tests/tv-word-test.sh: c1's version text had a bare "TV"; hand-fixed by rewording to "Thumb Party TV app", logged HAND-FIX c1); three pauses after waves; one base-check wait on the side line's heavy lock (RUN_BASE_CHECK_MAX_MIN=30 fixed it). v2 used 95 turns (cap 80), accepted.
+Odd runner behaviour: after the first restart the runner reviewed the c1 range again (wave1-c1) instead of wave 2, so wave 2 needed one more restart to get its review.
+
+## Owner questions
+1. The Vote timing default (5 s vote, 2 s winner shown) is NOT confirmed by the owner.
+2. The Kids tap now sets the director picker (brief asked for it); keep?
+3. A Next tap closes an open vote; every start-card press starts a vote: keep?
+4. tools/mine.sh: a new untracked non-.dart file prints green; the brief's literal rule says fail. Which reading?
+5. c1 wording of the "update the app" text: "This phone app and the Thumb Party TV app are not the same version. Update the Thumb Party TV app, or this phone app (Android or iPhone), so both are new." OK?
+
+## c2 finding (no code)
+The host phone's own player gets no choice round at a build stop: shop_demo_screen.dart:76-79 keeps only players with !p.local && !p.simulated, the only ChoiceRound is built at shop_demo_screen.dart:90, and the host device has no choices UI path. Recorded in docs/code-health.md.
+
+## Fixed, unverified (please check on a device)
+Vote strip and phone Vote cards on a real TV and phones; old phone sees no Roadworks; "update the app" text; Kids night saved by an older build still shows as Kids.
+
+## Cost and calls
+agent-cost since 09:15 (all sessions that day, includes the side line): total $6.23; fable $0.25, haiku $0.38, opus $1.40, sonnet $4.20. Night2c drivers: first driver 16 calls, resumed driver 52 calls (agent-cost rows) plus about 25 own after the restart; waiters: 11 thumb-wait agents, about 140 wait-run polls. Largest context (tool, all sessions) 238718 tokens. Longest wait 57 min (wave 2 first wait, polled 23 times).
+Proposed lessons (up to 3): (1) after a RUN_PAUSE restart the runner reviews the hand-fixed/previous job range first: expect an extra stop; (2) run tools/tests/tv-word-test.sh in the job's check when a job changes phone texts; (3) a brief that sets a user-visible text must name the tv-word rule.
+
+## Close
+full check: All checks passed (228s, 8 cached) at ee17182d (run.log). proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart).
+no background command of mine is still running

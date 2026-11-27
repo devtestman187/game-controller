@@ -1,5 +1,7 @@
 # M17 status
 
+**Resume here (night2c) done (Nov 27, see docs/briefs/m17/night2c/REPORT.md):** the Vote is complete (engine, setup offer, Vote on the TV), the night director is the default picker, c1 old-phone cleanup, agent-cost tooling, compat policy in the kit. Vote timing (5 s) NOT owner-confirmed. No push, tag or build. full check passed at ee17182d; tip ee17182d plus the closing commit.
+
 **Resume here (night2b) B8 done (Nov 27, see docs/briefs/m17/night2b/REPORT.md):** d2w pick provider (director, Shuffle, Playlist, played list), d2f Vote host rules + phone pin test (not wired into a night), d2x the night opens the pick, d2h how-to reason caption, d2i pool honesty, d2g Set up your night screen (scroll list, chips 48 dp; option C not built), f1-f4. Default picker stays "I pick". Six owner questions with defaults in the report. Next: BP2 internal build on the owner's word (no build done). tip 6016adb1 plus the closing commit.
 
 **Resume here (night2a) B7 done (Nov 27, see docs/briefs/m17/night2a/REPORT.md):** d2a map tier field (arena_map.dart split to arena_map_parse.dart), d2b first ratings by hand (playroom easy, pinball easy, toy-factory medium, spinning-tops medium, block-castle hard; owner confirms), d2c Variant model + pool filter, d2d NightDirector (pure, DirectorInput), d2e pickers, k1 Kids nights capped at A little (Kids length is already NightLength.three), f1 f2 fixes. Director NOT wired (nightNextVariantProvider still null): B8 notes in docs/code-health.md "night2a notes". iOS HOLD stays. Next: B8 night2b. tip 71cb648a tip 71cb648a
