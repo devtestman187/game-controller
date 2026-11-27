@@ -15,6 +15,13 @@ const seedCount = 100;
 /// Nights per Roadworks check, where a block, a pick or a double hit has to show up.
 const roadworksSeedCount = 300;
 
+/// Games in a night for the gate and mid-ranking checks: the gate opens after game 3 and the mid ranking is taken
+/// after game 2, so both show in one night.
+const longNightGames = 5;
+
+/// Nights per mid-ranking check.
+const midSeedCount = 200;
+
 /// Other seeds tried against [testSeed] in the seed-change check.
 const otherSeedCount = 50;
 
@@ -81,6 +88,21 @@ bool sameSet<T>(Set<T> a, Set<T> b) => a.length == b.length && a.containsAll(b);
 
 bool tilesInRange(NightResult night, int roadLength) =>
     night.tiles.every((tiles) => tiles >= 0 && tiles <= roadLength);
+
+/// The first game (1 is the first) whose stop leaves some player with [roadLength] tiles, or null; read from
+/// [NightResult.tilesAfterGame] so it can be checked against [NightResult.firstPlazaGame].
+int? firstPlazaFromTiles(NightResult night, int roadLength) {
+  for (var index = 0; index < night.tilesAfterGame.length; index++) {
+    if (night.tilesAfterGame[index].contains(roadLength)) return index + 1;
+  }
+  return null;
+}
+
+/// The Bolts all players hold at the end of every night in [set], added together.
+int boltsTotal(List<NightResult> set) => set.fold(
+  0,
+  (sum, night) => sum + night.bolts.fold(0, (total, bolts) => total + bolts),
+);
 
 void main() {
   final roadLength = CityRules.standard.roadLength;
@@ -200,22 +222,92 @@ void main() {
   final free = nights(
     nightConfig(
       roadworks: true,
+      profiles: roadworksPlayers,
       rules: rulesWith(CityRules.standard, roadworksCost: 0),
     ),
-    seedCount,
+    roadworksSeedCount,
   );
+  final freeBolts = boltsTotal(free);
+  final pricedBolts = boltsTotal(rwNights);
   check(
-    'roadworks cost 0 still runs: every tiles value is 0..$roadLength over $seedCount nights',
-    free.every((night) => tilesInRange(night, roadLength)),
+    'roadworks cost 0 leaves more bolts: $freeBolts against $pricedBolts at the standard cost over $roadworksSeedCount nights',
+    freeBolts > pricedBolts,
   );
 
-  final gateTile = CityRules.standard.gateTileIndex;
-  final beforeGate = rwNights.every(
-    (night) => night.tilesAfterGame.first.every((tiles) => tiles <= gateTile),
+  final cheapTiles = rulesWith(CityRules.standard, tileCost: 1);
+  final gateTile = cheapTiles.gateTileIndex;
+  final gated = nights(
+    nightConfig(roadworks: true, rules: cheapTiles, games: longNightGames),
+    roadworksSeedCount,
   );
   check(
-    'before the gate game no player has more than $gateTile tiles (after game 1, $roadworksSeedCount nights)',
-    beforeGate,
+    'gate: after games 1 and 2 no player has more than $gateTile tiles over $roadworksSeedCount nights',
+    gated.every(
+      (night) => night.tilesAfterGame
+          .take(2)
+          .every((tiles) => tiles.every((count) => count <= gateTile)),
+    ),
+  );
+  final gateBinds = gated
+      .where(
+        (night) => night.tilesAfterGame[1].any((count) => count == gateTile),
+      )
+      .length;
+  check(
+    'gate: some night has a player at $gateTile tiles after game 2 ($gateBinds of $roadworksSeedCount nights)',
+    gateBinds > 0,
+  );
+  final pastGate = gated
+      .where(
+        (night) => night.tilesAfterGame[2].any((count) => count > gateTile),
+      )
+      .length;
+  check(
+    'gate: some night has a player above $gateTile tiles after game 3 ($pastGate of $roadworksSeedCount nights)',
+    pastGate > 0,
+  );
+
+  final mid = nights(
+    nightConfig(roadworks: true, games: longNightGames),
+    midSeedCount,
+  );
+  final playerIds = [
+    for (var index = 0; index < fourPlayers.length; index++) 'p$index',
+  ];
+  check(
+    'mid ranking: midLast is a player of the night over $midSeedCount nights',
+    mid.every((night) => playerIds.contains(night.midLast)),
+  );
+  check(
+    'mid ranking: midLeaders is not empty and holds only players of the night over $midSeedCount nights',
+    mid.every(
+      (night) =>
+          night.midLeaders.isNotEmpty &&
+          night.midLeaders.every(playerIds.contains),
+    ),
+  );
+  check(
+    'firstPlazaGame is null or between 1 and the games over $midSeedCount nights',
+    mid.every((night) {
+      final game = night.firstPlazaGame;
+      return game == null || (game >= 1 && game <= night.games);
+    }),
+  );
+  check(
+    'firstPlazaGame is the first game whose stop has a complete road over $midSeedCount nights',
+    mid.every(
+      (night) => night.firstPlazaGame == firstPlazaFromTiles(night, roadLength),
+    ),
+  );
+  check(
+    'leaderReachedPlaza is true exactly when a champion has $roadLength tiles over $midSeedCount nights',
+    mid.every(
+      (night) =>
+          night.leaderReachedPlaza ==
+          night.champions.any(
+            (id) => night.tiles[playerIds.indexOf(id)] == roadLength,
+          ),
+    ),
   );
 
   check(
