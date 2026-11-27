@@ -1,0 +1,34 @@
+diff --git a/packages/party_host/lib/src/city/night_adapter.dart b/packages/party_host/lib/src/city/night_adapter.dart
+new file mode 100644
+index 00000000..a6fd3cad
+--- /dev/null
++++ b/packages/party_host/lib/src/city/night_adapter.dart
+@@ -0,0 +1,28 @@
++import 'package:game_kit/game_kit.dart' show RoundResult;
++
++import '../night/champion.dart';
++import 'stubs.dart';
++
++/// Probe stub.
++final class RoundResultPlacing implements RoundPlacing {
++  /// Probe stub.
++  const RoundResultPlacing(this.result);
++
++  /// Probe stub.
++  final RoundResult result;
++
++  @override
++  Map<String, int> placeRound(List<String> playerIds) => {};
++}
++
++/// Probe stub.
++final class NightChampionDecider implements ChampionDecider {
++  /// Probe stub.
++  NightChampionDecider([ChampionChain? chain]) : chain = chain ?? ChampionChain.cityRush;
++
++  /// Probe stub.
++  final ChampionChain chain;
++
++  @override
++  Set<String> decideChampions(List<CityChampionEntry> entries) => {};
++}
