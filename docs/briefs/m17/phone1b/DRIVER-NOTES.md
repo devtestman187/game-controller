@@ -1,1 +1,2 @@
 - 17:50 start: briefs y0p y0dc y0d y0e y0f written (y0h comes after wave 2 review); y0dc added to split y0d (client plumbing + docs vs phone UI). Pending owner defaults Q1 pause, Q3 unconfirmed card counts. next: dry-run, commit, start runner (MAX_JOBS=1, pause after wave).
+- 18:07 wave 1 done (y0p sonnet 26t, y0dc haiku 36t, both ladder 1; one resumed-session WARN on y0p). Review verdicted; no fix job yet (y0h written after wave 2). next: restart for wave 2.
