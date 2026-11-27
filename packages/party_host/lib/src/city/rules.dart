@@ -3,8 +3,10 @@
 /// need, so a test can change one value without touching the rule.
 library;
 
-/// All the City Rush tunables. [standard] is the default game; [kids] is the same
-/// game with no roadworks.
+/// The (record) entry [rankFinal] ranks: one player's state at the final stop.
+typedef FinalStanding = ({String playerId, bool reachedPlaza, int distanceTiles, int boltsLeft});
+
+/// All the City Rush tunables. [standard] is the one game every night plays.
 final class CityRules {
   /// Creates a set of rules. Each field is documented where it is declared.
   const CityRules({
@@ -14,35 +16,22 @@ final class CityRules {
     required this.saveBonus,
     required this.buildCap,
     required this.roadLength,
-    required this.draftStepsPerStop,
-    required this.roadworks,
+    required this.roadworksCost,
+    required this.gateTileIndex,
   });
 
-  /// The value of [draftStepsPerStop] that means no cap: a follower rolls to the road front.
-  static const int unlimitedDraftSteps = -1;
-
-  /// The default game, with roadworks on.
+  /// The rules every night plays. The place Bolts past the fourth are placeholders
+  /// until the owner sets them.
   static const CityRules standard = CityRules(
     tileCost: 3,
-    placementBolts: [5, 3, 2, 1],
+    // Placeholder for places 5-8 (1 Bolt each): owner-pending.
+    placementBolts: [5, 3, 2, 1, 1, 1, 1, 1],
     lastGameMultiplier: 2,
     saveBonus: 2,
     buildCap: 3,
-    roadLength: 8,
-    draftStepsPerStop: 2,
-    roadworks: true,
-  );
-
-  /// The kids preset: the standard game with no roadworks, so no tile is blocked.
-  static const CityRules kids = CityRules(
-    tileCost: 3,
-    placementBolts: [5, 3, 2, 1],
-    lastGameMultiplier: 2,
-    saveBonus: 2,
-    buildCap: 3,
-    roadLength: 8,
-    draftStepsPerStop: 2,
-    roadworks: false,
+    roadLength: 6,
+    roadworksCost: 1,
+    gateTileIndex: 4,
   );
 
   /// The Bolts a tile costs to build.
@@ -64,12 +53,12 @@ final class CityRules {
   /// The number of tiles on each district's road, Plaza included.
   final int roadLength;
 
-  /// The most tiles a follower moves for free on paved road, or
-  /// [unlimitedDraftSteps] to roll all the way to the road front.
-  final int draftStepsPerStop;
+  /// The Bolts it costs to drive through a road that is not built yet.
+  final int roadworksCost;
 
-  /// Whether roadworks block tiles in this game.
-  final bool roadworks;
+  /// The index of the tile where a gate stands on each corner road. It is before the
+  /// Plaza and has no toll.
+  final int gateTileIndex;
 }
 
 /// The Bolts a player earns for finishing in [place] of a round, where 1 is first.
@@ -95,20 +84,52 @@ int tileBuildCost(int tiles, {required int tileCost}) {
   return tiles * tileCost;
 }
 
-/// How many tiles a follower moves for free. Only a follower on paved road drafts;
-/// one off paved road stays put. The draft stops at [draftStepsPerStop] tiles, or at
-/// the road front when fewer than that are left. [CityRules.unlimitedDraftSteps]
-/// removes the cap, so the follower rolls to the road front. Throws [ArgumentError]
-/// for a negative [draftStepsPerStop] that is not the unlimited value.
-int draftStepsFor({required bool onPavedRoad, required int tilesToFront, required int draftStepsPerStop}) {
-  if (draftStepsPerStop < 0 && draftStepsPerStop != CityRules.unlimitedDraftSteps) {
-    throw ArgumentError.value(draftStepsPerStop, 'draftStepsPerStop', 'a draft cannot be negative');
+/// The most tiles a player buys in one round: as many as [CityRules.tileCost] lets
+/// [bolts] pay for, up to [CityRules.buildCap]. Throws [ArgumentError] when [bolts]
+/// is negative.
+int tilesToBuy({required int bolts, required CityRules rules}) {
+  if (bolts < 0) {
+    throw ArgumentError.value(bolts, 'bolts', 'a Bolt count cannot be negative');
   }
-  if (!onPavedRoad || tilesToFront <= 0) {
+  final affordable = bolts ~/ rules.tileCost;
+  return affordable < rules.buildCap ? affordable : rules.buildCap;
+}
+
+/// The Bolts a token pays to drive one move: nothing on a built road, and
+/// [CityRules.roadworksCost] on a road that is not built yet.
+int driveCost({required bool onBuiltRoad, required CityRules rules}) {
+  return onBuiltRoad ? 0 : rules.roadworksCost;
+}
+
+/// The tile a late joiner starts on: the slowest player's tile, the smallest of
+/// [tilePositions]. With nobody on the board the joiner starts at the first tile.
+int lateJoinTilePosition(List<int> tilePositions) {
+  if (tilePositions.isEmpty) {
     return 0;
   }
-  if (draftStepsPerStop == CityRules.unlimitedDraftSteps) {
-    return tilesToFront;
+  return tilePositions.reduce((slowest, position) => position < slowest ? position : slowest);
+}
+
+/// The player ids in final order, first place first. A player who reached the Plaza
+/// ranks above one who did not; then the greater distance; then the more Bolts left.
+/// Players tied on all three keep the order they were given in.
+List<String> rankFinal(List<FinalStanding> players) {
+  final order = List.generate(players.length, (index) => index)
+    ..sort((i, j) {
+      final byRank = _compareFinal(players[i], players[j]);
+      return byRank != 0 ? byRank : i.compareTo(j);
+    });
+  return [for (final index in order) players[index].playerId];
+}
+
+/// Negative when [a] ranks above [b] at the final stop, positive when below, zero when
+/// tied on arrival, distance and Bolts left.
+int _compareFinal(FinalStanding a, FinalStanding b) {
+  if (a.reachedPlaza != b.reachedPlaza) {
+    return a.reachedPlaza ? -1 : 1;
   }
-  return draftStepsPerStop < tilesToFront ? draftStepsPerStop : tilesToFront;
+  if (a.distanceTiles != b.distanceTiles) {
+    return b.distanceTiles.compareTo(a.distanceTiles);
+  }
+  return b.boltsLeft.compareTo(a.boltsLeft);
 }

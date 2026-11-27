@@ -1,7 +1,6 @@
-/// The City Rush board as plain data: districts with one fixed road each, the
-/// tokens that walk them, the bolts each player holds, the roadworks that block
-/// a tile, and the gates that stand on a road. No rules live here yet; this is
-/// the shape the rules and the screens are built on.
+/// The City Rush board as plain data: districts with one road each, the tokens that
+/// walk them, the bolts each player holds, the roadworks that block a tile, and the
+/// gates that stand on a road. No rules live here; the rules are in `rules.dart`.
 library;
 
 /// One square on a road. [id] is unique on the board.
@@ -20,11 +19,12 @@ final class Plaza extends Tile {
 }
 
 /// One district: its [id] and its single fixed [road], an ordered list of tiles
-/// with no branches, ending at the [Plaza].
+/// with no branches, ending at the [Plaza]. A corner road has no [laneOf]; a lane
+/// beside a corner names that corner's id in [laneOf].
 final class District {
   /// Creates a district. Throws [ArgumentError] when [road] is empty or does not
   /// end at a [Plaza].
-  District({required this.id, required List<Tile> road}) : road = List.unmodifiable(road) {
+  District({required this.id, required List<Tile> road, this.laneOf}) : road = List.unmodifiable(road) {
     if (road.isEmpty) {
       throw ArgumentError.value(road, 'road', 'a road needs at least one tile');
     }
@@ -33,46 +33,81 @@ final class District {
     }
   }
 
-  /// The district's id.
+  /// The district's id; a token's road is named by this id.
   final String id;
+
+  /// The id of the corner road this lane sits beside, or null for a corner road.
+  final String? laneOf;
 
   /// The tiles of the road in walking order; the last one is the [Plaza].
   final List<Tile> road;
 }
 
-/// The whole board: its districts. Every district id and every tile id is unique
-/// across the board, so a tile can be named by its id alone.
+/// The whole board: its districts and its gates. Every district id and every tile id
+/// is unique across the board, so a tile can be named by its id alone. Every gate
+/// stands on a road of this board, on a tile before its Plaza.
 final class Board {
-  /// Creates a board from [districts]. Throws [ArgumentError] when two districts
-  /// share an id, or when a tile id appears more than once across the roads.
-  Board({required List<District> districts}) : districts = List.unmodifiable(districts) {
+  /// Creates a board from [districts] and [gates]. Throws [ArgumentError] when two
+  /// districts share an id, when a tile id appears more than once across the roads,
+  /// or when a gate stands on no road of the board or on the Plaza.
+  Board({required List<District> districts, required List<Gate> gates})
+    : districts = List.unmodifiable(districts),
+      gates = List.unmodifiable(gates) {
     final districtIds = <String>{};
     final tileIds = <String>{};
+    final roadsById = <String, List<Tile>>{};
     for (final district in districts) {
       if (!districtIds.add(district.id)) {
         throw ArgumentError.value(district.id, 'districts', 'a district id must be unique on the board');
       }
+      roadsById[district.id] = district.road;
       for (final tile in district.road) {
         if (!tileIds.add(tile.id)) {
           throw ArgumentError.value(tile.id, 'districts', 'a tile id must be unique on the board');
         }
       }
     }
+    for (final gate in gates) {
+      final road = roadsById[gate.roadId];
+      if (road == null) {
+        throw ArgumentError.value(gate.roadId, 'gates', 'a gate must stand on a road on the board');
+      }
+      if (gate.tileIndex < 0 || gate.tileIndex >= road.length - 1) {
+        throw ArgumentError.value(gate.tileIndex, 'gates', 'a gate must stand on a tile before the Plaza');
+      }
+    }
   }
 
   /// The districts on the board, in the order they were given.
   final List<District> districts;
+
+  /// The gates on the board, in the order they were given.
+  final List<Gate> gates;
+
+  bool _gatesOpen = false;
+
+  /// Whether the gates are open. One flag serves every player, so a gate opened for
+  /// one player is open for all of them.
+  bool get gatesOpen => _gatesOpen;
+
+  /// Opens every gate on the board for every player.
+  void openAllGates() {
+    _gatesOpen = true;
+  }
 }
 
-/// A player's piece on the board: which player, where on the road, and whether
-/// they have stepped away from the game.
+/// A player's piece on the board: which player, which road, where on that road, and
+/// whether they have stepped away from the game.
 final class Token {
-  /// Creates a token for [playerId] standing at [tilePosition] on its road.
-  /// [absent] is true while the player is away.
-  const Token({required this.playerId, required this.tilePosition, this.absent = false});
+  /// Creates a token for [playerId] on the road named [roadId], standing at
+  /// [tilePosition]. [absent] is true while the player is away.
+  const Token({required this.playerId, required this.roadId, required this.tilePosition, this.absent = false});
 
   /// The player who owns this token.
   final String playerId;
+
+  /// The id of the district whose road this token walks.
+  final String roadId;
 
   /// The index of the tile on the road that this token stands on.
   final int tilePosition;
@@ -115,22 +150,18 @@ enum GateKind {
   riverFerry,
 }
 
-/// A gate on a road. It starts closed. It is shared: one [opened] flag serves
-/// every player who walks past it.
+/// A gate on the road named [roadId], standing on the tile at [tileIndex]. Whether it
+/// is open is a board-wide flag, so a gate has no open state of its own.
 final class Gate {
-  /// Creates a closed gate of the given [kind].
-  Gate({required this.kind});
+  /// Creates a gate of [kind] on the tile at [tileIndex] of the road named [roadId].
+  const Gate({required this.roadId, required this.tileIndex, required this.kind});
+
+  /// The id of the district whose road this gate stands on.
+  final String roadId;
+
+  /// The index of the tile on that road where the gate stands.
+  final int tileIndex;
 
   /// The kind of gate.
   final GateKind kind;
-
-  bool _opened = false;
-
-  /// Whether the gate is open for every player.
-  bool get opened => _opened;
-
-  /// Opens the gate for every player.
-  void open() {
-    _opened = true;
-  }
 }
