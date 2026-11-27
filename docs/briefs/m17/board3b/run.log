@@ -142,3 +142,4 @@ RESULT: STOPPED: checks failed twice on the combined tree after g3d2b
 RESULT: STOPPED: checks failed twice on the combined tree after g3g
 2026-11-27 02:52:09 HAND-FIX g3g: committed by hand after sim-test, analyze, format green; combined check red only on the same 3 runner selftests (environment)
 2026-11-27 02:52:09 HAND-FIX-EVENT g3g: 0 lines changed by hand, replaced ladder level 2
+full check: All checks passed (470s, 10 cached). Logs: C:\Users\mrman\AppData\Local\Temp/thumbparty-check-20261127-025250 2026-11-27 81557df6
