@@ -3,12 +3,14 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
 import 'package:party_host/src/night/night_director.dart';
 import 'package:party_host/src/night/night_pick.dart';
 import 'package:party_host/src/night/night_pick_provider.dart';
 import 'package:party_host/src/night/night_settings.dart';
+import 'package:party_host/src/night/night_vote.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 import 'package:test_game/test_game.dart';
 
@@ -32,9 +34,10 @@ const _defaultPoolIds = [
 
 /// A container whose prefs are [prefs], with the maps read from the data files and [random] as the night's random
 /// source; the maps are loaded before it is returned, so a pick reads their tiers.
-Future<ProviderContainer> _loaded({FakePrefs? prefs, Random? random}) async {
+Future<ProviderContainer> _loaded({FakePrefs? prefs, Random? random, List<Override> overrides = const []}) async {
   final container = ProviderContainer(
     overrides: [
+      ...overrides,
       prefsProvider.overrideWithValue(prefs ?? FakePrefs()),
       gamePlayersProvider.overrideWith(TestRoster.new),
       arenaMapLibraryProvider.overrideWith((ref) => testMaps()),
@@ -206,6 +209,39 @@ void main() {
     await pumpEventQueue();
     expect(prefs.containsKey(_playedKey), isFalse, reason: 'the night ended');
     expect(container.read(nightPickProvider), isNull);
+  });
+
+  test(
+    'the vote picker plays the game its settled vote chose, and the same round asked twice gives that pick',
+    () async {
+      final container = await _loaded(overrides: [voteStarterProvider.overrideWithValue((_, _) => null)]);
+      _useSettings(container, const NightSettings(picker: NightPicker.vote));
+      await container.read(nightVoteProvider.notifier).run(1);
+      final voted = container.read(nightVoteProvider)!.result!.variant;
+
+      final notifier = container.read(nightPickProvider.notifier);
+      final pick = notifier.pickFor(1);
+
+      expect(pick!.variant, voted);
+      expect(notifier.pickFor(1), same(pick), reason: 'asked again, the same pick');
+      expect(container.read(nightPickProvider)!.round, 1);
+    },
+  );
+
+  test('the vote picker with no vote run plays a random variant of the pool', () async {
+    final container = await _loaded();
+    _useSettings(container, const NightSettings(picker: NightPicker.vote));
+
+    final pick = container.read(nightPickProvider.notifier).pickFor(1);
+
+    expect(_defaultPoolIds, contains(pick!.variant.id));
+  });
+
+  test('the vote picker with an empty pool gives null', () async {
+    final container = await _loaded();
+    _useSettings(container, const NightSettings(picker: NightPicker.vote, pool: {'arenaRace'}));
+
+    expect(container.read(nightPickProvider.notifier).pickFor(1), isNull);
   });
 
   test('with no night running, the first read clears a saved played list and the next pick starts a new one', () async {

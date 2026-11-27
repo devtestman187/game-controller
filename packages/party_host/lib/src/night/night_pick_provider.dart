@@ -10,10 +10,12 @@ import 'night_director.dart';
 import 'night_pick.dart';
 import 'night_played_store.dart';
 import 'night_settings.dart';
+import 'night_vote.dart';
 import 'party_night.dart';
 import 'playlist_picker.dart';
 import 'shuffle_picker.dart';
 import 'variant.dart';
+import 'vote_round.dart';
 
 /// The random source the night picks with; a test overrides it with a seeded one.
 final nightRandomProvider = Provider<Random>((ref) => Random());
@@ -51,7 +53,8 @@ class NightPickNotifier extends Notifier<NightPick?> {
     if (current?.round == round) return current;
     final settings = ref.read(nightSettingsProvider);
     final pick = switch (settings.picker) {
-      NightPicker.host || NightPicker.rotating || NightPicker.vote => null,
+      NightPicker.host || NightPicker.rotating => null,
+      NightPicker.vote => _votePick(round),
       NightPicker.director => _directorPick(round, settings),
       NightPicker.shuffle => _shufflePick(round, settings),
       NightPicker.playlist => _playlistPick(round, settings),
@@ -88,6 +91,19 @@ class NightPickNotifier extends Notifier<NightPick?> {
   /// The Playlist's pick for [round]: the pool in its order, from the first round.
   NightPick? _playlistPick(int round, NightSettings settings) {
     final variant = PlaylistPicker(order: _pool(settings)).next(_playedIds.length);
+    return variant == null ? null : NightPick(round: round, variant: variant);
+  }
+
+  /// The games a vote offers: up to [maxVoteCards] of the pool, not the one played last while another is left.
+  List<Variant> voteOffer() =>
+      offerFor(pool: _pool(ref.read(nightSettingsProvider)), played: _played(), random: ref.read(nightRandomProvider));
+
+  /// The vote's pick for [round]: the game the settled vote chose, or, when no vote ran, a random one of the pool.
+  NightPick? _votePick(int round) {
+    final random = ref.read(nightRandomProvider);
+    final variant =
+        ref.read(nightVoteProvider.notifier).takeResult(round)?.variant ??
+        settleVote(offered: voteOffer(), outcomes: const {}, random: random)?.variant;
     return variant == null ? null : NightPick(round: round, variant: variant);
   }
 
