@@ -1,0 +1,2 @@
+# wave 1: two pure pieces, no shared files, no dependency between them
+g3a g3s

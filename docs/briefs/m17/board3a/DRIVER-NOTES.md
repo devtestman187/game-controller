@@ -1,0 +1,1 @@
+- 21:51 setup: judge (Sonnet) wrote g3a and g3s briefs; waves.txt wave 1 = g3a g3s; g3b and g3f held: owner question on tile cost, draft effect and drive cost (rules, design stop)
