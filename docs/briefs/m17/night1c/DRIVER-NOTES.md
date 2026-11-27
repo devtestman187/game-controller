@@ -1,1 +1,11 @@
 - 19:16 briefs written (n1f n1h e0d / n1g n1i n1j), brief-check ok; semantics chosen: skip and reroll replace the round's game, never burn a round (default, owner question); pause seam = NightPausable list. next: probe-deps, dry-run, commit, start
+- 19:20 briefs committed; start epoch 1795742424
+- 19:40 wave 1 done (n1h 71c6f3bd n1f 302bb451 e0d e91bf9e7, all ladder 1); review brief only committed (verdicts: none, no findings file). restart for wave 2
+- 19:46 wave-1 review verdicted (REVIEW-VERDICTS.md), f1 f2 added in wave 3; restart 2 for wave 2
+- 20:11 wave 2 done: n1g 25e9dbe2, n1i 1a824409, n1j 6569460e (all ladder 1, Haiku; n1f/e0d Sonnet). Paused after wave 2; its review runs at the next start.
+## Next action (20:11)
+- run: docs/briefs/m17/night1c, tip 9dbad693, runner stopped (PAUSED after wave 2), start epoch of last run 1795743971; 3 runner starts so far
+- done.txt: n1h n1f e0d n1g n1i n1j; parked/dropped: none; verdicts so far in REVIEW-VERDICTS.md (wave 1)
+- do next: take date +%s, restart: WORKER=claude NO_PUSH=1 MAX_JOBS=2 nohup bash tools/run-jobs.sh docs/briefs/m17/night1c (no PAUSE needed: last wave f1 f2 is the final one; the wave-2 review runs first, verdict it, add f3 only if a must needs files not in f1/f2); then thumb-wait since=<epoch>; then wrap: REVIEW-VERDICTS, batch-report.sh, batch-close.sh --run-check, REPORT.md, RELEASE-NOTES final, STATUS line, agent-cost since 2026-11-26T17:07 (B3) -> use batch start 19:05 (B4 briefs), proc-sweep, hand-back template
+- open: class notes: none failed. Owner questions for REPORT: (1) skip and reroll replace the round's game and never burn a round (default chosen; NightFlow unchanged); (2) pause seam = NightPausable list on NightFlowController (addPausable); ChoiceRound (B6 y0p) must implement pause()/resume() and call controller.addPausable after merge; no UI buttons for pause/skip/reroll yet; auto-start of next game needs nightNextVariantProvider (director, B7); (3) difficulty uses Level easy..hard until d2a. Code-health added (night1c). Lesson candidate: a tool call batch with 12 heredocs failed to parse; use Write
+- calls so far: driver ~32, waiters thumb-wait 9+3+11 tool calls (3 agents)
