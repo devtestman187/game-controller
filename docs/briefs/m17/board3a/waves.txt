@@ -1,2 +1,4 @@
 # wave 1: two pure pieces, no shared files, no dependency between them
 g3a g3s
+# fix round 1 (review of wave 1): new-dir files only
+f3a
