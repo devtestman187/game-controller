@@ -197,3 +197,9 @@ RESULT: STOPPED: brief gate: brief-check failed: FAIL changes f3: NightStartScre
 2026-11-27 03:32:51 committed f3: 0ff5637b party_host: start card takes five parameters and reads its own pick
 2026-11-27 03:32:53 committed f4: 97f39965 night setup: label text at 14 dp, clearer Hardest and Done tests
 2026-11-27 03:32:53 phase: review (apply took 4s)
+2026-11-27 03:35:20 reviewed wave4: 9 finding(s)
+METRICS f3 worker=claude model=claude-haiku-5-5 turns=13 in=22 out=6602 cache=225881 min=2.3 wall=2.9 result=0
+METRICS f4 worker=claude model=claude-haiku-5-5 turns=35 in=38 out=22886 cache=926960 min=3.8 wall=4.4 result=0
+METRICS wave4-review worker=claude model=claude-haiku-5-5 turns=32 in=28 out=26730 cache=553562 min=2.1 wall=- result=0
+2026-11-27 03:35:27 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/night2b/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 10 jobs, 12 min
