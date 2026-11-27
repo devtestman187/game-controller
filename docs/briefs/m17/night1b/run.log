@@ -72,3 +72,14 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-26 18:27:44 committed e0c: 52d5bfe2 Save the party night after each change and resume it on restart
 2026-11-26 18:27:44 phase: review (apply took 2s)
 2026-11-26 18:31:09 reviewed wave3: 11 finding(s)
+2026-11-26 18:31:10 start the run's review
+METRICS e0c worker=claude model=claude-haiku-5-5 turns=77 in=80 out=61886 cache=2945641 min=10.2 wall=13.8 result=0
+METRICS e0e worker=claude model=claude-haiku-5-5 turns=33 in=50 out=21081 cache=950304 min=5.6 wall=8.9 result=0
+METRICS n1c worker=claude model=claude-haiku-5-5 turns=12 in=22 out=6507 cache=214282 min=2.3 wall=5.6 result=0
+METRICS n1d worker=claude model=claude-haiku-5-5 turns=23 in=30 out=13018 cache=459055 min=3.2 wall=6.3 result=0
+METRICS run-review worker=claude model=claude-haiku-5-5 turns=48 in=44 out=30445 cache=913496 min=2.3 wall=- result=0
+METRICS wave1-review worker=claude model=claude-haiku-5-5 turns=31 in=30 out=24582 cache=565300 min=1.9 wall=- result=0
+METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=15 in=16 out=10709 cache=199772 min=0.9 wall=- result=0
+METRICS wave3-review worker=claude model=claude-haiku-5-5 turns=28 in=42 out=36667 cache=1031452 min=3.1 wall=- result=0
+2026-11-26 18:34:00 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/night1b/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 4 jobs, 30 min
