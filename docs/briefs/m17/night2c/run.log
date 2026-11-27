@@ -115,3 +115,6 @@ RESULT: STOPPED: checks failed twice on the combined tree after t2 d1 v2
 2026-11-27 11:37:01 phase: review (apply took 6s)
 2026-11-27 11:37:03 reviewed wave1-c1: 9 finding(s)
 2026-11-27 11:37:03 STOPPED: PAUSED after wave 2 (RUN_PAUSE_AFTER_WAVE=1): its review is committed; verdict it, add fix jobs to the next wave of waves.txt, commit, restart
+2026-11-27 11:37:29 RUN_MAX_MIN=132 min (computed backstop of the jobs still to do)
+2026-11-27 11:39:18 reviewed wave2: 8 finding(s)
+RESULT: STOPPED: PAUSED after wave 2 (RUN_PAUSE_AFTER_WAVE=1): its review is committed; verdict it, add fix jobs to the next wave of waves.txt, commit, restart
