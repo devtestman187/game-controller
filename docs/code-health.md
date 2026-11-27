@@ -343,3 +343,8 @@ Not built. bugs2 wave A with the 1-hour cache showed no large Sonnet cache write
 - join screen: `_JoinBody` has 9 parameters (group the roster fields); rename `full` to `isFull` and drop HostText.notJoined's unused default; join_screen_full_test.dart should use all_looks.dart and fix the phoneInfo labels; drop job ids from comments.
 - night_state.dart: championsAmong has no lib caller (wire it in B4 so the scoreboard and the champion share one rule); SavedNight typedef makes night_state.dart and night_save.dart import each other.
 - Tests: night_round_cap_test merge lines 13/17; night_scoring_test add an awarded-player champion case.
+
+## night1c (Nov 26)
+- night_settings.dart:36: the const constructor accepts difficultyMin above difficultyMax (tryFromJson and copyWith guard it): make it unreachable (private ctor plus validating factory).
+- night_settings.dart and night_save.dart: a broken saved value is dropped silently; log it through LogSink in both.
+- night_flow_controller_test.dart:154: the how-to bounds test repeats the pacing constants; keep only the behavioural lines.
