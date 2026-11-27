@@ -87,7 +87,8 @@ final class Board {
   bool _gatesOpen = false;
 
   /// Whether the gates are open. One flag serves every player, so a gate opened for
-  /// one player is open for all of them.
+  /// one player is open for all of them. The gates stay open for the night; a new night
+  /// builds a new [Board], so there is no reset method.
   bool get gatesOpen => _gatesOpen;
 
   /// Opens every gate on the board for every player.

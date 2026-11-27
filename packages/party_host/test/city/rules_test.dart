@@ -100,13 +100,21 @@ void main() {
     });
   });
 
-  group('driveCost', () {
-    test('driving on paved road costs nothing', () {
+  group('driving', () {
+    test('driving onto a built tile costs nothing', () {
       expect(driveCost(onBuiltRoad: true, rules: rules), 0);
     });
 
-    test('driving on road that is not built costs roadworksCost', () {
-      expect(driveCost(onBuiltRoad: false, rules: rules), rules.roadworksCost);
+    test('driving onto a tile that is not built costs nothing either, so roadworks never charge a token', () {
+      expect(driveCost(onBuiltRoad: false, rules: rules), 0);
+    });
+
+    test('a token may move onto a built tile', () {
+      expect(canDriveOnto(true), isTrue);
+    });
+
+    test('a token may not move onto a tile that is not built', () {
+      expect(canDriveOnto(false), isFalse);
     });
   });
 
@@ -130,7 +138,7 @@ void main() {
         (playerId: 'arrived', reachedPlaza: true, distanceTiles: rules.roadLength, boltsLeft: 0),
       ]);
 
-      expect(ranking, ['arrived', 'far']);
+      expect(ranking, [(playerId: 'arrived', place: 1), (playerId: 'far', place: 2)]);
     });
 
     test('among those who did not arrive, the greater distance ranks first', () {
@@ -139,7 +147,7 @@ void main() {
         (playerId: 'long', reachedPlaza: false, distanceTiles: rules.roadLength - 1, boltsLeft: 0),
       ]);
 
-      expect(ranking, ['long', 'short']);
+      expect(ranking, [(playerId: 'long', place: 1), (playerId: 'short', place: 2)]);
     });
 
     test('on equal distance, the Bolts left decide', () {
@@ -148,16 +156,46 @@ void main() {
         (playerId: 'rich', reachedPlaza: false, distanceTiles: rules.gateTileIndex, boltsLeft: rules.tileCost),
       ]);
 
-      expect(ranking, ['rich', 'poor']);
+      expect(ranking, [(playerId: 'rich', place: 1), (playerId: 'poor', place: 2)]);
     });
 
-    test('players tied on every count keep the order they were given in', () {
+    test('players tied on arrival, distance and Bolts left share a place, then the next place skips past them', () {
       final ranking = rankFinal([
         (playerId: 'first', reachedPlaza: false, distanceTiles: rules.gateTileIndex, boltsLeft: 0),
         (playerId: 'second', reachedPlaza: false, distanceTiles: rules.gateTileIndex, boltsLeft: 0),
+        (playerId: 'third', reachedPlaza: false, distanceTiles: rules.gateTileIndex - 1, boltsLeft: 0),
       ]);
 
-      expect(ranking, ['first', 'second']);
+      expect(ranking, [(playerId: 'first', place: 1), (playerId: 'second', place: 1), (playerId: 'third', place: 3)]);
+    });
+  });
+
+  group('assignStarts', () {
+    test('the first four players start on the corners, in slot order', () {
+      final starts = assignStarts(['p1', 'p2', 'p3', 'p4']);
+
+      expect(starts, {'p1': 'cog-hill', 'p2': 'candy-harbour', 'p3': 'pepper-park', 'p4': 'lantern-ridge'});
+    });
+
+    test('players 5-8 start on the second lane beside each corner, in the same order', () {
+      final starts = assignStarts(['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8']);
+
+      expect(starts, {
+        'p1': 'cog-hill',
+        'p2': 'candy-harbour',
+        'p3': 'pepper-park',
+        'p4': 'lantern-ridge',
+        'p5': 'cog-hill-lane',
+        'p6': 'candy-harbour-lane',
+        'p7': 'pepper-park-lane',
+        'p8': 'lantern-ridge-lane',
+      });
+    });
+
+    test('more players than there are starts is rejected', () {
+      final players = [for (var slot = 1; slot <= startCorners.length * 2 + 1; slot++) 'p$slot'];
+
+      expect(() => assignStarts(players), throwsArgumentError);
     });
   });
 

@@ -6,6 +6,9 @@ library;
 /// The (record) entry [rankFinal] ranks: one player's state at the final stop.
 typedef FinalStanding = ({String playerId, bool reachedPlaza, int distanceTiles, int boltsLeft});
 
+/// One player's place in the final ranking, where 1 is first. Tied players share a place.
+typedef FinalPlace = ({String playerId, int place});
+
 /// All the City Rush tunables. [standard] is the one game every night plays.
 final class CityRules {
   /// Creates a set of rules. Each field is documented where it is declared.
@@ -95,11 +98,14 @@ int tilesToBuy({required int bolts, required CityRules rules}) {
   return affordable < rules.buildCap ? affordable : rules.buildCap;
 }
 
-/// The Bolts a token pays to drive one move: nothing on a built road, and
-/// [CityRules.roadworksCost] on a road that is not built yet.
+/// The Bolts a token pays to drive one move. Always nothing: a token never pays to drive,
+/// and it only drives onto built tiles (see [canDriveOnto]).
 int driveCost({required bool onBuiltRoad, required CityRules rules}) {
-  return onBuiltRoad ? 0 : rules.roadworksCost;
+  return 0;
 }
+
+/// Whether a token may drive onto a tile: only onto a built tile of its own road or lane.
+bool canDriveOnto(bool builtTile) => builtTile;
 
 /// The tile a late joiner starts on: the slowest player's tile, the smallest of
 /// [tilePositions]. With nobody on the board the joiner starts at the first tile.
@@ -110,16 +116,39 @@ int lateJoinTilePosition(List<int> tilePositions) {
   return tilePositions.reduce((slowest, position) => position < slowest ? position : slowest);
 }
 
-/// The player ids in final order, first place first. A player who reached the Plaza
-/// ranks above one who did not; then the greater distance; then the more Bolts left.
-/// Players tied on all three keep the order they were given in.
-List<String> rankFinal(List<FinalStanding> players) {
+/// The players in final order, first place first, each with their place. A player who
+/// reached the Plaza ranks above one who did not; then the greater distance; then the
+/// more Bolts left. Players tied on all three share a place (standard competition
+/// ranking, so 1, 1, 3). Ranking only at the final stop; an early arrival keeps its
+/// place but does not end the night.
+List<FinalPlace> rankFinal(List<FinalStanding> players) {
   final order = List.generate(players.length, (index) => index)
     ..sort((i, j) {
       final byRank = _compareFinal(players[i], players[j]);
       return byRank != 0 ? byRank : i.compareTo(j);
     });
-  return [for (final index in order) players[index].playerId];
+  final ranked = <FinalPlace>[];
+  for (var position = 0; position < order.length; position++) {
+    final player = players[order[position]];
+    final tiedWithAbove = position > 0 && _compareFinal(players[order[position - 1]], player) == 0;
+    ranked.add((playerId: player.playerId, place: tiedWithAbove ? ranked.last.place : position + 1));
+  }
+  return ranked;
+}
+
+/// The corner roads a night's players start on, in slot order. The first four players
+/// take these; players 5-8 take the lane beside each corner, in the same order.
+const List<String> startCorners = ['cog-hill', 'candy-harbour', 'pepper-park', 'lantern-ridge'];
+
+/// The start tile for each player by slot order: [startCorners] for the first four,
+/// then the lane beside each corner. Throws [ArgumentError] when there are more players
+/// than starts.
+Map<String, String> assignStarts(List<String> playerIdsInSlotOrder) {
+  final starts = [...startCorners, for (final corner in startCorners) '$corner-lane'];
+  if (playerIdsInSlotOrder.length > starts.length) {
+    throw ArgumentError.value(playerIdsInSlotOrder.length, 'players', 'there are only ${starts.length} starts');
+  }
+  return {for (var slot = 0; slot < playerIdsInSlotOrder.length; slot++) playerIdsInSlotOrder[slot]: starts[slot]};
 }
 
 /// Negative when [a] ranks above [b] at the final stop, positive when below, zero when
