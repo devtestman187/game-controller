@@ -70,3 +70,5 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-27 11:25:43 phase: apply (check took 921s)
 2026-11-27 11:25:45 committed g3r2: 597708bc board3m g3r2: sim reads the final night rules and the V2 label is fixed
 2026-11-27 11:25:45 phase: review (apply took 2s)
+2026-11-27 11:25:46 reviewed wave2: 9 finding(s)
+2026-11-27 11:28:42 reviewed wave3: 6 finding(s)
