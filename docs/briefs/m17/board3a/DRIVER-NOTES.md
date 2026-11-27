@@ -4,3 +4,4 @@
 - 23:16 g3b rework: owner FINAL road model (4 corners, own roads, lanes, gates at tile 4, no draft). Run-1 g3b commit 50b963e3 superseded; its 9 review findings superseded. Judge spawns used: 6 of 6 (last spawn = this brief). Review verdicts for the rework have no judge spawn left: STOP to main.
 - 23:18 g3b rework run: the runner resumed the old g3b job state (worker 16 s, no change), so the commit was refused. Fix: new job name g3b2 (brief renamed, report g3b2-report.md). Restart.
 - 23:38 main verdicts on wave3-g3b2 (no judge): kids no roadworks, driveCost 0 + canDriveOnto, shared place rank, assignStarts, dartdocs. Fix job g3b3 (new name). Process note: g3b2 worker ran tools/mine.sh despite ban.
+- 23:56 wave4 review (6 findings) -> fix job g3b4: kids flag, driveCost params, roadworks reader, corner ids to config. Main is the judge.
