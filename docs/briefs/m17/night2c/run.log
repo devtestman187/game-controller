@@ -153,3 +153,4 @@ RESULT: STOPPED: PAUSED after wave 2 (RUN_PAUSE_AFTER_WAVE=1): its review is com
 2026-11-27 12:12:39 finding: f1's report has no Summary block in its first 40 lines
 2026-11-27 12:12:41 committed f1: 21e83c81 night2c f1: vote engine tests, dispose completes done
 2026-11-27 12:12:41 phase: review (apply took 6s)
+2026-11-27 12:15:55 reviewed wave3: 7 finding(s)
