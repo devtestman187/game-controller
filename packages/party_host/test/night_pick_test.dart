@@ -106,14 +106,24 @@ void main() {
     }
   });
 
-  test('the director never picks the variant played last while another is left', () async {
+  test('the director opens at medium when the night starts at medium, with no easier game', () async {
     final container = await _loaded();
-    _useSettings(container, const NightSettings(picker: NightPicker.director));
-    final notifier = container.read(nightPickProvider.notifier);
-    final first = notifier.pickFor(1);
-    final second = notifier.pickFor(2);
-    expect(first, isNotNull);
-    expect(second?.variant, isNot(first?.variant), reason: 'the played list is used');
+    _useSettings(container, const NightSettings(picker: NightPicker.director, difficultyMin: Level.medium));
+    final pick = container.read(nightPickProvider.notifier).pickFor(1);
+    expect(pick?.reason, DirectorReason.opening);
+    expect(pick?.variant.tier, Level.medium);
+  });
+
+  test('the director never picks the variant played last while another is left, for seeds 0 to 19', () async {
+    for (var seed = 0; seed < 20; seed++) {
+      final container = await _loaded(random: Random(seed));
+      _useSettings(container, const NightSettings(picker: NightPicker.director));
+      final notifier = container.read(nightPickProvider.notifier);
+      final first = notifier.pickFor(1);
+      final second = notifier.pickFor(2);
+      expect(first, isNotNull, reason: 'seed $seed');
+      expect(second?.variant, isNot(first?.variant), reason: 'seed $seed: the played list is used');
+    }
   });
 
   test('pickFor for the same round twice gives the same pick and records it once', () async {
@@ -172,6 +182,8 @@ void main() {
     final first = await _loaded(prefs: prefs);
     _useSettings(first, const NightSettings(picker: NightPicker.shuffle));
     first.read(partyNightProvider.notifier).start(length: NightLength.three, awards: threeAwards);
+    // A night saved before any round is played is dropped on a restart, so the night has a played round.
+    first.read(partyNightProvider.notifier).recordRound(roundResult(points: {'p1': 5}, winners: {'p1'}));
     final firstPick = first.read(nightPickProvider.notifier).pickFor(1);
     expect(firstPick, isNotNull);
     await pumpEventQueue();
@@ -194,5 +206,23 @@ void main() {
     await pumpEventQueue();
     expect(prefs.containsKey(_playedKey), isFalse, reason: 'the night ended');
     expect(container.read(nightPickProvider), isNull);
+  });
+
+  test('with no night running, the first read clears a saved played list and the next pick starts a new one', () async {
+    final prefs = FakePrefs();
+    await prefs.setString(_playedKey, jsonEncode(['shapeRace:easy']));
+    final container = await _loaded(prefs: prefs);
+    expect(container.read(nightPickProvider), isNull);
+    await pumpEventQueue();
+    expect(prefs.containsKey(_playedKey), isFalse, reason: 'no night runs, so the saved list is removed');
+
+    _useSettings(container, const NightSettings(picker: NightPicker.shuffle));
+    expect(container.read(nightPickProvider.notifier).pickFor(1), isNotNull);
+    await pumpEventQueue();
+    expect(
+      jsonDecode(prefs.getString(_playedKey) ?? '[]') as List,
+      hasLength(1),
+      reason: 'the old list was not loaded',
+    );
   });
 }

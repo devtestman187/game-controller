@@ -99,6 +99,19 @@ void main() {
       expect(reached, {offered[0], offered[2]});
     });
 
+    test('a game offered twice is one candidate: a 1-1 tie between A and B is about even, not A twice as likely', () {
+      final twice = [offered[0], offered[0], offered[1]];
+      var aWins = 0;
+      for (var seed = 0; seed < 200; seed++) {
+        final result = settleVote(offered: twice, outcomes: _votes([offered[0], offered[1]]), random: Random(seed))!;
+        expect(result.byChance, isTrue);
+        expect(result.votes, 1);
+        if (result.variant == offered[0]) aWins++;
+      }
+      // 200 seeds: an even tie gives A about 100; a double-counted A gives about 133 (67 percent).
+      expect(aWins, inInclusiveRange(80, 120), reason: 'A won $aWins of 200');
+    });
+
     test('nobody voting and all abstaining are random among the offered, with no votes', () {
       for (final outcomes in [
         <String, ChoiceOutcome>{},

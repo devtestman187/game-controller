@@ -59,14 +59,16 @@ VoteResult? settleVote({
   required Random random,
 }) {
   if (offered.isEmpty) return null;
-  final votes = {for (final variant in offered) variant.id: 0};
+  // A game offered twice is still one candidate, so it is counted and drawn once.
+  final distinct = offered.toSet().toList();
+  final votes = {for (final variant in distinct) variant.id: 0};
   for (final outcome in outcomes.values) {
     final id = outcome.cardId;
     if (id != null && votes.containsKey(id)) votes[id] = votes[id]! + 1;
   }
   final most = votes.values.reduce(max);
   final leaders = [
-    for (final variant in offered)
+    for (final variant in distinct)
       if (votes[variant.id] == most) variant,
   ];
   final winner = leaders.length == 1 ? leaders.first : leaders[random.nextInt(leaders.length)];

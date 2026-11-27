@@ -29,7 +29,14 @@ class NightPickNotifier extends Notifier<NightPick?> {
 
   @override
   NightPick? build() {
-    _playedIds = NightPlayedStore(ref.watch(prefsProvider)).load();
+    final store = NightPlayedStore(ref.watch(prefsProvider));
+    // A saved played list belongs to a running night: with no night running, it is cleared rather than loaded.
+    if (ref.read(partyNightProvider) == null) {
+      _playedIds = const [];
+      unawaited(store.clear());
+    } else {
+      _playedIds = store.load();
+    }
     // A night that ends, or is dropped, takes its played list and its pick with it.
     ref.listen(partyNightProvider, (_, night) {
       if (night == null) _forgetNight();
