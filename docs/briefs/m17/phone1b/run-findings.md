@@ -3,3 +3,4 @@
 - y0f's report has no Summary block in its first 40 lines
 - y0d's report has no Summary block in its first 40 lines
 - y0d's report has no Summary block in its first 40 lines
+- y0h6's report has no Summary block in its first 40 lines

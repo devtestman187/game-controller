@@ -183,3 +183,13 @@ RESULT: STOPPED: PAUSED after wave 3 (RUN_PAUSE_AFTER_WAVE=1): its review is com
 2026-11-26 20:48:09 committed y0h4: f2853330 phone1b y0h4: shop demo strings in ShopText, format, comment
 2026-11-26 20:48:10 committed y0h5: 0e47cc15 choice round: keep a host pick made during a pause
 2026-11-26 20:48:11 phase: review (apply took 6s)
+2026-11-26 20:48:32 phase: worker (review took 21s)
+2026-11-26 20:51:01 start y0h6
+2026-11-26 21:02:35 y0h6 finished: result 0 (51 turns, 7 min) model claude-sonnet-5-5, ladder 1, tokens in/read/write/out 56/1186522/50889/16487
+2026-11-26 21:02:35 phase: tests-first (worker took 843s)
+2026-11-26 21:02:46 phase: check (tests-first took 11s)
+2026-11-26 21:02:59 combined check: skips protocol connection metrics kit look arena puzzle host tv tools (no job's change reaches them)
+2026-11-26 21:07:30 phase: apply (check took 284s)
+2026-11-26 21:07:30 finding: y0h6's report has no Summary block in its first 40 lines
+2026-11-26 21:07:32 committed y0h6: a224d503 phone1b y0h6: choices under the top bar, 480 dp cap, clear on host away
+2026-11-26 21:07:32 phase: review (apply took 2s)
