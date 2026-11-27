@@ -392,3 +392,4 @@ Not built. bugs2 wave A with the 1-hour cache showed no large Sonnet cache write
 ## board3m (Nov 27)
 - The 15-field CityRules(...) copy is written in rules.dart forPlayers, rules_test.dart, roadworks_offer_test.dart and tools/sim/sim_rules.dart; a copyWith (needs owner OK for a new method) or one test helper would cut it to one place.
 - board3m: night_adapter.dart holds two public types as one adapter pair; tools/sim/sim_report.dart is 423 lines (over the 380 gate, split before its next change); docs/dev-tools.md lacks a tools/board-gate.sh row; the stat key "place" is a bare string in night_adapter.dart.
+- points chain in NightChampionDecider is a doc-only guard (board3m wave 4).

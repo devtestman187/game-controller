@@ -21,3 +21,11 @@
 - should report text findings (g3m 13 tests, format line, g3h counts, g3n 77) - trivial - fixed by hand
 - should board-gate literals; could wc count, content from HEAD, test cases - g3h4
 - could dev-tools.md row, 'place' constant, sim_report 423 lines, base=m17 default - minor - docs/code-health.md
+
+# wave 4 verdicts (Claude)
+- should night_adapter doc-only guard for a points chain - minor, accepted (no caller passes another chain; docs/code-health.md)
+- should night_sim.dart:6 "marked in the stop" - trivial - fixed by hand (the gate before the stop's Builds is an owner rule)
+- should g3h3-report mechanism text, count of long lines - trivial - fixed by hand
+- should tileCostSmallNight change affects matrix prices - invalid: the matrix never calls forPlayers; cityRulesWith still sets tileCost; no matrix row changes
+- should g3h2 ran mine.sh against its stop line - invalid (COMMON.md governs)
+- decisions (gate-blocks proxy check, deleted paths skip, default base m17) - accepted

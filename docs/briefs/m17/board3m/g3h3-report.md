@@ -35,14 +35,14 @@ header and two doc lines. All 70 PASS lines of `tools/tests/sim-test.sh` ran wit
 - `dart format tools/sim`: formatted; the final run changed 0 files.
 - `dart analyze tools/sim`: No issues found (run after the last edit).
 
-The old-code failure was not run: I did not revert the code, since git changes are not allowed in this job. The
-claim that the gate-game check fails on `(games + 1) ~/ 2` is from reading the code: that formula gives gate game 3,
+The old-code failure was not run. The check fails if the code ignores the city gateGame (standard value 3, so a city with gateGame 2 exposes it); the (games + 1) ~/ 2 branch is not reached at 5 games.
+
 so `tilesAfterGame[1]` would match the open night for every seed and the check would fail.
 
 ## Hand-over
 
 - `tools/mine.sh` was not run, because the brief says never to run it for this job (see question 1).
-- Lines over 120 columns that are outside this job's edits, left as they are: night_sim_test.dart lines 1, 154, 202,
+- Lines over 120 columns that are outside this job's edits, left as they are: night_sim_test.dart lines 1, 154,
   220, 226 and 270 (the check names are long strings that dart format does not wrap).
 
 ## Commit message — a draft
@@ -58,7 +58,7 @@ rules since Nov 27.
 
 g3h3 done: sim gate-game check (gateGame 2) and gate-blocks Roadworks check added; cityRulesWith gateGame and
 small-night price; header and doc lines fixed; sim-test 70 PASS, analyze clean. Open: tools/mine.sh not run (brief says
-never); night_sim_test.dart has six lines over 120 columns outside this job.
+never); night_sim_test.dart has five lines over 120 columns outside this job.
 
 ## Delete
 

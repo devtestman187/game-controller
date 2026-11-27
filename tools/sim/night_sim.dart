@@ -3,7 +3,7 @@
 /// and the rules under test from [SimRules].
 ///
 /// The gate and Roadworks rules are owner rules (Nov 27, see [SimRules]: a gate stops Roadworks, and opening a gate
-/// costs a tile's Bolts). The gate placed before that stop's Builds is an assumption, marked in the stop.
+/// The gate goes on before that stop's Builds (owner rule, Nov 27).
 import 'dart:math';
 
 import '../../packages/party_host/lib/src/city/rules.dart';
