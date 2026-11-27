@@ -17,6 +17,7 @@ final class CityRules {
   /// Creates a set of rules. Each field is documented where it is declared.
   const CityRules({
     required this.tileCost,
+    required this.tileCostSmallNight,
     required this.tileCostLargeNight,
     required this.largeNightFrom,
     required this.placementBolts,
@@ -27,7 +28,6 @@ final class CityRules {
     required this.nightGames,
     required this.gateGame,
     required this.gatePickSeconds,
-    required this.gateTileIndex,
     required this.corners,
     required this.laneSuffix,
     this.kidsPreset = false,
@@ -37,6 +37,7 @@ final class CityRules {
   /// until the owner sets them.
   static const CityRules standard = CityRules(
     tileCost: 3,
+    tileCostSmallNight: 3,
     tileCostLargeNight: 2,
     largeNightFrom: 5,
     // Placeholder for places 5-8 (1 Bolt each): owner-pending.
@@ -48,13 +49,17 @@ final class CityRules {
     nightGames: 5,
     gateGame: 3,
     gatePickSeconds: 10,
-    gateTileIndex: 4,
     corners: ['cog-hill', 'candy-harbour', 'pepper-park', 'lantern-ridge'],
     laneSuffix: '-lane',
   );
 
-  /// The Bolts a tile costs to build on a night of 2-4 players.
+  /// The Bolts a tile costs to build in these rules: [tileCostSmallNight] on a night of 2-4
+  /// players, [tileCostLargeNight] from [largeNightFrom]. [forPlayers] sets it on each copy.
   final int tileCost;
+
+  /// The Bolts a tile costs to build on a night of 2-4 players. Kept apart from [tileCost] so any
+  /// copy can be priced again for its player count.
+  final int tileCostSmallNight;
 
   /// The Bolts a tile costs to build on a night of [largeNightFrom] or more players.
   final int tileCostLargeNight;
@@ -88,10 +93,6 @@ final class CityRules {
   /// The seconds the gate winner has to pick a rival. No pick in time means nobody is gated.
   final int gatePickSeconds;
 
-  /// The index of the tile where a gate stands on each corner road. It is before the
-  /// Plaza and has no toll.
-  final int gateTileIndex;
-
   /// The corner roads a night's players start on, in slot order. One player takes each
   /// corner, then one takes the lane beside each corner, in the same order.
   final List<String> corners;
@@ -104,7 +105,8 @@ final class CityRules {
   final bool kidsPreset;
 
   /// These rules for a night of [players] players: from [largeNightFrom] players a tile costs
-  /// [tileCostLargeNight]. Call it on the base rules; the copy keeps the tile cost it is given.
+  /// [tileCostLargeNight], otherwise [tileCostSmallNight]. It works on any copy, because the
+  /// price is taken from the two night prices, never from the copy's own [tileCost].
   /// Throws [ArgumentError] when [players] is below 1 or above two per corner.
   CityRules forPlayers(int players) {
     final maxPlayers = corners.length * 2;
@@ -112,7 +114,8 @@ final class CityRules {
       throw ArgumentError.value(players, 'players', 'a night has 1 to $maxPlayers players');
     }
     return CityRules(
-      tileCost: players >= largeNightFrom ? tileCostLargeNight : tileCost,
+      tileCost: players >= largeNightFrom ? tileCostLargeNight : tileCostSmallNight,
+      tileCostSmallNight: tileCostSmallNight,
       tileCostLargeNight: tileCostLargeNight,
       largeNightFrom: largeNightFrom,
       placementBolts: placementBolts,
@@ -123,7 +126,6 @@ final class CityRules {
       nightGames: nightGames,
       gateGame: gateGame,
       gatePickSeconds: gatePickSeconds,
-      gateTileIndex: gateTileIndex,
       corners: corners,
       laneSuffix: laneSuffix,
       kidsPreset: kidsPreset,

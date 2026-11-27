@@ -112,6 +112,7 @@ CityRules cityRulesWith(
   bool? kidsPreset,
 }) => CityRules(
   tileCost: tileCost ?? base.tileCost,
+  tileCostSmallNight: base.tileCostSmallNight,
   tileCostLargeNight: base.tileCostLargeNight,
   largeNightFrom: base.largeNightFrom,
   placementBolts: base.placementBolts,
@@ -122,7 +123,6 @@ CityRules cityRulesWith(
   nightGames: base.nightGames,
   gateGame: base.gateGame,
   gatePickSeconds: base.gatePickSeconds,
-  gateTileIndex: base.gateTileIndex,
   corners: base.corners,
   laneSuffix: base.laneSuffix,
   kidsPreset: kidsPreset ?? base.kidsPreset,

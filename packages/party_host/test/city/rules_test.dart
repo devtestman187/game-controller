@@ -6,6 +6,7 @@ void main() {
   const rules = CityRules.standard;
   final kidsNight = CityRules(
     tileCost: rules.tileCost,
+    tileCostSmallNight: rules.tileCostSmallNight,
     tileCostLargeNight: rules.tileCostLargeNight,
     largeNightFrom: rules.largeNightFrom,
     placementBolts: rules.placementBolts,
@@ -16,7 +17,6 @@ void main() {
     nightGames: rules.nightGames,
     gateGame: rules.gateGame,
     gatePickSeconds: rules.gatePickSeconds,
-    gateTileIndex: rules.gateTileIndex,
     corners: rules.corners,
     laneSuffix: rules.laneSuffix,
     kidsPreset: true,
@@ -57,6 +57,18 @@ void main() {
       expect(rules.forPlayers(8).tileCost, 2);
     });
 
+    test('a 2-player night re-prices a copy that was priced for 6 players back to 3 Bolts a tile', () {
+      expect(rules.forPlayers(6).forPlayers(2).tileCost, 3);
+    });
+
+    test('a 6-player night re-prices a copy that was priced for 2 players to 2 Bolts a tile', () {
+      expect(rules.forPlayers(2).forPlayers(6).tileCost, 2);
+    });
+
+    test('re-pricing a copy for 6 players then 2 players then 6 players ends at 2 Bolts a tile', () {
+      expect(rules.forPlayers(6).forPlayers(2).forPlayers(6).tileCost, 2);
+    });
+
     test('rejects a night of 0 players', () {
       expect(() => rules.forPlayers(0), throwsArgumentError);
     });
@@ -77,7 +89,9 @@ void main() {
       expect(eight.nightGames, kidsNight.nightGames);
       expect(eight.gateGame, kidsNight.gateGame);
       expect(eight.gatePickSeconds, kidsNight.gatePickSeconds);
-      expect(eight.gateTileIndex, kidsNight.gateTileIndex);
+      expect(eight.tileCostLargeNight, kidsNight.tileCostLargeNight);
+      expect(eight.largeNightFrom, kidsNight.largeNightFrom);
+      expect(eight.tileCostSmallNight, kidsNight.tileCostSmallNight);
       expect(eight.corners, kidsNight.corners);
       expect(eight.laneSuffix, kidsNight.laneSuffix);
     });
@@ -158,12 +172,6 @@ void main() {
   });
 
   group('gate', () {
-    test('the gate tile is on the road, before the Plaza', () {
-      final gateTile = rules.roadLength - 2;
-      expect(gateTile, greaterThanOrEqualTo(0));
-      expect(gateTile, lessThan(rules.roadLength - 1));
-    });
-
     test('the gate game is one of the games of the night', () {
       expect(rules.gateGame, greaterThan(0));
       expect(rules.gateGame, lessThanOrEqualTo(rules.nightGames));

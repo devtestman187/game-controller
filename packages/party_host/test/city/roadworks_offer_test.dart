@@ -5,6 +5,7 @@ void main() {
   const ordinary = CityRules.standard;
   final kids = CityRules(
     tileCost: ordinary.tileCost,
+    tileCostSmallNight: ordinary.tileCostSmallNight,
     tileCostLargeNight: ordinary.tileCostLargeNight,
     largeNightFrom: ordinary.largeNightFrom,
     placementBolts: ordinary.placementBolts,
@@ -15,7 +16,6 @@ void main() {
     nightGames: ordinary.nightGames,
     gateGame: ordinary.gateGame,
     gatePickSeconds: ordinary.gatePickSeconds,
-    gateTileIndex: ordinary.gateTileIndex,
     corners: ordinary.corners,
     laneSuffix: ordinary.laneSuffix,
     kidsPreset: true,
