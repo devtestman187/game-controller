@@ -9,16 +9,22 @@ import 'package:toy_look/toy_look.dart';
 
 import '../night/night_awards.dart';
 import '../night/night_flow_provider.dart';
+import '../night/night_pick_provider.dart';
+import '../night/night_settings.dart';
 import '../night/night_state.dart';
 import '../night/party_night.dart';
 import '../providers.dart';
+import '../text/night_setup_text.dart';
 import '../text/night_text.dart';
 import 'award_tile.dart';
 import 'game_screen.dart';
 import 'games_screen.dart';
+import 'host_button.dart';
 import 'host_frame_screen.dart';
 import 'lobby_music.dart';
 import 'night_footer_buttons.dart';
+import 'night_pick_open.dart';
+import 'night_setup_screen.dart';
 import 'night_start_names.dart';
 import 'night_widgets.dart';
 import 'round_segment.dart';
@@ -55,7 +61,9 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
   /// card never names an award the night can't win (M14 f1, r5 finding 3).
   static const _games = {NightAwardGame.puzzle, if (nightBumperRoundReady) NightAwardGame.bumper};
   late final List<NightAward> _awards = drawAwards(_random, games: _games);
-  NightLength _length = NightLength.three;
+
+  /// The length the night starts with: the saved setting's, which the header's segment and the setup screen write.
+  late NightLength _length = ref.read(nightSettingsProvider).length;
 
   /// The night under way, if there is one: a night with a recorded round, whose
   /// own length and awards stand, so the card never names a draw the night
@@ -65,6 +73,14 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
   void _pick(NightLength length) {
     if (_running != null) return;
     setState(() => _length = length);
+    final notifier = ref.read(nightSettingsProvider.notifier);
+    notifier.update(ref.read(nightSettingsProvider).copyWith(length: length));
+  }
+
+  /// Opens the setup screen; the length it leaves is the card's when it comes back.
+  Future<void> _openSetup() async {
+    await _open(const NightSetupScreen());
+    if (mounted) setState(() => _length = ref.read(nightSettingsProvider).length);
   }
 
   /// The length the header's segment was picked with: the chip's value is the
@@ -79,22 +95,29 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
   };
 
   /// Starts the night and its first round's Shape Race.
-  Future<void> _start() => _startNight(const ShapeRaceScreen());
+  Future<void> _start() => _startNight(() => _open(const ShapeRaceScreen()));
 
   /// Starts the night and its first round, the Bumper Round: the Arena's
   /// waiting card follows, with one player or more (design section 2 N6, M14
   /// bugs B-020), as Shape Race's join screen does for two or more.
-  Future<void> _startBumperRound() => _startNight(const GameScreen());
+  Future<void> _startBumperRound() => _startNight(() => _open(const GameScreen()));
 
-  /// Starts the night with [first] as its round 1. A host who comes back to
+  /// Starts the night and opens round 1 as the night's picker picked it (the director, the Shuffle or the Playlist);
+  /// nothing opens when the pool has no game to pick.
+  Future<void> _startPicked() => _startNight(() async {
+    final pick = ref.read(nightPickProvider.notifier).pickFor(1);
+    if (pick != null) await openNightPick(context, ref, pick);
+  });
+
+  /// Starts the night and runs [openFirst], which opens its round 1. A host who comes back to
   /// this card with no round recorded has left the night unplayed, so it is
   /// dropped and the chips pick again (B-032); a night with a recorded round
   /// keeps its length as it always did (M14 r5 12).
-  Future<void> _startNight(Widget first) async {
+  Future<void> _startNight(Future<void> Function() openFirst) async {
     final night = ref.read(partyNightProvider.notifier);
     night.start(length: _length, awards: _awards);
     ref.read(nightFlowControllerProvider)?.startNow();
-    await _open(first);
+    await openFirst();
     night.dropIfUnplayed();
   }
 
@@ -115,6 +138,7 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
     final catVisits = NightChaos.catVisitsTonight(ref.watch(puzzleSettingsProvider));
     final running = ref.watch(partyNightProvider);
     final length = running?.length ?? _length;
+    final isPicked = ref.watch(nightSettingsProvider.select((settings) => settings.picker)) != NightPicker.host;
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).maybePop()},
       child: HostFrameScreen(
@@ -134,14 +158,19 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
             catVisits: catVisits,
             players: ref.watch(gamePlayersProvider),
             oldAppIds: _oldAppIds(ref.watch(hostStateProvider).host.controllers),
+            isPicked: isPicked,
+            onSetup: _openSetup,
           ),
         ),
         footer: [
-          NightFooterButtons(
-            onShapeRace: _start,
-            onBumperRound: nightBumperRoundReady ? _startBumperRound : null,
-            autofocus: true,
-          ),
+          if (isPicked)
+            _StartPickedButton(onPressed: _startPicked)
+          else
+            NightFooterButtons(
+              onShapeRace: _start,
+              onBumperRound: nightBumperRoundReady ? _startBumperRound : null,
+              autofocus: true,
+            ),
         ],
       ),
     );
@@ -159,7 +188,20 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
 /// 286 px of content at 4 and 6 players), and a screen that did not fit would
 /// be redesigned rather than scrolled.
 class _StartColumn extends StatelessWidget {
-  const _StartColumn({required this.awards, required this.catVisits, required this.players, required this.oldAppIds});
+  const _StartColumn({
+    required this.awards,
+    required this.catVisits,
+    required this.players,
+    required this.oldAppIds,
+    required this.isPicked,
+    required this.onSetup,
+  });
+
+  /// Whether the night picks its games, so the bottom line says so instead of naming the round the buttons pick.
+  final bool isPicked;
+
+  /// Opens the setup screen.
+  final VoidCallback onSetup;
 
   /// The three awards the night plays for.
   final List<NightAward> awards;
@@ -190,10 +232,42 @@ class _StartColumn extends StatelessWidget {
           NightStartNames(players: players, oldAppIds: oldAppIds),
         ],
         const Spacer(),
-        Text(NightText.pickRound(1), style: text),
+        Row(
+          children: [
+            Expanded(child: Text(isPicked ? NightSetupText.gamesPickedForYou : NightText.pickRound(1), style: text)),
+            SizedBox(
+              width: nightFooterButtonWidthFor(context, NightSetupText.setUp),
+              child: HostButton(
+                key: const Key('nightSetup'),
+                label: NightSetupText.setUp,
+                compact: true,
+                onPressed: onSetup,
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
+}
+
+/// The footer's one button when the night picks its games: it starts the night and opens round 1's pick.
+class _StartPickedButton extends StatelessWidget {
+  const _StartPickedButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: nightFooterButtonWidthFor(context, NightSetupText.startTheNight),
+    child: HostButton(
+      key: const Key('nightStartPick'),
+      label: NightSetupText.startTheNight,
+      icon: Icons.play_arrow,
+      autofocus: true,
+      onPressed: onPressed,
+    ),
+  );
 }
 
 /// The night's three awards as one row of equal tiles: the frame's width shared
