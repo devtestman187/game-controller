@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:collection';
 
+import 'package:connection/connection.dart';
+
 import 'night_flow.dart';
 
 /// Starts a timer that calls [fire] after [after]; a test hands in a fake clock instead of real time.
@@ -16,6 +18,19 @@ abstract interface class NightRoundHooks {
   /// Plays [round] again, with the same game when [sameGame] or another one.
   void replaceRound(int round, {required bool sameGame});
 }
+
+/// Something the night pauses and resumes with the round in play, such as a choice round (owner decision Q1 A, Q3 A):
+/// the controller calls [pause] when the host pauses and [resume] when the round carries on or ends.
+abstract interface class NightPausable {
+  /// The round in play is paused: its timers and its picks freeze.
+  void pause();
+
+  /// The round in play carries on.
+  void resume();
+}
+
+/// Avatar id of a player: the colour and accessory they were given, or `player<number>` when they have none.
+String _avatarId(GamePlayer player) => player.character?.id ?? 'player${player.number}';
 
 /// How long each card stays before the night moves on by itself.
 final class NightPacing {
@@ -99,6 +114,13 @@ final class NightFlowController {
   Timer? _timer;
   void Function()? _pending;
   bool _disposed = false;
+  final List<NightPausable> _pausables = [];
+
+  /// The avatar id of each player in the roster, by player id; null until the first [rosterChanged].
+  Map<String, String>? _roster;
+
+  /// Joins and leaves that came during a round, emitted right after the round's end.
+  final List<NightEvent> _queued = [];
 
   /// Where the night is now.
   NightFlow get flow => _flow;
@@ -133,14 +155,73 @@ final class NightFlowController {
   }
 
   /// The round in play is over: its end, then its scoreboard after the results' pause. Only while a round is played.
+  /// A round that ends paused carries on no more: the pausables resume, with no event of their own.
   void roundEnded() {
     if (_disposed || _flow.stage != NightStage.round) return;
     final round = _flow.round;
     final last = _flow.isLastRound;
+    final wasPaused = _flow.paused;
     _apply(NightRoundEnded(round, last));
+    if (wasPaused) _resumePausables();
+    _emitQueued();
     _after(pacing.results, () {
       if (_apply(NightScoreboard(round, last))) _armScoreboard(round);
     });
+  }
+
+  /// Adds [pausable] to those the night pauses and resumes with the round in play.
+  void addPausable(NightPausable pausable) {
+    if (!_pausables.contains(pausable)) _pausables.add(pausable);
+  }
+
+  /// Takes [pausable] out: the night no longer pauses or resumes it.
+  void removePausable(NightPausable pausable) => _pausables.remove(pausable);
+
+  /// Whether the round in play is paused.
+  bool get isPaused => _flow.paused;
+
+  /// Pauses the round in play: emits NightPaused, then pauses every pausable. False, and nothing happens, when the flow
+  /// does not accept a pause now (a how-to card, a scoreboard, or a round already paused).
+  bool pause() {
+    if (!_apply(NightPaused(_flow.round))) return false;
+    for (final pausable in List.of(_pausables)) {
+      pausable.pause();
+    }
+    return true;
+  }
+
+  /// Carries the paused round on: emits NightResumed, then resumes every pausable. False when the round is not paused.
+  bool resume() {
+    if (!_apply(NightResumed(_flow.round))) return false;
+    _resumePausables();
+    return true;
+  }
+
+  /// Ends the round in play before it is played out (a host skip), without using up a round: the flow stays where it is
+  /// and the round's game is replaced by another one. At a how-to card the card's full wait starts again.
+  bool skip({NightReason reason = NightReason.host}) =>
+      _replace(NightRoundSkipped(_flow.round, reason), sameGame: false);
+
+  /// Plays the round in play again with the same game and new content, without using up a round. At a how-to card
+  /// the card's full wait starts again.
+  bool reroll({NightReason reason = NightReason.host}) =>
+      _replace(NightRoundRerolled(_flow.round, reason), sameGame: true);
+
+  /// Records the players now in the night. The first call only records them; a later call emits a join for each new
+  /// player and a leave for each missing one. Between rounds these are emitted at once; in a round they wait for the
+  /// round to end. A roster change never starts, stops or delays a timer.
+  void rosterChanged(List<GamePlayer> players) {
+    if (_disposed) return;
+    final before = _roster;
+    final now = {for (final player in players) player.id: _avatarId(player)};
+    _roster = now;
+    if (before == null) return;
+    for (final entry in now.entries) {
+      if (!before.containsKey(entry.key)) _rosterEvent(NightPlayerJoined(entry.value, _flow.round));
+    }
+    for (final entry in before.entries) {
+      if (!now.containsKey(entry.key)) _rosterEvent(NightPlayerLeft(entry.value, _flow.round, NightReason.playerLeft));
+    }
   }
 
   /// Runs the waiting step now, and the timer then does nothing; nothing happens when no step waits.
@@ -154,6 +235,8 @@ final class NightFlowController {
   /// Stops any waiting step; every later call does nothing.
   void dispose() {
     _disposed = true;
+    _pausables.clear();
+    _queued.clear();
     _clearWait();
   }
 
@@ -175,10 +258,46 @@ final class NightFlowController {
 
   void _howTo(int round) {
     if (!_emitHowTo(round)) return;
+    _armHowTo(round);
+  }
+
+  /// Waits a full how-to card, then starts [round] if the host does.
+  void _armHowTo(int round) {
     final last = round == _flow.rounds;
     _after(pacing.howTo, () {
       if (hooks?.startRound(round, last) ?? false) _apply(NightRoundStarted(round, last));
     });
+  }
+
+  /// Replaces the round in play with [event]'s effect; the flow must accept [event] now.
+  bool _replace(NightEvent event, {required bool sameGame}) {
+    final round = _flow.round;
+    if (!_apply(event)) return false;
+    hooks?.replaceRound(round, sameGame: sameGame);
+    if (_flow.stage == NightStage.howTo) _armHowTo(round);
+    return true;
+  }
+
+  /// Carries the paused round's pausables on; the flow has already left the pause.
+  void _resumePausables() {
+    for (final pausable in List.of(_pausables)) {
+      pausable.resume();
+    }
+  }
+
+  /// Emits a join or a leave the flow accepts now; in a round, where it does not, it waits for the round to end.
+  void _rosterEvent(NightEvent event) {
+    if (_apply(event) || _flow.stage != NightStage.round) return;
+    _queued.add(event);
+  }
+
+  /// Emits the joins and leaves that waited for the round to end, in order, and empties the queue.
+  void _emitQueued() {
+    final queued = List.of(_queued);
+    _queued.clear();
+    for (final event in queued) {
+      _apply(event);
+    }
   }
 
   /// After a scoreboard: the next how-to card, or for the last round the ceremony and then the end.

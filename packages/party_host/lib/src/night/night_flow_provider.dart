@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../providers.dart';
 import 'night_flow_controller.dart';
 import 'party_night.dart';
 
@@ -22,5 +23,8 @@ final nightFlowControllerProvider = Provider<NightFlowController?>((ref) {
       ? NightFlowController.resumed(rounds: length.rounds, playedRounds: played, pacing: pacing, schedule: schedule)
       : NightFlowController(rounds: length.rounds, pacing: pacing, schedule: schedule);
   ref.onDispose(controller.dispose);
+  // The roster is read, not watched: a phone joining or leaving must not build the night again.
+  controller.rosterChanged(ref.read(gamePlayersProvider));
+  ref.listen(gamePlayersProvider, (_, players) => controller.rosterChanged(players));
   return controller;
 });
