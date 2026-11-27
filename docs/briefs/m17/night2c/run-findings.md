@@ -1,3 +1,6 @@
 - v1a's report has no Summary block in its first 40 lines
 - v2's report has no Summary block in its first 40 lines
 - d1's report has no Summary block in its first 40 lines
+- v1b's report has no Summary block in its first 40 lines
+- v1c's report has no Summary block in its first 40 lines
+- f1's report has no Summary block in its first 40 lines
