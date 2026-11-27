@@ -48,3 +48,26 @@ RESULT: STOPPED: the base check passed its limit (RUN_BASE_CHECK_MAX_MIN=5 min) 
 2026-11-26 18:02:37 STOPPED: jobs that failed or passed their limit (parked, not committed): e0c (their logs: docs/briefs/m17/night1b/flash-<job>.log)
 2026-11-26 18:02:38 reviewed wave2: 4 finding(s)
 RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): e0c (their logs: docs/briefs/m17/night1b/flash-<job>.log)
+2026-11-26 18:03:05 RUN_MAX_MIN=45 min (computed backstop of the jobs still to do)
+2026-11-26 18:03:05 start at 81a9b340 on m17
+2026-11-26 18:03:05 worker: claude
+2026-11-26 18:03:06 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-26 18:03:06 removed the last stop's STOP.md
+2026-11-26 18:03:11 phase: preflight
+2026-11-26 18:03:18 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-26 18:03:34 phase: worker (preflight took 23s)
+2026-11-26 18:03:34 skip n1c (already done)
+2026-11-26 18:03:35 skip e0e (already done)
+2026-11-26 18:03:55 phase: worker (worker took 21s)
+2026-11-26 18:03:56 skip n1d (already done)
+2026-11-26 18:04:17 phase: worker (worker took 21s)
+2026-11-26 18:04:17 start e0c
+2026-11-26 18:18:06 e0c finished: result 0 (77 turns, 10 min) model claude-haiku-5-5, ladder 2, tokens in/read/write/out 80/2851477/94164/61886
+2026-11-26 18:23:09 WARN: job e0c used 77 turns, over its cap of 70 (its own checks passed; accepted)
+2026-11-26 18:23:09 phase: tests-first (worker took 1133s)
+2026-11-26 18:24:41 tests-first ok: packages/party_host/test/night_save_test.dart fails on the old code
+2026-11-26 18:25:11 phase: check (tests-first took 122s)
+2026-11-26 18:25:33 combined check: skips protocol connection metrics kit look arena puzzle tools (no job's change reaches them)
+2026-11-26 18:27:42 phase: apply (check took 151s)
+2026-11-26 18:27:44 committed e0c: 52d5bfe2 Save the party night after each change and resume it on restart
+2026-11-26 18:27:44 phase: review (apply took 2s)
