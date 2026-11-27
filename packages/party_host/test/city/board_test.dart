@@ -12,8 +12,8 @@ List<Tile> _roadTiles(String prefix) => [
   Plaza('$prefix/plaza'),
 ];
 
-/// The four corner roads, each with a gate on its gate tile, and one lane beside each
-/// corner for players 5-8.
+/// The four corner roads, and one lane beside each corner for players 5-8. The board
+/// is built without a gate: the night's gate is placed later, by the gate game.
 Board _cityBoard() {
   final laneSuffix = CityRules.standard.laneSuffix;
   final districts = <District>[
@@ -21,12 +21,15 @@ Board _cityBoard() {
     for (final corner in _cornerIds)
       District(id: '$corner$laneSuffix', laneOf: corner, road: _roadTiles('$corner$laneSuffix')),
   ];
-  final gates = [
-    for (final corner in _cornerIds)
-      Gate(roadId: corner, tileIndex: CityRules.standard.gateTileIndex, kind: GateKind.brokenBridge),
-  ];
-  return Board(districts: districts, gates: gates);
+  return Board(districts: districts);
 }
+
+/// A board with one three-tile road, `north`: tile 0 and tile 1, then the Plaza at index 2.
+Board _northBoard() => Board(
+  districts: [
+    District(id: 'north', road: const <Tile>[Tile('n1'), Tile('n2'), Plaza('np')]),
+  ],
+);
 
 void main() {
   group('District', () {
@@ -79,18 +82,12 @@ void main() {
     expect(bolts.of('p2'), 0);
   });
 
-  test('RoadworksBlock blocks one tile by its id', () {
-    const block = RoadworksBlock(tileId: 'a2');
-
-    expect(block.tileId, 'a2');
-  });
-
   group('Gate', () {
     test('sits on one road at one tile index, and carries its kind', () {
-      final gate = Gate(roadId: 'cog-hill', tileIndex: CityRules.standard.gateTileIndex, kind: GateKind.riverFerry);
+      const gate = Gate(roadId: 'cog-hill', tileIndex: 2, kind: GateKind.riverFerry);
 
       expect(gate.roadId, 'cog-hill');
-      expect(gate.tileIndex, CityRules.standard.gateTileIndex);
+      expect(gate.tileIndex, 2);
       expect(gate.kind, GateKind.riverFerry);
     });
 
@@ -106,7 +103,6 @@ void main() {
           District(id: 'north', road: const <Tile>[Tile('n1'), Plaza('pn')]),
           District(id: 'south', road: const <Tile>[Tile('s1'), Plaza('ps')]),
         ],
-        gates: const [],
       );
 
       expect(board.districts.map((district) => district.id).toList(), ['north', 'south']);
@@ -119,7 +115,6 @@ void main() {
             District(id: 'north', road: const <Tile>[Tile('n1'), Plaza('pn')]),
             District(id: 'north', road: const <Tile>[Tile('s1'), Plaza('ps')]),
           ],
-          gates: const [],
         ),
         throwsArgumentError,
       );
@@ -132,7 +127,6 @@ void main() {
             District(id: 'north', road: const <Tile>[Tile('shared'), Plaza('pn')]),
             District(id: 'south', road: const <Tile>[Tile('shared'), Plaza('ps')]),
           ],
-          gates: const [],
         ),
         throwsArgumentError,
       );
@@ -144,30 +138,9 @@ void main() {
           districts: [
             District(id: 'north', road: const <Tile>[Tile('n1'), Tile('n1'), Plaza('pn')]),
           ],
-          gates: const [],
         ),
         throwsArgumentError,
       );
-    });
-
-    test('refuses a gate on a road that is not on the board', () {
-      expect(
-        () => Board(
-          districts: [District(id: 'north', road: _roadTiles('north'))],
-          gates: const [Gate(roadId: 'south', tileIndex: 0, kind: GateKind.potholeField)],
-        ),
-        throwsArgumentError,
-      );
-    });
-
-    test('puts a gate on the gate tile of each of the four corner roads', () {
-      final board = _cityBoard();
-
-      for (final corner in _cornerIds) {
-        final gate = board.gates.singleWhere((gate) => gate.roadId == corner);
-        expect(gate.tileIndex, CityRules.standard.gateTileIndex, reason: corner);
-      }
-      expect(board.gates.length, _cornerIds.length);
     });
 
     test('keeps every tile id unique with a lane beside each corner', () {
@@ -181,14 +154,81 @@ void main() {
       expect(board.districts.where((district) => district.laneOf != null).length, _cornerIds.length);
     });
 
-    test('starts with every gate closed, and openAllGates opens them for every player at once', () {
-      final board = _cityBoard();
-      expect(board.gatesOpen, isFalse);
+    test('a new board has no gate, and the gate is closed', () {
+      final board = _northBoard();
 
-      board.openAllGates();
+      expect(board.gate, isNull);
+      expect(board.gateOpen, isFalse);
+    });
 
-      expect(board.gatesOpen, isTrue);
-      expect(board.gates.length, _cornerIds.length, reason: 'opening does not remove or move a gate');
+    test('placeGate sets the gate on its road and tile', () {
+      final board = _northBoard();
+
+      board.placeGate(const Gate(roadId: 'north', tileIndex: 1, kind: GateKind.potholeField));
+
+      expect(board.gate?.roadId, 'north');
+      expect(board.gate?.tileIndex, 1);
+      expect(board.gate?.kind, GateKind.potholeField);
+    });
+
+    test('placeGate accepts the Plaza tile, the last tile of the road', () {
+      final board = _northBoard();
+
+      board.placeGate(const Gate(roadId: 'north', tileIndex: 2, kind: GateKind.brokenBridge));
+
+      expect(board.gate?.tileIndex, 2);
+    });
+
+    test('a second placeGate in the same night throws StateError, and the first gate stays', () {
+      final board = _northBoard();
+      board.placeGate(const Gate(roadId: 'north', tileIndex: 0, kind: GateKind.riverFerry));
+
+      expect(
+        () => board.placeGate(const Gate(roadId: 'north', tileIndex: 1, kind: GateKind.brokenBridge)),
+        throwsStateError,
+      );
+      expect(board.gate?.tileIndex, 0);
+    });
+
+    test('placeGate throws ArgumentError for a road that is not on the board, and places nothing', () {
+      final board = _northBoard();
+
+      expect(
+        () => board.placeGate(const Gate(roadId: 'south', tileIndex: 0, kind: GateKind.potholeField)),
+        throwsArgumentError,
+      );
+      expect(board.gate, isNull);
+    });
+
+    test('placeGate throws ArgumentError for a tile index below zero or at the road length', () {
+      final board = _northBoard();
+
+      expect(
+        () => board.placeGate(const Gate(roadId: 'north', tileIndex: -1, kind: GateKind.potholeField)),
+        throwsArgumentError,
+      );
+      expect(
+        () => board.placeGate(const Gate(roadId: 'north', tileIndex: 3, kind: GateKind.potholeField)),
+        throwsArgumentError,
+      );
+      expect(board.gate, isNull);
+    });
+
+    test('openGate with no gate placed throws StateError', () {
+      final board = _northBoard();
+
+      expect(board.openGate, throwsStateError);
+      expect(board.gateOpen, isFalse);
+    });
+
+    test('openGate opens the placed gate for every player, and the gate stays', () {
+      final board = _northBoard();
+      board.placeGate(const Gate(roadId: 'north', tileIndex: 1, kind: GateKind.potholeField));
+
+      board.openGate();
+
+      expect(board.gateOpen, isTrue);
+      expect(board.gate?.tileIndex, 1, reason: 'opening does not remove or move the gate');
     });
   });
 }

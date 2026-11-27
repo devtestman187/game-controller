@@ -1,6 +1,7 @@
 /// The City Rush board as plain data: districts with one road each, the tokens that
-/// walk them, the bolts each player holds, the roadworks that block a tile, and the
-/// gates that stand on a road. No rules live here; the rules are in `rules.dart`.
+/// walk them, the bolts each player holds, and the one gate of the night. The night's
+/// gate goes on a rival's next unbuilt tile, chosen by the mid-night gate game; the
+/// board holds at most one gate. No rules live here; the rules are in `rules.dart`.
 library;
 
 /// One square on a road. [id] is unique on the board.
@@ -43,37 +44,23 @@ final class District {
   final List<Tile> road;
 }
 
-/// The whole board: its districts and its gates. Every district id and every tile id
-/// is unique across the board, so a tile can be named by its id alone. Every gate
-/// stands on a road of this board, on a tile before its Plaza.
+/// The whole board: its districts and the night's one gate. Every district id and every
+/// tile id is unique across the board, so a tile can be named by its id alone. A gate
+/// stands on a road of this board, on any tile of it, the Plaza included.
 final class Board {
-  /// Creates a board from [districts] and [gates]. Throws [ArgumentError] when two
-  /// districts share an id, when a tile id appears more than once across the roads,
-  /// or when a gate stands on no road of the board or on the Plaza.
-  Board({required List<District> districts, required List<Gate> gates})
-    : districts = List.unmodifiable(districts),
-      gates = List.unmodifiable(gates) {
+  /// Creates a board from [districts]. Throws [ArgumentError] when two districts share
+  /// an id, or when a tile id appears more than once across the roads.
+  Board({required List<District> districts}) : districts = List.unmodifiable(districts) {
     final districtIds = <String>{};
     final tileIds = <String>{};
-    final roadsById = <String, List<Tile>>{};
     for (final district in districts) {
       if (!districtIds.add(district.id)) {
         throw ArgumentError.value(district.id, 'districts', 'a district id must be unique on the board');
       }
-      roadsById[district.id] = district.road;
       for (final tile in district.road) {
         if (!tileIds.add(tile.id)) {
           throw ArgumentError.value(tile.id, 'districts', 'a tile id must be unique on the board');
         }
-      }
-    }
-    for (final gate in gates) {
-      final road = roadsById[gate.roadId];
-      if (road == null) {
-        throw ArgumentError.value(gate.roadId, 'gates', 'a gate must stand on a road on the board');
-      }
-      if (gate.tileIndex < 0 || gate.tileIndex >= road.length - 1) {
-        throw ArgumentError.value(gate.tileIndex, 'gates', 'a gate must stand on a tile before the Plaza');
       }
     }
   }
@@ -81,19 +68,51 @@ final class Board {
   /// The districts on the board, in the order they were given.
   final List<District> districts;
 
-  /// The gates on the board, in the order they were given.
-  final List<Gate> gates;
+  Gate? _gate;
 
-  bool _gatesOpen = false;
+  bool _gateOpen = false;
 
-  /// Whether the gates are open. One flag serves every player, so a gate opened for
-  /// one player is open for all of them. The gates stay open for the night; a new night
-  /// builds a new [Board], so there is no reset method.
-  bool get gatesOpen => _gatesOpen;
+  /// The night's gate, or null while no gate has been placed. The mid-night gate game
+  /// places at most one, so a new night, which builds a new [Board], starts with none.
+  Gate? get gate => _gate;
 
-  /// Opens every gate on the board for every player.
-  void openAllGates() {
-    _gatesOpen = true;
+  /// Whether the gate is open. One flag serves every player, so a gate opened for one
+  /// player is open for all of them. It stays open for the night.
+  bool get gateOpen => _gateOpen;
+
+  /// Places the night's gate. Throws [ArgumentError] when the road is not on the board
+  /// or the tile index is not a tile of that road, and [StateError] when a gate is
+  /// already placed: one gate per night.
+  void placeGate(Gate gate) {
+    final road = _roadOf(gate.roadId);
+    if (road == null) {
+      throw ArgumentError.value(gate.roadId, 'gate', 'a gate must stand on a road on the board');
+    }
+    if (gate.tileIndex < 0 || gate.tileIndex >= road.length) {
+      throw ArgumentError.value(gate.tileIndex, 'gate', 'a gate must stand on a tile of its road');
+    }
+    if (_gate != null) {
+      throw StateError('a night has one gate, and one is already placed');
+    }
+    _gate = gate;
+  }
+
+  /// Opens the placed gate for every player. Throws [StateError] when no gate is placed.
+  void openGate() {
+    if (_gate == null) {
+      throw StateError('no gate is placed, so there is none to open');
+    }
+    _gateOpen = true;
+  }
+
+  /// The tiles of the road named [roadId], or null when no district on the board has it.
+  List<Tile>? _roadOf(String roadId) {
+    for (final district in districts) {
+      if (district.id == roadId) {
+        return district.road;
+      }
+    }
+    return null;
   }
 }
 
@@ -128,15 +147,6 @@ final class Bolts {
 
   /// The bolts [playerId] holds, zero when the player is not in the map.
   int of(String playerId) => byPlayer[playerId] ?? 0;
-}
-
-/// Roadworks that block one tile of a road.
-final class RoadworksBlock {
-  /// Creates a roadworks block on the tile with [tileId].
-  const RoadworksBlock({required this.tileId});
-
-  /// The id of the tile this block sits on.
-  final String tileId;
 }
 
 /// The kinds of gate that can stand on a road.
