@@ -381,3 +381,10 @@ Not built. bugs2 wave A with the 1-hour cache showed no large Sonnet cache write
 - rules_test.dart holds g3b-era tests added to an existing file (279 lines, under the 500 limit); new roadworks tests are in roadworks_offer_test.dart. Not moved (churn).
 - Tests that restate lib values (`saveBonus`/`buildCap` greaterThan 0, `roadLength` fixture) are weak; replace when the build stop reads them (M17b).
 - Fail-first for the g3b tests showed compile errors only (new functions), not behaviour.
+
+## board3b (Nov 27, board line, tools/sim)
+- sim_report.dart is 361 lines and mixes profiles, cell run, tally, CSV and matrix: split the CSV header/row/format into their own file; night_sim.dart (379) could move NightConfig/NightResult out and shorten simulateNight (49 lines).
+- Missing tests: kids cell must equal a kidsRules cell (sim_report_test.dart:181), run_sim.dart argument errors and nights < 1, a zero-tile night; sim_report_test main() is long.
+- The night_games CSV column repeats games; kept because the brief names it. runSimCell takes a SimCell value object, not seven named parameters (accepted).
+- Comment lines over 120 columns in sim_report.dart (77, 189, 218, 311) and sim_report_test.dart (1, 26); five public constants in sim_report.dart could be private; blockGap lacks a unit in its name (blockGapTiles).
+- tools suite: run-stops, run-wave and run-wire2 selftests fail inside the runner's job tree and combined check (3 times, same cases) while run-wave-test passes alone: load or environment, not our change. Verify on the main line.

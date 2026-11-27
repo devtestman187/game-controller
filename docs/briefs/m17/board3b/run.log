@@ -140,3 +140,5 @@ RESULT: STOPPED: checks failed twice on the combined tree after g3d2b
 2026-11-27 02:51:37 STOPPED: checks failed twice on the combined tree after g3g
 2026-11-27 02:51:39 reviewed wave3: 13 finding(s)
 RESULT: STOPPED: checks failed twice on the combined tree after g3g
+2026-11-27 02:52:09 HAND-FIX g3g: committed by hand after sim-test, analyze, format green; combined check red only on the same 3 runner selftests (environment)
+2026-11-27 02:52:09 HAND-FIX-EVENT g3g: 0 lines changed by hand, replaced ladder level 2
