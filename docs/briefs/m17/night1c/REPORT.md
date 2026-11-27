@@ -43,7 +43,7 @@ wave5-review claude claude-haiku-5-5     23 30 20658  630625     1.7    - 0 (sub
 ## Result
 RESULT: PASS. Range 1594ce75..ad3ba673 (tip ad3ba673). Jobs n1f n1h e0d n1g n1i n1j, fixes f1 f2 f3 f4, all ladder 1, no hand-fix, no failed job. 2 pauses by design, 4 runner starts.
 Reviews: 6 (waves 1-5, run). Real: wave 1 (provider select, real Timer, settings _settle) fixed in f1 f2; wave 2 puzzle Next, top-route check fixed in f3; run review must (controller dropped at last round, my own f1 rule), ring on phone, dead branch fixed in f4. Deferred to docs/code-health.md: public-type splits, test-file moves, helper dedupe, flag removal.
-Wave-5 review must (two new provider tests pass on old code): accepted as regression guards, f4's real change is covered by the changed last-round test. A night loaded after its last round gets no controller (ceremony not replayed): note, owner call if wanted.
+Wave-5 review must (two new provider tests pass on old code): accepted as regression guards, f4's real change is covered by the changed last-round test. A finished night is never offered for resume (night_save.dart:28-35 load() drops it), so the no-controller branch (night_flow_provider.dart:24) is in-session only; f4-report item 2 (separate job) is closed as not needed (verify, Nov 26).
 
 ## Owner question (pending, built on the default)
 Skip and reroll replace the round's game and never burn a round (a skip is not a played round). Default built; NightFlow unchanged.
