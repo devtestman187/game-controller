@@ -6,8 +6,8 @@ import '../night/variant.dart';
 /// the same on both phones.
 const maxVariantLabelLength = 12;
 
-/// The bundled maps' names by id. test_game keeps the same list but does not export it, so a test
-/// (variant_text_test) compares the two and this copy cannot drift.
+/// The bundled maps' names by id. test_game keeps the same list but does not export it; no test compares the
+/// two yet (code-health "night2b notes"), so keep this copy in step by hand.
 const mapNames = <String, String>{
   'playroom': 'Playroom',
   'pinball': 'Pinball',

@@ -5,3 +5,5 @@ batch start epoch 1795761124 (Nov 27)
 - Scope decisions (built on defaults, owner questions in the report): Arena Race is not offered (no night round for it yet); Vote and Rotating are not offered in the setup (Vote's host rules and the phone test are built in d2f but not wired: when the vote runs in the night is unsettled); Playlist = chosen games in the screen's order (no reorder UI); default picker stays the host (today's behaviour).
 - 01:06 wave1 STOPPED review layers FAIL (d2f class brief: read: pointed at test_game src name list); hand-fixed 3 lines. next: restart
 - 01:15 wave1 committed (d2w 4104f8b7, d2f 65f7fcdd); pause review produced no report; next: wave 2
+- 02:08 wave3 start stopped: base check waited on side-line lock (>5 min); restart with RUN_BASE_CHECK_MAX_MIN=30
+- 03:07 wave3 review FAIL func (d2g build 111 lines, class gate-ish capability); hand-split, tests pass; restart

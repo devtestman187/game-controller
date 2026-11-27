@@ -18,3 +18,11 @@
 - "14 tests" report count (should), repeated assertion (could) - trivial: f2 item 3; report ignored.
 - nightNextVariantProvider name (could) - minor: code-health.
 - Decisions: d2i NightSetupOptions is wired by d2g (wave 3); Bumper pick overwrites the host's saved Arena map (minor: code-health); withDifficulty both args: max applied first then min (minor).
+# night2b run review verdicts (Claude)
+- _StartColumn six parameters (must), late _length (should) - f3.
+- Done 31.5 dp (should) - minor/accept: the footer is the frame's fixed 84 px (every footer button is below 48, knownBelow48Host); f4 states it in a test. Not an owner call: option C is the fix and stays No.
+- labels 8 dp (should) - must: f4 item 1 (the brief's own 14 dp rule extended to labels).
+- test name and weak checks (should/could) - f4 item 3; refused-toggle tap check and chip button size: code-health.
+- pick tests pass on the base (must in wave3 report) - minor: they are pins of rules already covered by f1 item 1/2 cases; noted in REPORT.
+- variant_text comment - trivial, fixed by hand.
+- lastRound unused, start screen 313 lines, pool clean on load, host-pick test in an old file - code-health.
