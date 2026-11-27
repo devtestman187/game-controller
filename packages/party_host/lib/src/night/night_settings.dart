@@ -197,7 +197,9 @@ final class NightSettingsStore {
   }
 
   /// Saves [settings] in place of any saved ones.
-  void save(NightSettings settings) => unawaited(_prefs.setString(_key, jsonEncode(settings.toJson())));
+  Future<void> save(NightSettings settings) async {
+    await _prefs.setString(_key, jsonEncode(settings.toJson()));
+  }
 
   /// The JSON in [raw], or null when it is not JSON at all.
   static Object? _decode(String raw) {
@@ -220,7 +222,7 @@ class NightSettingsNotifier extends Notifier<NightSettings> {
   /// Replaces the settings with [settings] and saves them.
   void update(NightSettings settings) {
     state = settings;
-    NightSettingsStore(ref.read(prefsProvider)).save(settings);
+    unawaited(NightSettingsStore(ref.read(prefsProvider)).save(settings));
   }
 
   /// Sets the Kids preset and saves it.

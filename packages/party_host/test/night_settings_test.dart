@@ -26,9 +26,6 @@ ProviderContainer _containerOver(SharedPreferences prefs) {
   return container;
 }
 
-/// Lets the store's unawaited write or removal reach the prefs before a test reads them.
-Future<void> _settle() => Future<void>.delayed(Duration.zero);
-
 void main() {
   group('NightSettings', () {
     test('the defaults: three rounds, every game, easy to hard, Chaos off, lively cat, host picks', () {
@@ -109,7 +106,7 @@ void main() {
       final first = _containerOver(prefs);
       first.read(nightSettingsProvider.notifier).update(changed);
       expect(first.read(nightSettingsProvider), changed);
-      await _settle();
+      await pumpEventQueue();
       expect(prefs.getString(_key), isNotNull);
 
       final second = _containerOver(prefs);
@@ -121,7 +118,7 @@ void main() {
       final container = _containerOver(prefs);
       container.read(nightSettingsProvider.notifier).useKids();
       expect(container.read(nightSettingsProvider).isKids, isTrue);
-      await _settle();
+      await pumpEventQueue();
 
       expect(_containerOver(prefs).read(nightSettingsProvider), NightSettings.kids);
     });
@@ -131,7 +128,7 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       final container = _containerOver(prefs);
       expect(container.read(nightSettingsProvider), const NightSettings());
-      await _settle();
+      await pumpEventQueue();
       expect(prefs.containsKey(_key), isFalse);
     });
   });

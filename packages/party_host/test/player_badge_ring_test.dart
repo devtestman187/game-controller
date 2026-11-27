@@ -31,7 +31,7 @@ void main() {
     });
   });
 
-  testWidgets('badgeNeedsRing is true only past the sixth colour slot', (tester) async {
+  test('badgeNeedsRing is true only past the sixth colour slot', () {
     expect([for (var n = 1; n <= 8; n++) badgeNeedsRing(n)], [false, false, false, false, false, false, true, true]);
   });
 
