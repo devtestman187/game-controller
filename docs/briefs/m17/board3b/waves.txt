@@ -1,5 +1,5 @@
 # wave 1: bot profiles and the tools test runner (new files only)
-g3d1
+g3d1s
 # wave 2: the night simulator core (uses the profiles)
 g3d2
 # wave 3: aggregation, CSV and the command line (uses the simulator)
