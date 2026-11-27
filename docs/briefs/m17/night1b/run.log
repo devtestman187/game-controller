@@ -39,3 +39,12 @@ RESULT: STOPPED: the base check passed its limit (RUN_BASE_CHECK_MAX_MIN=5 min) 
 2026-11-26 17:51:20 phase: apply (check took 192s)
 2026-11-26 17:51:22 committed n1d: b4459fef party_host: championsAmong gives the Quick night champion
 2026-11-26 17:51:22 phase: review (apply took 2s)
+2026-11-26 17:51:23 reviewed wave1: 7 finding(s)
+2026-11-26 17:51:39 phase: worker (review took 16s)
+2026-11-26 17:51:39 start e0c
+2026-11-26 18:02:36 e0c finished: result 5 (53 turns, 8 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 76/2451118/81523/45638
+2026-11-26 18:02:36 job e0c parked (result 5); its siblings continue
+2026-11-26 18:02:37 job e0c parked: its files are saved in .dart_tool/run-jobs/docs_briefs_m17_night1b/parked-e0c.patch and out of the tree (the siblings' check does not see them)
+2026-11-26 18:02:37 STOPPED: jobs that failed or passed their limit (parked, not committed): e0c (their logs: docs/briefs/m17/night1b/flash-<job>.log)
+2026-11-26 18:02:38 reviewed wave2: 4 finding(s)
+RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): e0c (their logs: docs/briefs/m17/night1b/flash-<job>.log)
