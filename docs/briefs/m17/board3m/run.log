@@ -118,3 +118,10 @@ RESULT: DONE: 6 jobs, 81 min
 2026-11-27 12:08:56 committed g3h3: 1d8af754 Fix the simulator's gate-game and gate-blocks checks and cityRulesWith
 2026-11-27 12:08:58 committed g3h4: 7ebe72d1 board-gate: size and layer checks read committed content
 2026-11-27 12:08:58 phase: review (apply took 5s)
+2026-11-27 12:13:11 reviewed wave4: 6 finding(s)
+METRICS g3h2 worker=claude model=claude-haiku-5-5 turns=14 in=28 out=9997 cache=351916 min=2.2 wall=17.6 result=0
+METRICS g3h3 worker=claude model=claude-haiku-5-5 turns=35 in=32 out=23695 cache=649651 min=2.4 wall=11.5 result=0
+METRICS g3h4 worker=claude model=claude-haiku-5-5 turns=30 in=24 out=14964 cache=361507 min=2.4 wall=3.0 result=0
+METRICS wave4-review worker=claude model=claude-haiku-5-5 turns=34 in=48 out=30262 cache=1225476 min=3.8 wall=- result=0
+2026-11-27 12:13:18 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/board3m/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 9 jobs, 39 min
