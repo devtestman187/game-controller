@@ -24,6 +24,7 @@ import 'night_start_screen.dart';
 import 'puzzle_choice.dart';
 import 'puzzle_screen.dart';
 import 'puzzle_settings_screen.dart';
+import 'shop_demo_screen.dart';
 import 'solo_skip.dart';
 
 part 'games_screen_widgets.dart';
@@ -62,6 +63,7 @@ class GamesScreen extends ConsumerWidget {
             autofocusNight: !touchFirst,
             onShapeRace: () => _open(context, const ShapeRaceScreen()),
             onArena: () => _open(context, const GameScreen()),
+            onShop: () => _open(context, const ShopDemoScreen()),
             onNight: () => _open(
               context,
               night != null && night.round > 0 ? const NightScoreboardScreen() : const NightStartScreen(),

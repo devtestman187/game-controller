@@ -100,4 +100,5 @@ export 'src/ui/ready_card.dart';
 export 'src/ui/round_phase.dart';
 export 'src/ui/round_segment.dart';
 export 'src/ui/score_row.dart';
+export 'src/ui/shop_demo_screen.dart';
 export 'src/ui/stats_screen.dart';

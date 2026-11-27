@@ -1,18 +1,19 @@
 part of 'games_screen.dart';
 
 /// How tall a game's card is in the picker, in frame px (M16 phonehost2 S8p):
-/// the card, the 16 px gap and the 31 px playtest line make 387, which fits
-/// the 392 px body a 16:9 frame leaves under its 64 px header and above its
-/// 84 px footer (DESIGN section 1, rules 5 and 6). The three cards share the
-/// height, so they read as one row.
-const gameCardHeightPx = 340.0;
+/// the card, the 16 px gap and the playtest line's row, as tall as the TV
+/// look's 64 px "Try the shop" button, make 388, which fits the 392 px body a
+/// 16:9 frame leaves under its 64 px header and above its 84 px footer
+/// (DESIGN section 1, rules 5 and 6). The three cards share the height, so
+/// they read as one row.
+const gameCardHeightPx = 308.0;
 
 /// How tall the game's picture is, in frame px, at the top of its card (M16
 /// phonehost2 S8p): with the title's 40, the line's two rows of 31, the two
-/// gaps and the card's 12 px padding and 4 px focus ring, the picture's 186
-/// leave 8 px to spare in the card's 340. The picture gives way to the type,
+/// gaps and the card's 12 px padding and 4 px focus ring, the picture's 154
+/// leave 8 px to spare in the card's 308. The picture gives way to the type,
 /// never the other way round (DESIGN section 1, rule 3).
-const gamePictureHeightPx = 186.0;
+const gamePictureHeightPx = 154.0;
 
 /// The picker's body (M16 phonehost2 S8p, DESIGN section 1, rule 4): the three
 /// games as one row of equal cards across the stage, and the playtest line
@@ -33,6 +34,7 @@ class _PickerBody extends StatelessWidget {
     required this.autofocusNight,
     required this.onShapeRace,
     required this.onArena,
+    required this.onShop,
     required this.onNight,
   });
 
@@ -44,6 +46,9 @@ class _PickerBody extends StatelessWidget {
 
   final VoidCallback onShapeRace;
   final VoidCallback onArena;
+
+  /// Opens the shop demo: a button under the cards, not a fourth card.
+  final VoidCallback onShop;
   final VoidCallback onNight;
 
   @override
@@ -65,11 +70,19 @@ class _PickerBody extends StatelessWidget {
                 onNight: onNight,
               ),
               const SizedBox(height: ToySizes.space16),
-              Text(
-                HostText.playtestLine,
-                style: ToyType.frame.body.copyWith(color: colors.onBackground),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      HostText.playtestLine,
+                      style: ToyType.frame.body.copyWith(color: colors.onBackground),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: ToySizes.space16),
+                  HostButton(key: const Key('openShopDemo'), label: HostText.tryShop, onPressed: onShop),
+                ],
               ),
             ],
           ),
