@@ -15,3 +15,10 @@ Wave 2 + run review (REVIEW.md, 5 must, 9 should, 7 could). y0d did not land in 
 - countdown drifts from the round's end, old-phone path test, real timers in the shop test - minor, code-health (owner default: accept real timers for the demo).
 - protocol.md paused wording, unlocked-pick wording - y0h. One predicate for "old app" - code-health. Summary blocks in y0d/y0f reports - ignored.
 - Wave 1 items (choice_round.dart:121, pause test wait, dispose, hash line, B5 coulds: title limit constant on ChoiceCard, code-point cut, literal-expected cut test) and the build-stop default guard (assert in start, dartdoc, shop test) - y0h.
+Wave 3 review (wave3-review-report.md, 16 findings, 3 must):
+- pause test :169 fixed delay, :177 and :190 pass on old code - must, y0h5 (with the predicate at choice_round.dart:121 - should, owner rule "host pick not overwritten": skip every player picked during the pause).
+- controller_screen.dart:271 overlay over the top bar, choices_screen.dart:45 480 dp cap, choices.dart:85 HostAway/HostBack, choices.dart:72 dartdoc, choices_screen_test coverage, choices_screen.dart:109/:271 - should/could, y0h6.
+- choice_round.dart:38 dartdoc, choice_round_test.dart:324 - could, y0h5.
+- protocol.md:263 "24 code points" - trivial, fixed by hand.
+- y0d/y0h2 report part A self-check - minor, code-health (reports of finished jobs).
+- Decisions: card heights are 294/140 in code (not 308/154; 308 does not fit 568x320): owner question, default accept. Shop button scale falls back to 1 outside HostFrame: accepted. Countdown reads phone clock in build: accepted for this non-game screen. start() assert debug only: accepted (brief). choicesRound fake name: accepted. Host phone drops choices cap: accepted (deliberate, see REPORT).

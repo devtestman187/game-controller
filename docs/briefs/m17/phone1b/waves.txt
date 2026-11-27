@@ -5,4 +5,6 @@ y0e y0f
 # wave 3: y0d retried (ladder 3, parked patch committed as probe-y0d-parked.patch), fix y0h (connection/protocol/docs), fix y0h2 (games screen button)
 y0d y0h y0h2
 # wave 4: fix y0h3 (lobby tests), fix y0h4 (shop demo files)
-y0h3 y0h4
+y0h3 y0h4 y0h5
+# wave 5: fix y0h6 (phone choices screen)
+y0h6

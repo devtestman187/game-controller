@@ -260,7 +260,7 @@ Both lists are optional on read: a missing one is empty.
 Fields:
 
 - `round` int, the round's number; `title` the round's name.
-- `cards`: one to six cards, each `{"id", "title", "detail", "cost", "maxCount", "enabled"}`: `id` a non-empty string, unique in the round; `title` cut to 24 characters; `detail` optional text; `cost` optional, per unit; `maxCount` from 1 to 9 (default 1), above 1 the card is counted ("Build 3"); `enabled` (default true), and false shows the card greyed, not to be picked.
+- `cards`: one to six cards, each `{"id", "title", "detail", "cost", "maxCount", "enabled"}`: `id` a non-empty string, unique in the round; `title` cut to 24 code points; `detail` optional text; `cost` optional, per unit; `maxCount` from 1 to 9 (default 1), above 1 the card is counted ("Build 3"); `enabled` (default true), and false shows the card greyed, not to be picked.
 - `endsInMs` int, the time left when sent. The phone counts down on its own clock.
 - `defaultId` optional, a card's `id`, applied when nothing is chosen; `currency` optional, e.g. "Bolts".
 - `picked` optional, a card's `id`, and `pickedCount` (default 1) what the host already has for this player; `locked` (default false) whether the host has locked that pick in.
