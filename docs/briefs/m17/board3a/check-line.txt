@@ -1,1 +1,1 @@
-full check: All checks passed (182s, 8 cached). Logs: C:\Users\mrman\AppData\Local\Temp/thumbparty-check-20261126-225018
+full check: All checks passed (29s, 11 cached). Logs: C:\Users\mrman\AppData\Local\Temp/thumbparty-check-20261127-001823
