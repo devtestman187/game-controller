@@ -29,3 +29,14 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-27 01:02:00 job g3d1 parked: its files are saved in .dart_tool/run-jobs/docs_briefs_m17_board3b/parked-g3d1.patch and out of the tree (the siblings' check does not see them)
 2026-11-27 01:02:00 STOPPED: jobs that failed or passed their limit (parked, not committed): g3d1 (their logs: docs/briefs/m17/board3b/flash-<job>.log)
 RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): g3d1 (their logs: docs/briefs/m17/board3b/flash-<job>.log)
+2026-11-27 01:04:24 RUN_MAX_MIN=113 min (computed backstop of the jobs still to do)
+2026-11-27 01:04:24 start at 2310d0fd on board-line
+2026-11-27 01:04:24 worker: claude
+2026-11-27 01:04:27 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-27 01:04:27 removed the old stop file
+2026-11-27 01:04:46 phase: preflight
+2026-11-27 01:05:06 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-27 01:05:36 phase: worker (preflight took 50s)
+2026-11-27 01:05:37 start g3d1r
+2026-11-27 01:07:53 STOPPED: stop file
+RESULT: STOPPED: stop file
