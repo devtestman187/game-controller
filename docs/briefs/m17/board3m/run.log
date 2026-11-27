@@ -27,3 +27,6 @@
 2026-11-27 10:04:09 STOPPED: jobs that failed or passed their limit (parked, not committed): g3m (their logs: docs/briefs/m17/board3m/flash-<job>.log)
 2026-11-27 10:04:56 HAND-FIX g3m: runner's parked patch applied with git apply, dart format on night_adapter_test.dart (check failed on format only)
 2026-11-27 10:04:56 HAND-FIX-EVENT g3m: 1 lines changed, replaced ladder level 2
+2026-11-27 10:05:02 RUN_MAX_MIN=100 min (computed backstop of the jobs still to do)
+2026-11-27 10:06:21 reviewed wave1: 7 finding(s)
+RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): g3m (their logs: docs/briefs/m17/board3m/flash-<job>.log)
