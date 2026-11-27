@@ -2,8 +2,8 @@
 /// happened. The model is docs/briefs/m17/board3c/sim-model-v2.md; every shipping rule value is read from [CityRules]
 /// and the rules under test from [SimRules].
 ///
-/// Parts that are assumptions, not owner rules, are marked in [SimRules] (a gate stops Roadworks, opening a gate costs a
-/// tile's Bolts) and in the stop (the gate is placed before that stop's Builds).
+/// The gate and Roadworks rules are owner rules (Nov 27, see [SimRules]: a gate stops Roadworks, and opening a gate
+/// costs a tile's Bolts). The gate placed before that stop's Builds is an assumption, marked in the stop.
 import 'dart:math';
 
 import '../../packages/party_host/lib/src/city/rules.dart';

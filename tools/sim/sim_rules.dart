@@ -81,7 +81,8 @@ final class SimRules {
   final bool gateOpeningCostsBolts;
 
   /// The rules of one night of [players] players on the shipping [base] rules (owner Nov 27): the tile price of that
-  /// night size, Roadworks R2 and the targeted gate, with both gate rules on. A kids night has no gate and no Roadworks.
+  /// night size, Roadworks R2 and the targeted gate, with both gate rules on. A kids night has no gate and no
+  /// Roadworks.
   factory SimRules.forNight(
     CityRules base, {
     required int players,
@@ -118,15 +119,17 @@ final class SimRules {
   );
 }
 
-/// A copy of [base] with the road length, tile cost and kids flag replaced; a value not given keeps the one in [base].
+/// A copy of [base] with the road length, tile cost, gate game and kids flag replaced; a value not given keeps the one
+/// in [base]. A given tile cost also sets the small-night price, so a re-priced copy costs the same on every night.
 CityRules cityRulesWith(
   CityRules base, {
   int? roadLength,
   int? tileCost,
   bool? kidsPreset,
+  int? gateGame,
 }) => CityRules(
   tileCost: tileCost ?? base.tileCost,
-  tileCostSmallNight: base.tileCostSmallNight,
+  tileCostSmallNight: tileCost ?? base.tileCostSmallNight,
   tileCostLargeNight: base.tileCostLargeNight,
   largeNightFrom: base.largeNightFrom,
   placementBolts: base.placementBolts,
@@ -135,7 +138,7 @@ CityRules cityRulesWith(
   buildCap: base.buildCap,
   roadLength: roadLength ?? base.roadLength,
   nightGames: base.nightGames,
-  gateGame: base.gateGame,
+  gateGame: gateGame ?? base.gateGame,
   gatePickSeconds: base.gatePickSeconds,
   corners: base.corners,
   laneSuffix: base.laneSuffix,

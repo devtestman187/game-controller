@@ -272,30 +272,39 @@ void main() {
     return set.every((n) => n.tiles.every((t) => t == 0));
   }());
 
-  check('a 5-game 4-player night with forNight places its gate in game CityRules.standard.gateGame', () {
-    final gateGame = CityRules.standard.gateGame;
-    final gated = nights(
-      config(SimRules.forNight(CityRules.standard, players: 4)),
-    );
+  check('a 5-game 4-player night with gateGame 2 places its gate after game 2, not before', () {
+    final city = cityRulesWith(CityRules.standard, gateGame: 2);
+    final gated = nights(config(SimRules.forNight(city, players: 4)));
     final open = nights(
-      config(
-        SimRules.forNight(
-          CityRules.standard,
-          players: 4,
-        ).copyWith(targetedGate: false),
-      ),
+      config(SimRules.forNight(city, players: 4).copyWith(targetedGate: false)),
     );
     for (var seed = 0; seed < seedCount; seed++) {
-      for (var game = 0; game < gateGame - 1; game++) {
-        if (gated[seed].tilesAfterGame[game].join(',') !=
-            open[seed].tilesAfterGame[game].join(','))
-          return false;
-      }
+      if (gated[seed].tilesAfterGame[0].join(',') !=
+          open[seed].tilesAfterGame[0].join(','))
+        return false;
     }
-    return List.generate(seedCount, (seed) => seed).any(
+    return Iterable<int>.generate(seedCount).any(
       (seed) =>
-          gated[seed].tilesAfterGame[gateGame - 1].join(',') !=
-          open[seed].tilesAfterGame[gateGame - 1].join(','),
+          gated[seed].tilesAfterGame[1].join(',') !=
+          open[seed].tilesAfterGame[1].join(','),
     );
+  }());
+
+  check('a gated last place gets no Roadworks crew when gateBlocksRoadworks is on, and one when it is off', () {
+    SimRules gateRules({required bool blocks}) => SimRules(
+      city: rules().city,
+      roadworks: RoadworksVariant.r2,
+      targetedGate: true,
+      gateBlocksRoadworks: blocks,
+    );
+    // One game in a two-player night: the gate goes on the winner's only rival, the last place, before its stop.
+    final blocked = nights(
+      config(gateRules(blocks: true), players: 2, games: 1),
+    );
+    final allowed = nights(
+      config(gateRules(blocks: false), players: 2, games: 1),
+    );
+    return blocked.every((n) => n.roadworksCrews == 0) &&
+        allowed.any((n) => n.roadworksCrews > 0);
   }());
 }

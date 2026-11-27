@@ -1,4 +1,4 @@
-// Checks for the night rules in sim_rules.dart. A plain Dart script: run with `dart run tools/sim/sim_rules_test.dart`.
+// Checks for the night rules in sim_rules.dart. A plain Dart script: `dart run tools/sim/sim_rules_test.dart`.
 // Prints PASS or FAIL per check and sets the exit code to 1 when any check fails.
 import 'dart:io';
 
