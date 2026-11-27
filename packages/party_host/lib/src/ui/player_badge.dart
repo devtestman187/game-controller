@@ -40,7 +40,8 @@ double rowBadgeHeadroom(ToyLook look) => toyAccessoryHeadroom(look.sizes.buttonH
 /// 3): a disc asked for narrower than [badgeNumberMinDiameterPx] grows to it,
 /// because [ToyBadge] sizes the number from the disc and a smaller one would
 /// draw the number under 20 frame px. Outside the frame — a controller's own
-/// pad — the badge keeps the size it asks for.
+/// pad — the badge keeps the size it asks for, and players 7 and 8 draw plain,
+/// without the ring that only the host frame shows.
 class PlayerBadge extends StatelessWidget {
   const PlayerBadge({super.key, required this.number, this.size = 32, this.character});
 
