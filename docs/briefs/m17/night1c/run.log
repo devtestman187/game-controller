@@ -64,3 +64,29 @@ RESULT: STOPPED: PAUSED after wave 1 (RUN_PAUSE_AFTER_WAVE=1): its review is com
 2026-11-26 20:12:04 RUN_MAX_MIN=63 min (computed backstop of the jobs still to do)
 2026-11-26 20:14:39 reviewed wave2: 10 finding(s)
 RESULT: STOPPED: PAUSED after wave 2 (RUN_PAUSE_AFTER_WAVE=1): its review is committed; verdict it, add fix jobs to the next wave of waves.txt, commit, restart
+2026-11-26 20:19:01 RUN_MAX_MIN=100 min (computed backstop of the jobs still to do)
+2026-11-26 20:19:02 start at 77874051 on m17
+2026-11-26 20:19:02 worker: claude
+2026-11-26 20:19:03 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-26 20:19:10 phase: preflight
+2026-11-26 20:19:16 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-26 20:19:31 phase: worker (preflight took 21s)
+2026-11-26 20:19:32 skip n1f (already done)
+2026-11-26 20:19:32 skip n1h (already done)
+2026-11-26 20:19:32 skip e0d (already done)
+2026-11-26 20:19:48 phase: worker (worker took 17s)
+2026-11-26 20:19:48 skip n1g (already done)
+2026-11-26 20:19:49 skip n1i (already done)
+2026-11-26 20:19:49 skip n1j (already done)
+2026-11-26 20:20:04 phase: worker (worker took 16s)
+2026-11-26 20:20:05 start f1
+2026-11-26 20:20:30 start f2
+2026-11-26 20:23:59 f2 finished: result 0 (14 turns, 3 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 18/169935/14940/6113
+2026-11-26 20:24:56 f1 finished: result 0 (16 turns, 4 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 32/408869/25320/13735
+2026-11-26 20:24:57 phase: tests-first (worker took 293s)
+2026-11-26 20:25:05 phase: check (tests-first took 8s)
+2026-11-26 20:25:13 combined check: skips protocol connection metrics kit look arena puzzle tools (no job's change reaches them)
+2026-11-26 20:28:33 phase: apply (check took 208s)
+2026-11-26 20:28:34 committed f2: 5f245306 Make NightSettingsStore.save awaitable and drop the test settle
+2026-11-26 20:28:36 committed f1: e4b9224b Subject: `party_host: night controller ends when the night is over`
+2026-11-26 20:28:36 phase: review (apply took 3s)
