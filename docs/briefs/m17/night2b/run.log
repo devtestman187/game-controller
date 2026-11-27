@@ -166,3 +166,34 @@ RESULT: DONE: 8 jobs, 14 min
 2026-11-27 03:23:05 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
 2026-11-27 03:23:11 STOPPED: brief gate: brief-check failed: FAIL changes f3: NightStartScreen is used in packages/party_host/lib/src/ui/games_screen.dart, which no job of wave 4 or earlier allows
 RESULT: STOPPED: brief gate: brief-check failed: FAIL changes f3: NightStartScreen is used in packages/party_host/lib/src/ui/games_screen.dart, which no job of wave 4 or earlier allows
+2026-11-27 03:23:22 RUN_MAX_MIN=63 min (computed backstop of the jobs still to do)
+2026-11-27 03:23:22 start at 1dfdfe18 on m17
+2026-11-27 03:23:22 worker: claude
+2026-11-27 03:23:23 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-27 03:23:23 removed the last stop's STOP.md
+2026-11-27 03:23:29 phase: preflight
+2026-11-27 03:23:35 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-27 03:23:51 phase: worker (preflight took 22s)
+2026-11-27 03:23:51 skip d2w (already done)
+2026-11-27 03:23:52 skip d2f (already done)
+2026-11-27 03:24:07 phase: worker (worker took 16s)
+2026-11-27 03:24:08 skip d2x (already done)
+2026-11-27 03:24:08 skip d2h (already done)
+2026-11-27 03:24:08 skip d2i (already done)
+2026-11-27 03:24:24 phase: worker (worker took 17s)
+2026-11-27 03:24:24 skip d2g (already done)
+2026-11-27 03:24:25 skip f1 (already done)
+2026-11-27 03:24:25 skip f2 (already done)
+2026-11-27 03:24:41 phase: worker (worker took 16s)
+2026-11-27 03:24:41 start f3
+2026-11-27 03:25:07 start f4
+2026-11-27 03:27:36 f3 finished: result 0 (13 turns, 2 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 22/210466/15415/6602
+2026-11-27 03:29:30 f4 finished: result 0 (35 turns, 4 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 38/873926/53034/22886
+2026-11-27 03:29:30 phase: tests-first (worker took 290s)
+2026-11-27 03:29:37 phase: check (tests-first took 7s)
+2026-11-27 03:29:46 combined check: skips protocol connection metrics kit look arena puzzle tools (no job's change reaches them)
+2026-11-27 03:32:49 phase: apply (check took 192s)
+2026-11-27 03:32:50 finding: f3's report has no Summary block in its first 40 lines
+2026-11-27 03:32:51 committed f3: 0ff5637b party_host: start card takes five parameters and reads its own pick
+2026-11-27 03:32:53 committed f4: 97f39965 night setup: label text at 14 dp, clearer Hardest and Done tests
+2026-11-27 03:32:53 phase: review (apply took 4s)
