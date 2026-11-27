@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import 'night_director.dart';
 import 'night_state.dart';
 
 /// Why a round was skipped or rerolled, or why a player left: a reason code, never a name.
@@ -75,15 +76,19 @@ final class NightSetup extends NightEvent {
   Map<String, Object?> get facts => {'rounds': rounds};
 }
 
-/// A round's how-to card is shown.
+/// A round's how-to card is shown. [reason] is why the director chose the round's game, when it chose one; the card
+/// tells the players, so a hidden change does not feel unfair (M17 night2b d2h).
 final class NightHowTo extends NightEvent {
-  const NightHowTo(this.round);
+  const NightHowTo(this.round, {this.reason});
 
   /// The round the card is for.
   final int round;
 
+  /// The director's rule for the round's game, or null when the host or a shuffle picked it.
+  final DirectorReason? reason;
+
   @override
-  Map<String, Object?> get facts => {'round': round};
+  Map<String, Object?> get facts => {'round': round, if (reason case final why?) 'reason': why.name};
 }
 
 /// A round starts being played.

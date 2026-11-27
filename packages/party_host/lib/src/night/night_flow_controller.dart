@@ -3,6 +3,7 @@ import 'dart:collection';
 
 import 'package:connection/connection.dart';
 
+import 'night_director.dart';
 import 'night_flow.dart';
 
 /// Starts a timer that calls [fire] after [after]; a test hands in a fake clock instead of real time.
@@ -76,10 +77,15 @@ final class NightPacing {
 /// each round: [hooks] starts it after the how-to card, and [roundEnded] says it is over.
 final class NightFlowController {
   /// A night of [rounds] rounds, not begun yet. [onEvent] hears each accepted event.
-  NightFlowController({required int rounds, this.pacing = const NightPacing(), NightSchedule? schedule, this.onEvent})
-    : assert(pacing.isPlayable, 'the pacing keeps how-to cards and gaps in range'),
-      _schedule = schedule ?? _realTimer,
-      _flow = NightFlow.start(rounds);
+  NightFlowController({
+    required int rounds,
+    this.pacing = const NightPacing(),
+    NightSchedule? schedule,
+    this.onEvent,
+    this.reasonFor,
+  }) : assert(pacing.isPlayable, 'the pacing keeps how-to cards and gaps in range'),
+       _schedule = schedule ?? _realTimer,
+       _flow = NightFlow.start(rounds);
 
   /// A night resumed after [playedRounds] rounds (1 up to [rounds] - 1): replays them without telling [onEvent], ends
   /// at the last played round's scoreboard and arms the step after it.
@@ -89,6 +95,7 @@ final class NightFlowController {
     this.pacing = const NightPacing(),
     NightSchedule? schedule,
     this.onEvent,
+    this.reasonFor,
   }) : assert(playedRounds >= 1 && playedRounds < rounds, 'a resumed night has played 1 to rounds - 1 rounds'),
        assert(pacing.isPlayable, 'the pacing keeps how-to cards and gaps in range'),
        _schedule = schedule ?? _realTimer,
@@ -109,6 +116,10 @@ final class NightFlowController {
 
   /// Hears each accepted event, except the replayed ones of a resumed night.
   final void Function(NightEvent)? onEvent;
+
+  /// Why the round's game was chosen, asked as each how-to card is emitted; null when nobody says (a host pick). The
+  /// replayed rounds of a resumed night are not asked.
+  final DirectorReason? Function(int round)? reasonFor;
   final List<NightEvent> _events = [];
   NightFlow _flow;
   Timer? _timer;
@@ -251,7 +262,7 @@ final class NightFlowController {
 
   /// Emits a how-to card, and the doubled announcement with the last round's.
   bool _emitHowTo(int round) {
-    if (!_apply(NightHowTo(round))) return false;
+    if (!_apply(NightHowTo(round, reason: reasonFor?.call(round)))) return false;
     if (round == _flow.rounds) _apply(NightLastRoundDoubled(round));
     return true;
   }
