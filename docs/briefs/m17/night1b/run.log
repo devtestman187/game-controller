@@ -106,3 +106,8 @@ RESULT: DONE: 4 jobs, 30 min
 2026-11-26 18:48:44 phase: apply (check took 205s)
 2026-11-26 18:48:46 committed e0g: dfa5c63a night save: drop a night nobody played, save roster changes
 2026-11-26 18:48:46 phase: review (apply took 2s)
+2026-11-26 18:50:52 reviewed wave4: 7 finding(s)
+METRICS e0g worker=claude model=claude-haiku-5-5 turns=19 in=30 out=10733 cache=465275 min=2.9 wall=8.2 result=0
+METRICS wave4-review worker=claude model=claude-haiku-5-5 turns=22 in=24 out=20168 cache=455465 min=1.7 wall=- result=0
+2026-11-26 18:50:59 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/night1b/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 5 jobs, 16 min
