@@ -28,3 +28,14 @@ wave2-review claude claude-haiku-5-5    15 16 10709  199772     0.9    - 0 (subt
 wave3-review claude claude-haiku-5-5    28 42 36667 1031452     3.1    - 0 (subtype=success, terminal_reason=completed)
 wave4-review claude claude-haiku-5-5    22 24 20168  455465     1.7    - 0 (subtype=success, terminal_reason=completed)
 ```
+
+## Close-out
+- Full bash tools/check.sh on the tip: All checks passed (run.log full check line).
+- Failure classes: e0c class brief (allow missed 5 existing tests that build PartyNight without prefs; repaired once, ladder 2); first start stopped waiting 5 min for the side line's machine lock (class environment; restarted with RUN_BASE_CHECK_MAX_MIN=45).
+- Findings: 1 must + 2 should real (e0c), all fixed by e0g; rest code-health (docs/code-health.md night1b). Place and pause: no new rule (n1d pins only; see REVIEW-VERDICTS.md).
+- Fixed, unverified: none on device (save/resume is test-only; please check on a TV).
+- Proposed lessons: 1 candidate: a job that makes a provider read prefs must allow every test that builds that notifier without prefs (git grep the notifier in test/).
+- agent-cost: agent-cost since 2026-11-26 17:07: fable $0.33 (cw5m 0.00M cw1h 0.01M), haiku $0.34 (cw5m 0.48M cw1h 0.23M), opus $0.85 (cw5m 0.00M cw1h 0.02M), sonnet $3.09 (cw5m 0.00M cw1h 0.28M); total $4.60; sonnet resumes >5m 6 (0.01M written), >60m 0 (0.00M written); inline waits >1: 3 agents
+- My calls about 40; waiters thumb-wait 4+19+13+8 tool calls (4 agents), thumb-haiku 7+7.
+- proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+no background command of mine is still running
