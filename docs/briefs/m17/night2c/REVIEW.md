@@ -88,3 +88,13 @@ Co-Authored-By: Claude Haiku 5.5 <noreply@anthropic.com>
 
 ## Delete
 - none
+
+## Owner answers (Nov 27, recorded in night2d)
+- Q1: keep 5 s / 2 s and the O5 order; the owner says yes or no at the BP2 device test.
+- Q2: keep for now: the Kids tap replaces all settings, with no restore. Ask again at BP2.
+- Q3: keep.
+- Q4: mine.sh should fail per the brief, but only after BP2, with an allowlist. mine.sh NOT changed now.
+- R7: the old-phone rule stays in `cardsFor`; a code-health note was added (docs/code-health.md "night2d notes").
+- R8: no change; saved night settings reset once.
+- R9 and R10: closed internally.
+- Must finding 1 (night_pick_test.dart:256): proved, see docs/briefs/m17/night2d/REPORT.md.
