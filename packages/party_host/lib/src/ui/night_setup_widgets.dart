@@ -22,6 +22,16 @@ double nightSetupAtLeastDp(BuildContext context, double normalPx, double deviceD
   return math.max(normalPx, deviceDp / scale);
 }
 
+/// The body type of the night setup's text outside the chips (labels, help lines, the cat note) in [color]: the frame's
+/// body size, or the [nightSetupTextDp] floor on the device where that is bigger, as the chips' text is.
+TextStyle nightSetupBodyStyle(BuildContext context, Color color) {
+  final bodySizePx = ToyType.frame.body.fontSize ?? roundChipHeightPx;
+  return ToyType.frame.body.copyWith(
+    fontSize: nightSetupAtLeastDp(context, bodySizePx, nightSetupTextDp),
+    color: color,
+  );
+}
+
 /// One setting of the night setup: its [label] above a [Wrap] of [children] (chips), and an optional [help] line under
 /// them. The wrap puts a chip on a new line where the frame is narrow, so no row overflows.
 class NightSetupRow extends StatelessWidget {
@@ -39,7 +49,7 @@ class NightSetupRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = ToyLookScope.of(context).colors;
-    final style = ToyType.frame.body.copyWith(color: colors.onBackground);
+    final style = nightSetupBodyStyle(context, colors.onBackground);
     final help = this.help;
     return Padding(
       padding: const EdgeInsets.only(bottom: ToySizes.space24),

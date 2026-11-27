@@ -35,7 +35,7 @@ class NightSetupScreen extends ConsumerWidget {
     void change(NightSettings next) => ref.read(nightSettingsProvider.notifier).update(next);
     Level tier(String mapId) => mapTierLevel(ref.read(arenaMapLibraryProvider).value, mapId);
     VoidCallback? edit(NightSettings Function() next) => isRunning ? null : () => change(next());
-    final text = ToyType.frame.body.copyWith(color: colors.onBackground);
+    final text = nightSetupBodyStyle(context, colors.onBackground);
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).maybePop()},
       child: HostFrameScreen(

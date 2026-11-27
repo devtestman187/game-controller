@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
+import 'package:party_host/src/night/night_pick.dart';
 import 'package:party_host/src/night/night_pick_provider.dart';
 import 'package:party_host/src/night/night_played_store.dart';
 import 'package:party_host/src/night/night_settings.dart';
@@ -31,6 +32,17 @@ const _phones = {'360x640': Size(360, 640), '320x640': Size(320, 640)};
 
 /// A screen so tall that the whole list is built, to look at every row at once.
 const _tallScreen = Size(960, 4000);
+
+/// The text the setup shows outside its chips: the five row labels, the picker's help line and the cat note.
+final _labelTexts = [
+  NightSetupText.howLong,
+  NightSetupText.games,
+  NightSetupText.easiest,
+  NightSetupText.hardest,
+  NightSetupText.whoPicks,
+  NightSetupText.pickerHelp(NightPicker.host),
+  NightSetupText.catNote,
+];
 
 /// The prefs key the settings are saved under.
 const _prefsKey = 'party_night_settings_v1';
@@ -113,6 +125,46 @@ void main() {
     }
   }
 
+  for (final phone in _phones.entries) {
+    for (final look in HostLook.values) {
+      testWidgets(
+        'at ${phone.key}/${look.name} the row labels, the help line and the cat note show text of at least 14 dp',
+        (tester) async {
+          await _pumpSetup(tester, look, phone.value);
+          for (final text in _labelTexts) {
+            final finder = find.text(text);
+            await tester.scrollUntilVisible(finder, _dragPx, scrollable: _list());
+            expect(finder, findsOneWidget, reason: '"$text" is on the screen');
+            final scale = HostFrameInfo.maybeOf(tester.element(finder))?.scale ?? 1;
+            final fontSize = tester.widget<Text>(finder).style?.fontSize ?? 0;
+            expect(
+              fontSize * scale,
+              greaterThanOrEqualTo(_minTextDp - _toleranceDp),
+              reason: '"$text" is at least 14 dp',
+            );
+          }
+        },
+      );
+    }
+  }
+
+  testWidgets("Done is the footer's button: below 48 dp on a phone like every footer button (knownBelow48Host), and "
+      'always on screen', (tester) async {
+    await forEachLook(tester, (look) async {
+      for (final phone in _phones.values) {
+        await _pumpSetup(tester, look, phone);
+        await tester.fling(_list(), const Offset(0, -4000), 4000);
+        await tester.pumpAndSettle();
+        final done = find.byKey(const Key('setupDone'));
+        expect(done, findsOneWidget, reason: 'Done is in the footer at ${look.name} $phone');
+        expect(_onScreen(tester, done).height, lessThan(_minTargetDp), reason: 'Done is a footer button, under 48 dp');
+        final screen = Offset.zero & phone;
+        final corners = [tester.getTopLeft(done), tester.getBottomRight(done), tester.getCenter(done)];
+        expect(corners.every(screen.contains), isTrue, reason: 'Done is on screen at ${look.name} $phone');
+      }
+    });
+  });
+
   testWidgets('every chip of every row is drawn, and no row offers Rotating, Vote, Arena Race, 8 rounds or the cat', (
     tester,
   ) async {
@@ -147,16 +199,27 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Hardest Medium keeps Block Castle out and Easiest above Hardest moves Hardest up', (tester) async {
-    await _pumpSetup(tester, HostLook.menu, _tallScreen);
-    await tester.tap(find.byKey(const Key('setupHardest-medium')));
-    await tester.pumpAndSettle();
-    expect(_settings(tester).difficultyMax, Level.medium);
-    await tester.tap(find.byKey(const Key('setupEasiest-medium')));
-    await tester.pumpAndSettle();
-    expect(_settings(tester).difficultyMin, Level.medium);
-    expect(_settings(tester).difficultyMax, Level.medium);
-  });
+  testWidgets(
+    'Hardest Medium leaves no Block Castle in the playable pool, and Easiest above Hardest moves Hardest up',
+    (tester) async {
+      await _pumpSetup(tester, HostLook.menu, _tallScreen);
+      await tester.tap(find.byKey(const Key('setupHardest-medium')));
+      await tester.pumpAndSettle();
+      expect(_settings(tester).difficultyMax, Level.medium);
+      final library = testMaps();
+      final playable = [
+        for (final variant in launchVariants((mapId) => mapTierLevel(library, mapId)))
+          if (nightPlayableGames.contains(variant.game)) variant,
+      ];
+      final pool = variantPool(playable, _settings(tester));
+      expect(pool, isNotEmpty, reason: 'Medium still plays some variant');
+      expect(pool.where((variant) => variant.mapId == 'block-castle'), isEmpty, reason: 'Block Castle is Hard');
+      await tester.tap(find.byKey(const Key('setupEasiest-hard')));
+      await tester.pumpAndSettle();
+      expect(_settings(tester).difficultyMin, Level.hard);
+      expect(_settings(tester).difficultyMax, Level.hard, reason: 'Hardest moved up to Easiest');
+    },
+  );
 
   testWidgets('"Kids night" gives the Kids preset and then reads chosen', (tester) async {
     await _pumpSetup(tester, HostLook.menu, _tallScreen);
