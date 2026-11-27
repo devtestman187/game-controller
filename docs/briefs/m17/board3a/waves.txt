@@ -2,3 +2,5 @@
 g3a g3s
 # fix round 1 (review of wave 1): new-dir files only
 f3a
+# wave 3: rules engine (after g3a types); owner answer on the rule values pending
+g3b
