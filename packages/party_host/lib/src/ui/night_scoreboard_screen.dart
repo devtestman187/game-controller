@@ -77,13 +77,12 @@ class _NightScoreboardScreenState extends ConsumerState<NightScoreboardScreen> i
   }
 
   /// The controller's timer reached the next round: the variant the night chose opens its game, and the controller
-  /// starts the round. False, with nothing opened, when no variant is chosen, this screen has gone, a dialog is on top
-  /// of it, or the variant is the Bumper Round and it is not ready (the footer's gate).
+  /// starts the round. False, with nothing opened, when no variant is chosen, this screen has gone, or a dialog is on
+  /// top of it.
   @override
   bool startRound(int round, bool lastRound) {
     final variant = ref.read(nightNextVariantProvider);
     if (variant == null || !mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return false;
-    if (variant == NightVariant.bumperRound && !nightBumperRoundReady) return false;
     final Widget screen = switch (variant) {
       NightVariant.shapeRace => const ShapeRaceScreen(),
       NightVariant.bumperRound => const GameScreen(),

@@ -31,6 +31,21 @@ void main() {
     });
   });
 
+  testWidgets('outside the host frame, as the phone app shows it, player 7 is a plain badge with no ring', (
+    tester,
+  ) async {
+    await forEachLook(tester, (look) async {
+      await pumpHostLook(
+        tester,
+        look,
+        screen: const Scaffold(body: Center(child: PlayerBadge(number: 7))),
+      );
+      expect(find.byType(PlayerBadgeRing), findsNothing, reason: '$look');
+      expect(find.byType(ToyBadge), findsOneWidget, reason: '$look');
+      expect(tester.widget<ToyBadge>(find.byType(ToyBadge)).diameter, 32, reason: '$look: the default size');
+    });
+  });
+
   test('badgeNeedsRing is true only past the sixth colour slot', () {
     expect([for (var n = 1; n <= 8; n++) badgeNeedsRing(n)], [false, false, false, false, false, false, true, true]);
   });

@@ -56,17 +56,17 @@ class PlayerBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The ring is the host's: the phone app shows this badge too, outside the host frame, and draws it plain.
     final inFrame = HostFrameInfo.maybeOf(context) != null;
-    if (!badgeNeedsRing(number)) {
+    if (!inFrame || !badgeNeedsRing(number)) {
       return ToyBadge(
         number: number,
         diameter: inFrame ? math.max(size, badgeNumberMinDiameterPx) : size,
         character: ToyCharacter.of(character, number),
       );
     }
-    // The ring box holds the disc at badgeRingDiscShare, so inside the frame it
-    // grows until that disc clears the number floor.
-    final box = inFrame ? math.max(size, badgeNumberMinDiameterPx / badgeRingDiscShare) : size;
+    // The ring box holds the disc at badgeRingDiscShare, so it grows until that disc clears the number floor.
+    final box = math.max(size, badgeNumberMinDiameterPx / badgeRingDiscShare);
     return PlayerBadgeRing(
       size: box,
       child: ToyBadge(
