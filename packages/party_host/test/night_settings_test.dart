@@ -62,6 +62,12 @@ void main() {
       expect(back!.isKids, isTrue);
     });
 
+    test('a Kids night saved with the host picker still reads as Kids', () {
+      final saved = NightSettings.kids.copyWith(picker: NightPicker.host);
+      expect(saved.isKids, isTrue);
+      expect(saved.copyWith(chaos: Chaos.off).isKids, isFalse);
+    });
+
     test('Kids is pinned: three rounds, easy to easy, Chaos little, a calm cat, timers at 1.5, director picks', () {
       const kids = NightSettings.kids;
       expect(kids.length, NightLength.three);

@@ -77,8 +77,8 @@ final class NightSettings {
   /// How each game is picked.
   final NightPicker picker;
 
-  /// Whether these settings are the Kids preset.
-  bool get isKids => this == kids;
+  /// Whether these settings are the Kids preset; who picks does not count (older saved Kids nights picked by host).
+  bool get isKids => copyWith(picker: kids.picker) == kids;
 
   /// These settings with the named fields changed.
   NightSettings copyWith({

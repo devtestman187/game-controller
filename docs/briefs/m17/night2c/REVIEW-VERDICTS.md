@@ -22,3 +22,9 @@
 - should uncommitted wording: hand-fix (tv-word rule) committed now.
 - should c1-report.md:32 wording: fixed by hand.
 - could c1-report.md char count: fixed (154 for the new text).
+
+## wave 2 review (wave2-review-report.md): 1 must, 3 should, 4 could
+- must isKids: real, fixed by hand (isKids ignores picker) with a test; mine.sh 125 tests ok.
+- should night_settings_test:136 no-key case, all_looks hostPicks gap: deferred to docs/code-health.md.
+- should mine.sh non-.dart untracked: owner question (literal vs .dart reading); left as built.
+- could: help text "every time" kept (harmless); mine.sh header, driver-kit sentence, report Summary blocks: code-health.
