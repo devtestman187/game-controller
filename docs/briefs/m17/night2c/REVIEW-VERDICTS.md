@@ -9,3 +9,10 @@
 - night_vote.dart:19 five public types in one file; night_vote_test.dart:215 long helper, :92 name; v1a-report count - minor - code-health / invalid
 - run-findings.md Summary block - invalid - no rule requires it
 - Decisions: run() disposing an old open vote - accepted: v1c's scoreboard starts the next round only after the previous vote was taken; one-game result random - accepted; the vote pick draws from the offer (up to 4) - accepted; no phone = no vote - accepted (the owner's rule: nobody voting = random)
+
+## c1 review (wave1-c1-review-report.md): 0 must, 1 should, 3 could
+- should c1-report.md:32 wording: trivial, fixed by hand at the end.
+- could phone_text_test.dart:51 `text!`: trivial, fixed by hand at the end.
+- could shop_demo_test.dart:185 test name: trivial, fixed by hand at the end.
+- could c1-report.md:26 char count: trivial, fixed by hand at the end.
+- Decision for owner: version text wording; shared old-phone helper (_listsChoices vs choice_fallback.dart:199) deferred to docs/code-health.md.
