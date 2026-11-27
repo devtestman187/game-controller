@@ -26,6 +26,7 @@ import 'night_footer_buttons.dart';
 import 'night_pick_open.dart';
 import 'night_setup_screen.dart';
 import 'night_start_names.dart';
+import 'night_vote_screen.dart';
 import 'night_widgets.dart';
 import 'round_segment.dart';
 
@@ -119,8 +120,13 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
   /// Starts the night and runs [openFirst], which opens its round 1. A host who comes back to
   /// this card with no round recorded has left the night unplayed, so it is
   /// dropped and the chips pick again (B-032); a night with a recorded round
-  /// keeps its length as it always did (M14 r5 12).
+  /// keeps its length as it always did (M14 r5 12). With the vote as picker the phones vote for
+  /// round 1 first, and a Back there starts no night.
   Future<void> _startNight(Future<void> Function() openFirst) async {
+    if (ref.read(nightSettingsProvider).picker == NightPicker.vote) {
+      final voted = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => const NightVoteScreen()));
+      if (voted != true || !mounted) return;
+    }
     final night = ref.read(partyNightProvider.notifier);
     night.start(length: _length, awards: _awards);
     ref.read(nightFlowControllerProvider)?.startNow();

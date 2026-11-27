@@ -12,8 +12,10 @@ import 'package:toy_look/toy_look.dart';
 import '../night/night_flow_controller.dart';
 import '../night/night_flow_provider.dart';
 import '../night/night_pick_provider.dart';
+import '../night/night_settings.dart';
 import '../night/night_state.dart';
 import '../night/night_variant.dart';
+import '../night/night_vote.dart';
 import '../night/party_night.dart';
 import '../providers.dart';
 import '../text/arena_text.dart';
@@ -26,6 +28,7 @@ import 'leave_round.dart';
 import 'lobby_music.dart';
 import 'night_footer_buttons.dart';
 import 'night_pick_open.dart';
+import 'night_vote_strip.dart';
 import 'night_widgets.dart';
 import 'round_segment.dart';
 import 'score_row.dart';
@@ -70,6 +73,16 @@ class _NightScoreboardScreenState extends ConsumerState<NightScoreboardScreen> i
     // While this screen shows, the controller starts the next round through it (plan n1i).
     _controller = ref.read(nightFlowControllerProvider);
     _controller?.hooks = this;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startVote());
+  }
+
+  /// With the vote as picker, the phones vote for the next round's game while this scoreboard shows. Not after the last
+  /// round, and not with another picker.
+  void _startVote() {
+    final night = ref.read(partyNightProvider);
+    if (!mounted || night == null || night.isOver) return;
+    if (ref.read(nightSettingsProvider).picker != NightPicker.vote) return;
+    unawaited(ref.read(nightVoteProvider.notifier).run(night.round + 1));
   }
 
   @override
@@ -127,7 +140,14 @@ class _NightScoreboardScreenState extends ConsumerState<NightScoreboardScreen> i
             // picker is back.
             child: night == null
                 ? const SizedBox.shrink()
-                : _Scoreboard(night: night, players: ref.watch(gamePlayersProvider)),
+                : Column(
+                    children: [
+                      Expanded(
+                        child: _Scoreboard(night: night, players: ref.watch(gamePlayersProvider)),
+                      ),
+                      const NightVoteStrip(),
+                    ],
+                  ),
           ),
         ),
         footer: night == null

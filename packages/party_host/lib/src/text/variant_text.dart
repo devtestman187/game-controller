@@ -23,6 +23,21 @@ const _longMapShortNames = <String, String>{'spinning-tops': 'Spinning Top'};
 abstract final class VoteText {
   /// The question the phones show above the vote cards.
   static const title = 'Pick the next game';
+
+  /// The line over an open vote on the TV.
+  static const voteNow = 'Vote on your phones!';
+
+  /// The title of the vote before round 1.
+  static const firstGame = 'Vote for the first game';
+
+  /// The countdown of the open vote, [seconds] whole seconds left.
+  static String secondsLeft(int seconds) => '$seconds s';
+
+  /// The line when [name] won the vote with the most votes.
+  static String wins(String name) => '$name wins!';
+
+  /// The line when [name] was drawn at random, after a tie or with no vote.
+  static String byChance(String name) => '$name by luck!';
 }
 
 /// The map's name for a card: its own name, or the id when the map has none listed.
