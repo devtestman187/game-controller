@@ -71,3 +71,4 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-26 18:27:42 phase: apply (check took 151s)
 2026-11-26 18:27:44 committed e0c: 52d5bfe2 Save the party night after each change and resume it on restart
 2026-11-26 18:27:44 phase: review (apply took 2s)
+2026-11-26 18:31:09 reviewed wave3: 11 finding(s)
