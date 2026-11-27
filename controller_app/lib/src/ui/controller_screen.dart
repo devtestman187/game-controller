@@ -267,8 +267,9 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
         // This phone's own result of the round it just drew (M14 design
         // section 9): the card over the last frame, and over the pad with it.
         const Positioned.fill(child: _ResultOverlay()),
-        // The host's choice round (M17 phone1b), over the pad like the result card.
-        const Positioned.fill(child: ChoicesOverlay()),
+        // The host's choice round (M17 phone1b), over the pad like the result card but under the top bar's
+        // line, so the bar (Settings, Diagnostics, the link) still takes a tap during a round.
+        const Positioned(top: topBarHeightPx, left: 0, right: 0, bottom: 0, child: ChoicesOverlay()),
       ],
     );
   }

@@ -13,6 +13,13 @@ const _minTouchDp = 48.0;
 /// How often the countdown reads the clock again, in milliseconds: once a second is as fine as "12 s" reads.
 const _countdownTickMs = 1000;
 
+/// Milliseconds in a second, to show the countdown in whole seconds.
+const _msPerS = 1000;
+
+/// The widest the round's column grows, in logical pixels: on a tablet or a wide window the cards stay a
+/// readable column instead of stretching across it (M17 phone1b, from 540 dp up).
+const choicesColumnMaxWidthPx = 480.0;
+
 /// How much of a disabled card's look is left, as an opacity share: greyed, but still readable.
 const _disabledOpacity = 0.5;
 
@@ -42,35 +49,56 @@ class ChoicesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final look = ToyLookScope.of(context);
     final end = state.end;
+    final title = Text(
+      state.message.title,
+      key: const Key('choicesTitle'),
+      textAlign: TextAlign.center,
+      style: look.type.title.copyWith(color: look.colors.onBackground),
+    );
     return Material(
       color: look.colors.background,
       child: Padding(
         padding: const EdgeInsets.all(ToySizes.space16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              state.message.title,
-              key: const Key('choicesTitle'),
-              textAlign: TextAlign.center,
-              style: look.type.title.copyWith(color: look.colors.onBackground),
-            ),
-            const SizedBox(height: ToySizes.space8),
-            if (end == null) ...[
-              _Countdown(state: state),
-              const SizedBox(height: ToySizes.space8),
-              Expanded(child: _Cards(state: state)),
-              const SizedBox(height: ToySizes.space8),
-              _LockButton(locked: state.locked),
-            ] else
-              Expanded(
-                child: Center(
-                  child: SingleChildScrollView(
-                    child: _Result(state: state, end: end),
+        child: Center(
+          child: ConstrainedBox(
+            key: const Key('choicesColumn'),
+            constraints: const BoxConstraints(maxWidth: choicesColumnMaxWidthPx),
+            // The title and the countdown scroll with the cards, so a short window (the menu under the top
+            // bar) never overflows; only the lock button stays put.
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (end == null) ...[
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          title,
+                          const SizedBox(height: ToySizes.space8),
+                          _Countdown(state: state),
+                          const SizedBox(height: ToySizes.space8),
+                          _Cards(state: state),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ),
-          ],
+                  const SizedBox(height: ToySizes.space8),
+                  _LockButton(locked: state.locked),
+                ] else ...[
+                  title,
+                  const SizedBox(height: ToySizes.space8),
+                  Expanded(
+                    child: Center(
+                      child: SingleChildScrollView(
+                        child: _Result(state: state, end: end),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -106,7 +134,7 @@ class _CountdownState extends ConsumerState<_Countdown> {
   Widget build(BuildContext context) {
     final look = ToyLookScope.of(context);
     final leftMs = widget.state.remainingMs(ref.read(clientProvider).nowMs);
-    final seconds = (leftMs / 1000).ceil();
+    final seconds = (leftMs / _msPerS).ceil();
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -134,24 +162,22 @@ class _CountdownState extends ConsumerState<_Countdown> {
   }
 }
 
-/// The cards, one column, which scrolls only when they do not fit.
+/// The cards, one column; the screen scrolls it when it does not fit.
 class _Cards extends StatelessWidget {
   const _Cards({required this.state});
 
   final ChoicesState state;
 
   @override
-  Widget build(BuildContext context) => SingleChildScrollView(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final card in state.message.cards)
-          Padding(
-            padding: const EdgeInsets.only(bottom: ToySizes.space8),
-            child: _CardTile(card: card, state: state),
-          ),
-      ],
-    ),
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      for (final card in state.message.cards)
+        Padding(
+          padding: const EdgeInsets.only(bottom: ToySizes.space8),
+          child: _CardTile(card: card, state: state),
+        ),
+    ],
   );
 }
 
@@ -268,7 +294,8 @@ class _Result extends StatelessWidget {
     final look = ToyLookScope.of(context);
     final result = end.result;
     final card = result == null ? null : state.message.cards.where((c) => c.id == result).firstOrNull;
-    final label = card == null ? result : _cardLabel(card, end.count);
+    // A result that names no card of this round is shown as no choice, never as a raw id.
+    final label = card == null ? null : _cardLabel(card, end.count);
     final text = label == null
         ? PhoneText.choicesNoChoice
         : end.byDefault

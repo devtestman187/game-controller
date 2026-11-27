@@ -53,6 +53,8 @@ class ChoicesState {
     return left < 0 ? 0 : left;
   }
 
+  /// This state with the given fields changed. [clearPick] drops the pick (a null [picked] keeps it); [end]
+  /// and the others keep their current value when null.
   ChoicesState copyWith({String? picked, bool clearPick = false, int? count, bool? locked, ChoicesEndMessage? end}) =>
       ChoicesState(
         message: message,
@@ -66,9 +68,12 @@ class ChoicesState {
 
 /// The choice round the host sent this phone (M17 phone1b), or null when none shows. A message of the same
 /// round updates it, another round replaces it. A new view clears it, and so does a dropped link, as
-/// [nightEndProvider] clears its end; so does [choicesResultHoldMs] after the round's end.
+/// [nightEndProvider] clears its end; so does [choicesResultHoldMs] after the round's end. So does the host
+/// going away: the host-away card shows instead, nothing is sent to an away host, and the host's return does not
+/// bring the stale round back (the host sends the round again if it still runs).
 final choicesProvider = NotifierProvider<ChoicesNotifier, ChoicesState?>(ChoicesNotifier.new);
 
+/// Holds the round of [choicesProvider] and sends this phone's picks, counts and lock to the host.
 class ChoicesNotifier extends Notifier<ChoicesState?> {
   Timer? _clearTimer;
 
@@ -80,9 +85,9 @@ class ChoicesNotifier extends Notifier<ChoicesState?> {
       client.choicesEnds.listen(_onEnd),
       client.view.listen((event) {
         switch (event) {
-          case ViewStarted():
+          case ViewStarted() || HostAway():
             _clear();
-          case ViewEnded() || ViewFrame() || HostAway() || HostBack() || PlayerAway() || PlayerBack():
+          case ViewEnded() || ViewFrame() || HostBack() || PlayerAway() || PlayerBack():
             break;
         }
       }),

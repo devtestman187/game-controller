@@ -2,6 +2,8 @@ import 'package:connection/connection.dart';
 import 'package:controller/src/haptics.dart';
 import 'package:controller/src/layout.dart';
 import 'package:controller/src/ui/choices_screen.dart';
+import 'package:controller/src/ui/settings_screen.dart';
+import 'package:controller/src/ui/top_bar_metrics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -260,6 +262,77 @@ void main() {
         app.client.emit(const ClientSnapshot(status: ClientStatus.reconnecting));
         await _flush(tester);
         expect(find.byKey(const Key('choicesTitle')), findsNothing);
+        await _unmount(tester);
+      });
+
+      testWidgets('the round sits below the top bar, which still takes a tap and opens Settings', (tester) async {
+        await _pumpRound(tester, _round(), tv: tv);
+        final overlayTop = tester.getTopLeft(find.byType(ChoicesOverlay)).dy;
+        expect(overlayTop, topBarHeightPx, reason: 'the overlay starts where the bar ends');
+        await tester.tap(find.byKey(const Key('moreMenu')));
+        await settle(tester);
+        expect(find.byKey(const Key('moreSettings')), findsOneWidget, reason: 'the bar took the tap in a round');
+        await tester.tap(find.byKey(const Key('moreSettings')));
+        await settle(tester);
+        await settle(tester);
+        expect(find.byType(SettingsScreen), findsOneWidget, reason: 'the way out of the round to Settings works');
+        await _unmount(tester);
+      });
+
+      testWidgets('the column is at most 480 dp wide on a wide window', (tester) async {
+        await _pumpRound(tester, _round(), tv: tv, screen: const Size(900, 420));
+        expect(tester.getSize(find.byKey(const Key('choicesColumn'))).width, choicesColumnMaxWidthPx);
+        expect(choicesColumnMaxWidthPx, 480);
+        await _unmount(tester);
+      });
+
+      testWidgets('a result that names no card says No choice, not the raw id', (tester) async {
+        final app = await _pumpRound(tester, _round(), tv: tv);
+        app.client.choicesEnd(const ChoicesEndMessage(round: 4, result: 'ghost', count: 1, byDefault: false));
+        await _flush(tester);
+        expect(find.text('No choice'), findsOneWidget);
+        expect(find.textContaining('ghost'), findsNothing);
+        await _unmount(tester);
+      });
+
+      testWidgets('the host going away hides the round, sends no pick, and its return does not bring it back', (
+        tester,
+      ) async {
+        final app = await _pumpRound(tester, _round(picked: 'save'), tv: tv);
+        app.client.hostAway(30);
+        await _flush(tester);
+        expect(find.byKey(const Key('choicesTitle')), findsNothing, reason: 'the host-away card is not covered');
+        expect(app.client.choicePicks, isEmpty, reason: 'nothing is sent to an away host');
+        app.client.hostBack();
+        await _flush(tester);
+        expect(find.byKey(const Key('choicesTitle')), findsNothing, reason: 'the stale round stays gone');
+        await _unmount(tester);
+      });
+
+      testWidgets('a new view clears the round', (tester) async {
+        final app = await _pumpRound(tester, _round(), tv: tv);
+        app.client.viewStart(const ViewStartMessage(game: 'mystery', snapshotVersion: 1, setup: {}, hz: 60));
+        await _flush(tester);
+        expect(find.byKey(const Key('choicesTitle')), findsNothing);
+        await _unmount(tester);
+      });
+
+      testWidgets('a second round replaces the first', (tester) async {
+        final app = await _pumpRound(tester, _round(picked: 'save'), tv: tv);
+        const second = ChoicesMessage(
+          round: 5,
+          title: 'Next one',
+          cards: [_build],
+          endsInMs: 5000,
+          defaultId: 'build',
+          currency: 'Bolts',
+        );
+        app.client.choicesRound(second);
+        await _flush(tester);
+        expect(find.text('Next one'), findsOneWidget);
+        expect(find.text('What now?'), findsNothing);
+        expect(find.byKey(const Key('choiceCard_save')), findsNothing);
+        expect(find.text('Build 1'), findsOneWidget, reason: 'the second round holds no pick of the first');
         await _unmount(tester);
       });
     });
