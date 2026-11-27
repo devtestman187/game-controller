@@ -1,6 +1,9 @@
 import 'package:connection/connection.dart';
 import 'package:controller/src/haptics.dart';
+import 'package:controller/src/host/host_start_sheet.dart';
+import 'package:controller/src/host/hosting.dart';
 import 'package:controller/src/layout.dart';
+import 'package:controller/src/providers.dart';
 import 'package:controller/src/ui/choices_screen.dart';
 import 'package:controller/src/ui/settings_screen.dart';
 import 'package:controller/src/ui/top_bar_metrics.dart';
@@ -12,6 +15,7 @@ import 'package:protocol/protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/fakes.dart';
+import 'support/host_app.dart';
 import 'support/pump_app.dart';
 
 const _save = ChoiceCard(id: 'save', title: 'Save +2', detail: 'Keep the Bolts', cost: 0);
@@ -335,6 +339,48 @@ void main() {
         expect(find.text('Build 1'), findsOneWidget, reason: 'the second round holds no pick of the first');
         await _unmount(tester);
       });
+
+      testWidgets('Leave game on the host-away card still leaves after the round was cleared by the host going away', (
+        tester,
+      ) async {
+        final app = await _pumpRound(tester, _round(picked: 'save'), tv: tv);
+        app.client.hostAway(30);
+        await _flush(tester);
+        expect(find.byKey(const Key('choicesTitle')), findsNothing, reason: 'HostAway cleared the round');
+        expect(find.byKey(const Key('leaveGame')), findsOneWidget, reason: 'the host-away card is on screen');
+        await _tap(tester, find.byKey(const Key('leaveGame')));
+        await settle(tester);
+        expect(app.client.calls, contains('disconnect'), reason: 'the tap leaves the host');
+        expect(app.prefs.getString('lastHost'), isNull, reason: 'a phone that left is not reconnected at start');
+        await _unmount(tester);
+      });
+
+      testWidgets('the host going away clears a result that is still showing', (tester) async {
+        final app = await _pumpRound(tester, _round(), tv: tv);
+        app.client.choicesEnd(const ChoicesEndMessage(round: 4, result: 'save', count: 1, byDefault: false));
+        await _flush(tester);
+        expect(find.byKey(const Key('choicesResult')), findsOneWidget, reason: 'the result shows first');
+        app.client.hostAway(30);
+        await _flush(tester);
+        expect(find.byKey(const Key('choicesResult')), findsNothing, reason: 'a result of a host that left is gone');
+        expect(find.text('You got: Save +2'), findsNothing);
+        await _unmount(tester);
+      });
     });
   }
+
+  group('the choices round on the host phone (host_screen.dart mounts the same controller screen)', () {
+    testWidgets('a round shows over "Show on this device", which has no pad of its own', (tester) async {
+      final client = FakeClient();
+      await pumpHostApp(tester, extra: [clientProvider.overrideWithValue(client)]);
+      await enterHostMode(tester, choice: HostChoice.onDevice);
+      client.choicesRound(_round());
+      await _flush(tester);
+      expect(find.byKey(const Key('choicesTitle')), findsOneWidget, reason: 'the round shows on the host\'s screen');
+      expect(find.text('What now?'), findsOneWidget);
+      expect(client.choicePicks, isEmpty, reason: 'showing the round sends nothing');
+      await tester.runAsync(hostContainer(tester).read(hostingProvider.notifier).stop);
+      await _unmount(tester);
+    });
+  });
 }

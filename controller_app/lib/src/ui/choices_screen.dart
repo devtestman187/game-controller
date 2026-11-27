@@ -6,6 +6,7 @@ import 'package:party_host/party_host.dart' show PhoneText, ToyButton, ToyCard, 
 import 'package:protocol/protocol.dart';
 
 import '../providers.dart';
+import 'choices_result.dart';
 
 /// The smallest a tappable control is, in dp, so a thumb hits it (design touch rule).
 const _minTouchDp = 48.0;
@@ -17,14 +18,12 @@ const _countdownTickMs = 1000;
 const _msPerS = 1000;
 
 /// The widest the round's column grows, in logical pixels: on a tablet or a wide window the cards stay a
-/// readable column instead of stretching across it (M17 phone1b, from 540 dp up).
+/// readable column instead of stretching across it. The round's padding takes 16 dp on each side, so the cap
+/// bites from 512 dp of screen width (480 + 2 x 16; M17 phone1b).
 const choicesColumnMaxWidthPx = 480.0;
 
 /// How much of a disabled card's look is left, as an opacity share: greyed, but still readable.
 const _disabledOpacity = 0.5;
-
-/// A card's text as the player reads it: "Build 2" for a counted card holding 2, else its title.
-String _cardLabel(ChoiceCard card, int count) => card.maxCount > 1 ? '${card.title} $count' : card.title;
 
 /// The choice round over the pad (M17 phone1b): nothing while the host has sent none. It is not a game: it
 /// shows whatever round the host asks this phone to choose in.
@@ -91,7 +90,7 @@ class ChoicesScreen extends ConsumerWidget {
                   Expanded(
                     child: Center(
                       child: SingleChildScrollView(
-                        child: _Result(state: state, end: end),
+                        child: ChoicesResult(state: state, end: end),
                       ),
                     ),
                   ),
@@ -207,7 +206,7 @@ class _CardTile extends ConsumerWidget {
         onTap: () => notifier.pick(card.id),
         child: ToyCard(
           popIn: false,
-          header: _cardLabel(card, isPicked ? state.count : 1),
+          header: choiceCardLabel(card, isPicked ? state.count : 1),
           headerColor: isPicked ? look.colors.good : null,
           padding: const EdgeInsets.all(ToySizes.space12),
           child: Row(
@@ -278,36 +277,6 @@ class _LockButton extends ConsumerWidget {
       key: const Key('choiceLock'),
       label: locked ? PhoneText.choicesLocked : PhoneText.choicesLockIn,
       onPressed: locked ? notifier.undo : notifier.lock,
-    );
-  }
-}
-
-/// What the round gave the player, once the host ended it.
-class _Result extends StatelessWidget {
-  const _Result({required this.state, required this.end});
-
-  final ChoicesState state;
-  final ChoicesEndMessage end;
-
-  @override
-  Widget build(BuildContext context) {
-    final look = ToyLookScope.of(context);
-    final result = end.result;
-    final card = result == null ? null : state.message.cards.where((c) => c.id == result).firstOrNull;
-    // A result that names no card of this round is shown as no choice, never as a raw id.
-    final label = card == null ? null : _cardLabel(card, end.count);
-    final text = label == null
-        ? PhoneText.choicesNoChoice
-        : end.byDefault
-        ? PhoneText.choicesChosenForYou(label)
-        : PhoneText.choicesYouGot(label);
-    return ToyCard(
-      key: const Key('choicesResult'),
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: look.type.title.copyWith(color: look.colors.ink),
-      ),
     );
   }
 }
