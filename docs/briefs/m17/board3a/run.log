@@ -181,3 +181,8 @@ RESULT: DONE: 4 jobs, 18 min
 2026-11-26 23:54:53 phase: apply (check took 200s)
 2026-11-26 23:54:55 committed g3b3: a52abe50 city: shared final place, driving rule and start assignment
 2026-11-26 23:54:55 phase: review (apply took 2s)
+2026-11-26 23:56:29 reviewed wave4: 6 finding(s)
+METRICS g3b3 worker=claude model=claude-haiku-5-5 turns=15 in=22 out=20593 cache=379022 min=2.9 wall=6.1 result=0
+METRICS wave4-review worker=claude model=claude-haiku-5-5 turns=17 in=20 out=13971 cache=276440 min=1.2 wall=- result=0
+2026-11-26 23:56:35 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/board3a/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 5 jobs, 17 min
