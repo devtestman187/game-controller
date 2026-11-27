@@ -388,3 +388,6 @@ Not built. bugs2 wave A with the 1-hour cache showed no large Sonnet cache write
 - The night_games CSV column repeats games; kept because the brief names it. runSimCell takes a SimCell value object, not seven named parameters (accepted).
 - Comment lines over 120 columns in sim_report.dart (77, 189, 218, 311) and sim_report_test.dart (1, 26); five public constants in sim_report.dart could be private; blockGap lacks a unit in its name (blockGapTiles).
 - tools suite: run-stops, run-wave and run-wire2 selftests fail inside the runner's job tree and combined check (3 times, same cases) while run-wave-test passes alone: load or environment, not our change. Verify on the main line.
+
+## board3m (Nov 27)
+- The 15-field CityRules(...) copy is written in rules.dart forPlayers, rules_test.dart, roadworks_offer_test.dart and tools/sim/sim_rules.dart; a copyWith (needs owner OK for a new method) or one test helper would cut it to one place.

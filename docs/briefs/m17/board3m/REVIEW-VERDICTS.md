@@ -1,0 +1,12 @@
+# wave 1 verdicts (Claude)
+- must gateTileIndex still in rules.dart (verified by grep) - must - g3h item 1
+- must rules_test.dart:161 gate tile test tests a local value - must - g3h item 1 (deleted with the field)
+- should forPlayers chained re-pricing - must (cheap trap) - g3h item 2
+- could literal pins (cap 3, 5 games) - minor - kept as config pins
+- could 15-field CityRules copy in three places - minor - docs/code-health.md
+- could forPlayers test misses two fields - trivial - g3h item 3
+- could g3r1-report line 17 says tests moved - trivial - fixed by hand
+- decision nextTileGated default false - accepted (brief asked; no caller yet)
+- decision gateTargets does not exclude a gated rival - accepted (gateOffered gates the call); note for the gate-game job
+- process: workers ran tools/mine.sh despite the stop line - invalid (COMMON.md governs; mine.sh output not a repo change)
+- later: placeGate/openGate pause, away, reconnect cases untested - owner/next job (M17b gate-game wiring)

@@ -1,4 +1,6 @@
 # wave 1: rules, board model and adapter (disjoint files)
 g3r1 g3t g3m
-# wave 2: simulator on the final rules, merge gate script
-g3r2 g3n
+# wave 2: fix of the wave-1 review, merge gate script
+g3h g3n
+# wave 3: simulator on the final rules (sim_rules.dart after g3h)
+g3r2

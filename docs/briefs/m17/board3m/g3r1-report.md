@@ -14,7 +14,7 @@ Checks run in this job:
 ## Files changed
 
 - `packages/party_host/lib/src/city/rules.dart` (186 → 255 lines): removed `roadworksCost` and `roadworksPrice`; added `tileCostLargeNight` (2), `largeNightFrom` (5), `nightGames` (5), `gateGame` (3), `gatePickSeconds` (10) with doc comments; `tileCost` (3) doc says 2-4 players; `buildCap` doc says at most 3 Builds per stop; `kidsPreset` doc now covers gates; added typedef `GateRoad`; added `CityRules.forPlayers`, `gateOffered`, `gateTargets`, `gateOpenCost`; `roadworksOffered` gained `nextTileGated = false`. `gateTileIndex` kept (see Blocked).
-- `packages/party_host/test/city/rules_test.dart` (now 377 lines): new `forPlayers`, `gate` and `buildCap` tests; roadworks group removed (its tests moved to the roadworks file); every `gateTileIndex` use replaced by `roadLength - 2` (or `roadLength - 3` for `gateTileIndex - 1`); the kids night is a local `kidsNight` copy.
+- `packages/party_host/test/city/rules_test.dart` (now 377 lines): new `forPlayers`, `gate` and `buildCap` tests; roadworks group removed (its two roadworksPrice tests were deleted with the function); every `gateTileIndex` use replaced by `roadLength - 2` (or `roadLength - 3` for `gateTileIndex - 1`); the kids night is a local `kidsNight` copy.
 - `packages/party_host/test/city/roadworks_offer_test.dart` (54 lines): kids copy updated to the new constructor; two new `nextTileGated` tests.
 - `tools/sim/sim_rules.dart`: `cityRulesWith` drops `roadworksCost`, copies the five new fields from base; `gateTileIndex` still copied.
 
