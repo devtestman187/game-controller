@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:toy_look/toy_look.dart';
 
 import '../night/night_awards.dart';
+import '../night/night_flow_provider.dart';
 import '../night/night_state.dart';
 import '../night/party_night.dart';
 import '../providers.dart';
@@ -91,6 +92,7 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
   Future<void> _startNight(Widget first) async {
     final night = ref.read(partyNightProvider.notifier);
     night.start(length: _length, awards: _awards);
+    ref.read(nightFlowControllerProvider)?.startNow();
     await _open(first);
     night.dropIfUnplayed();
   }

@@ -9,7 +9,10 @@ import 'package:game_assets/asset_manifest.dart';
 import 'package:test_game/test_game.dart' show roboNumberFor, roboPlayerId;
 import 'package:toy_look/toy_look.dart';
 
+import '../night/night_flow_controller.dart';
+import '../night/night_flow_provider.dart';
 import '../night/night_state.dart';
+import '../night/night_variant.dart';
 import '../night/party_night.dart';
 import '../providers.dart';
 import '../text/arena_text.dart';
@@ -49,17 +52,47 @@ class NightScoreboardScreen extends ConsumerStatefulWidget {
   ConsumerState<NightScoreboardScreen> createState() => _NightScoreboardScreenState();
 }
 
-class _NightScoreboardScreenState extends ConsumerState<NightScoreboardScreen> {
+class _NightScoreboardScreenState extends ConsumerState<NightScoreboardScreen> implements NightRoundHooks {
   /// Whether the final scores' celebration has played: once a screen, not on
   /// every rebuild.
   bool _celebrated = false;
+
+  /// The controller this screen hooked itself to, so leaving clears that one only.
+  NightFlowController? _controller;
 
   @override
   void initState() {
     super.initState();
     // The reveal hands over with the night already over.
     if (ref.read(partyNightProvider)?.isOver ?? false) _celebrate();
+    // While this screen shows, the controller starts the next round through it (plan n1i).
+    _controller = ref.read(nightFlowControllerProvider);
+    _controller?.hooks = this;
   }
+
+  @override
+  void dispose() {
+    if (identical(_controller?.hooks, this)) _controller?.hooks = null;
+    super.dispose();
+  }
+
+  /// The controller's timer reached the next round: the variant the night chose opens its game, and the controller
+  /// starts the round. False, with nothing opened, when no variant is chosen or this screen has gone.
+  @override
+  bool startRound(int round, bool lastRound) {
+    final variant = ref.read(nightNextVariantProvider);
+    if (variant == null || !mounted) return false;
+    final Widget screen = switch (variant) {
+      NightVariant.shapeRace => const ShapeRaceScreen(),
+      NightVariant.bumperRound => const GameScreen(),
+    };
+    _open(screen);
+    return true;
+  }
+
+  /// A replay is not in this batch: a skip or a reroll gets its own screen later (plan n1g).
+  @override
+  void replaceRound(int round, {required bool sameGame}) {}
 
   /// The night is won: the celebration plays (design section 6, frame 7).
   void _celebrate() {
@@ -107,9 +140,15 @@ class _NightScoreboardScreenState extends ConsumerState<NightScoreboardScreen> {
   /// start card offers, so the two screens cannot drift apart.
   Widget _nextRound() => NightFooterButtons(
     autofocus: true,
-    onShapeRace: () => _open(const ShapeRaceScreen()),
-    onBumperRound: nightBumperRoundReady ? () => _open(const GameScreen()) : null,
+    onShapeRace: () => _startRound(const ShapeRaceScreen()),
+    onBumperRound: nightBumperRoundReady ? () => _startRound(const GameScreen()) : null,
   );
+
+  /// The footer's pick starts the round in the controller, then opens its game as it always did.
+  void _startRound(Widget screen) {
+    ref.read(nightFlowControllerProvider)?.startNow();
+    _open(screen);
+  }
 
   /// The final scores' one button: the night is over, so it ends without
   /// asking (the scoreboard is the only way on) and the picker is back.

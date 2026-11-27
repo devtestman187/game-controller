@@ -9,6 +9,7 @@ import 'package:test_game/test_game.dart';
 
 import '../controls.dart';
 import '../local_player_source.dart';
+import '../night/night_flow_provider.dart';
 import '../night/night_state.dart';
 import '../night/party_night.dart';
 import '../night/round_results.dart';
@@ -264,6 +265,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final result = _result;
     if (result == null) return;
     _log('Results: ${NightText.next}');
+    final controller = ref.read(nightFlowControllerProvider);
+    controller?.roundEnded();
+    controller?.next();
     ref.read(partyNightProvider.notifier).recordRound(result);
     final over = ref.read(partyNightProvider)?.isOver ?? false;
     _showAfterNight(over ? const NightRevealScreen() : const NightScoreboardScreen());
