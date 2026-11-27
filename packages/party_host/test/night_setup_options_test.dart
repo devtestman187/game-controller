@@ -21,11 +21,20 @@ List<String> _playableIds(NightSettings settings, Level Function(String mapId) r
 
 void main() {
   group('what the setup offers', () {
-    test('Arena Race, Rotating and Vote are never offered', () {
+    test('Arena Race is never offered', () {
       expect(NightSetupOptions.offeredGames, isNot(contains(VariantGame.arenaRace)));
       expect(NightSetupOptions.offeredGames, [VariantGame.shapeRace, VariantGame.bumperRound]);
+    });
+
+    test('Vote is offered last and Rotating is not offered', () {
+      expect(NightSetupOptions.offeredPickers, [
+        NightPicker.host,
+        NightPicker.director,
+        NightPicker.shuffle,
+        NightPicker.playlist,
+        NightPicker.vote,
+      ]);
       expect(NightSetupOptions.offeredPickers, isNot(contains(NightPicker.rotating)));
-      expect(NightSetupOptions.offeredPickers, isNot(contains(NightPicker.vote)));
     });
 
     test('lengths are three and five rounds only, never above five', () {

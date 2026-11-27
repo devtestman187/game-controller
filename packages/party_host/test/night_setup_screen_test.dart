@@ -117,10 +117,11 @@ void main() {
         final corners = [tester.getTopLeft(done), tester.getBottomRight(done), tester.getCenter(done)];
         expect(corners.every(screen.contains), isTrue, reason: 'Done is inside the screen, rect $rect');
 
-        final playlist = await _reach(tester, const Key('setupPicker-playlist'));
-        await tester.tap(playlist);
+        final vote = await _reach(tester, const Key('setupPicker-vote'));
+        await tester.tap(vote);
         await tester.pumpAndSettle();
-        expect(_settings(tester).picker, NightPicker.playlist, reason: 'the last row was tapped');
+        expect(_settings(tester).picker, NightPicker.vote, reason: 'the last row was tapped');
+        expect(find.text(NightSetupText.pickerVoteHelp), findsOneWidget, reason: 'the Vote help line shows');
       });
     }
   }
@@ -165,14 +166,14 @@ void main() {
     });
   });
 
-  testWidgets('every chip of every row is drawn, and no row offers Rotating, Vote, Arena Race, 8 rounds or the cat', (
+  testWidgets('every chip of every row is drawn, and no row offers Rotating, Arena Race, 8 rounds or the cat', (
     tester,
   ) async {
     await _pumpSetup(tester, HostLook.menu, _tallScreen);
     for (final key in _chipKeys()) {
       expect(find.byKey(key), findsOneWidget, reason: '$key is a chip of the screen');
     }
-    for (final word in ['Rotating', 'Vote', 'Arena Race', '8 rounds', 'Cat', 'Chaos']) {
+    for (final word in ['Rotating', 'Arena Race', '8 rounds', 'Cat', 'Chaos']) {
       expect(find.text(word), findsNothing, reason: 'no chip says $word');
     }
     expect(find.text(NightSetupText.catNote), findsOneWidget, reason: 'the cat is only a note');

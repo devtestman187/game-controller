@@ -16,12 +16,13 @@ final class NightSetupOptions {
       if (nightPlayableGames.contains(game)) game,
   ]);
 
-  /// The pickers the setup offers. Rotating and Vote wait on the owner's questions, so they are not offered.
+  /// The pickers the setup offers. Rotating waits for M17b, so it is not offered.
   static const List<NightPicker> offeredPickers = [
     NightPicker.host,
     NightPicker.director,
     NightPicker.shuffle,
     NightPicker.playlist,
+    NightPicker.vote,
   ];
 
   /// The lengths the setup offers: three and five rounds, never more than the night's round cap (M17 plan n1c).

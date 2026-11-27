@@ -34,6 +34,7 @@ abstract final class NightSetupText {
   static const pickerDirectorHelp = 'The usual way: the night director picks each game and says why.';
   static const pickerShuffleHelp = 'A game picked by luck, none twice until all have been played.';
   static const pickerPlaylistHelp = 'Your chosen games, one after another, in the order listed.';
+  static const pickerVoteHelp = 'Phones vote on the next game for 5 seconds. A tie or no vote picks one by luck.';
   static const pickerRotating = 'Rotating';
   static const pickerVote = 'Vote';
 
@@ -79,6 +80,7 @@ abstract final class NightSetupText {
     NightPicker.director => pickerDirectorHelp,
     NightPicker.shuffle => pickerShuffleHelp,
     NightPicker.playlist => pickerPlaylistHelp,
-    NightPicker.rotating || NightPicker.vote => pickerHostHelp,
+    NightPicker.vote => pickerVoteHelp,
+    NightPicker.rotating => pickerHostHelp,
   };
 }
