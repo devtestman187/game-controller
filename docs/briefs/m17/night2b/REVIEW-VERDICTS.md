@@ -26,3 +26,6 @@
 - pick tests pass on the base (must in wave3 report) - minor: they are pins of rules already covered by f1 item 1/2 cases; noted in REPORT.
 - variant_text comment - trivial, fixed by hand.
 - lastRound unused, start screen 313 lines, pool clean on load, host-pick test in an old file - code-health.
+# wave 4 verdicts (Claude)
+- Done and Block Castle tests pass on the base (must x2) - invalid: pins the brief asked for (Done below 48 dp is the frame's footer; the pool rule is the d2i rule), stated in f4.
+- nightSetupBodyStyle fallback unit, test copy of the pool, old scale literal, TV look at phone sizes, ?? 1 (should/could) - minor: code-health. f3 report Summary missing, _length placeholder - minor.
