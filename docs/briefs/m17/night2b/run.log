@@ -1,0 +1,21 @@
+2026-11-27 00:37:07 RUN_MAX_MIN=232 min (computed backstop of the jobs still to do)
+2026-11-27 00:37:07 start at 6ee2450d on m17
+2026-11-27 00:37:07 worker: claude
+2026-11-27 00:37:08 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-27 00:37:09 run-base 6ee2450d1d9f6f0b3149564af8a2615b9ab33755
+2026-11-27 00:37:42 phase: preflight
+2026-11-27 00:37:49 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-27 00:38:10 phase: worker (preflight took 28s)
+2026-11-27 00:38:11 start d2w
+2026-11-27 00:38:36 start d2f
+2026-11-27 00:48:29 d2w finished: result 0 (51 turns, 6 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 50/1476024/79242/42767
+2026-11-27 00:51:20 d2f finished: result 0 (30 turns, 6 min) model claude-sonnet-5-5, ladder 1, tokens in/read/write/out 40/642331/48723/17876
+2026-11-27 00:51:21 phase: tests-first (worker took 791s)
+2026-11-27 00:52:50 tests-first: controller_app/test/choices_vote_test.dart passes on the old code, exempt by its brief
+2026-11-27 00:53:08 tests-first ok: packages/party_host/test/night_pick_test.dart fails on the old code
+2026-11-27 00:53:19 tests-first ok: packages/party_host/test/variant_text_test.dart fails on the old code
+2026-11-27 00:53:31 tests-first ok: packages/party_host/test/vote_round_test.dart fails on the old code
+2026-11-27 00:54:48 phase: check (tests-first took 207s)
+2026-11-27 00:55:11 combined check: skips protocol connection metrics kit look arena puzzle tools (no job's change reaches them)
+2026-11-27 01:05:28 STOPPED: tools/review.sh found a FAIL after d2w d2f (see .dart_tool/run-jobs/docs_briefs_m17_night2b/run-review.log); nothing of this wave is committed
+RESULT: STOPPED: tools/review.sh found a FAIL after d2w d2f (see .dart_tool/run-jobs/docs_briefs_m17_night2b/run-review.log); nothing of this wave is committed
