@@ -75,11 +75,37 @@ change
 gate --root "$r" --base base
 expect "a city/ lib file of 380 lines passes" 0 "RESULT: PASS"
 
+new_repo size-no-newline
+mkdir -p "$r/$city" && printf '%s' "$(lines 381)" > "$r/$city/nonl.dart"
+change
+gate --root "$r" --base base
+expect "a 381-line city/ file with no final newline fails" 1 "FAIL size $city/nonl.dart 381"
+
+new_repo committed-small
+put "$city/grow.dart" "$(lines 100)"
+change
+put "$city/grow.dart" "$(lines 381)"
+gate --root "$r" --base base
+expect "a lib file committed at 100 lines passes though its working copy has 381" 0 "RESULT: PASS"
+
+new_repo committed-big
+put "$city/grow.dart" "$(lines 381)"
+change
+put "$city/grow.dart" "$(lines 100)"
+gate --root "$r" --base base
+expect "a lib file committed at 381 lines fails though its working copy has 100" 1 "FAIL size $city/grow.dart 381"
+
 new_repo test-over
 put packages/party_host/test/city/big_test.dart "$(lines 501)"
 change
 gate --root "$r" --base base
 expect "a city/ test file of 501 lines fails with its count" 1 "FAIL size packages/party_host/test/city/big_test.dart 501"
+
+new_repo test-edge
+put packages/party_host/test/city/edge_test.dart "$(lines 500)"
+change
+gate --root "$r" --base base
+expect "a city/ test file of 500 lines passes" 0 "RESULT: PASS"
 
 new_repo night-import
 put "$city/rules.dart" "import 'package:party_host/src/night/x.dart';"
@@ -106,6 +132,11 @@ gate --root
 expect "--root without a value exits 2" 2 -
 gate --root "$tmp/none" --base base
 expect "a root that is not a git repo exits 2" 2 -
+new_repo unknown-base
+put docs/notes.md "notes"
+change
+gate --root "$r" --base no-such-ref
+expect "--base with an unknown ref exits 2" 2 "no merge base with no-such-ref"
 
 echo "cases $cases failed $fails"
 [ "$fails" -eq 0 ] || exit 1
