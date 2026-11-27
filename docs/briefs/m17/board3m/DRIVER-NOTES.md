@@ -1,0 +1,2 @@
+- 10:04 wave1: g3r1 g3t committed, g3m parked on format only (class: capability, worker skipped dart format); hand-fixed via parked patch + dart format, tests 97 pass. next: restart runner for wave 2
+- 10:13 wave2 started with g3h brief whose allow lacks board_test.dart (brief-check FAIL, flagged late: chained commit); board_test only reads CityRules.standard.corners/roadLength so judged safe; class: brief

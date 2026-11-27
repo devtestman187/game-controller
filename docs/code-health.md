@@ -387,3 +387,27 @@ Not built. bugs2 wave A with the 1-hour cache showed no large Sonnet cache write
 ## night2d notes
 - choice_round grace test made race-free (both phones away -> both default); 74d79796.
 - The old-phone rule (a phone that cannot show a card gets the button fallback) lives in `cardsFor`; `choice_fallback.dart` could share one helper with it later. Owner Nov 27: leave it where it is.
+
+## board3a (Nov 27, board line)
+- tools/mine.sh:161 lists an untracked folder as one entry, so new untracked dirs (city/) are skipped with a green "0 file(s)": use `git status --porcelain -uall` and fail on 0 files. Shared tool, NOT fixed on board-line; main to fix. City files were checked by explicit path.
+- Roadworks block effect is not modelled: `RoadworksBlock` (board.dart:134) is a type only, `canDriveOnto` ignores it, and the plan does not say whether a block hits the placer's rivals' roads or any road (each player has their own road). Owner question for the roadworks job (k5a).
+- rules_test.dart holds g3b-era tests added to an existing file (279 lines, under the 500 limit); new roadworks tests are in roadworks_offer_test.dart. Not moved (churn).
+- Tests that restate lib values (`saveBonus`/`buildCap` greaterThan 0, `roadLength` fixture) are weak; replace when the build stop reads them (M17b).
+- Fail-first for the g3b tests showed compile errors only (new functions), not behaviour.
+
+## board3b (Nov 27, board line, tools/sim)
+- sim_report.dart was split on Nov 27 (board3f): sim_report.dart 172 lines, sim_cell.dart, sim_stats.dart (211); the CSV header/row/format still live in sim_report.dart. night_sim.dart (379) could move NightConfig/NightResult out and shorten simulateNight (49 lines).
+- Missing tests: kids cell must equal a kidsRules cell (sim_report_test.dart:181), run_sim.dart argument errors and nights < 1, a zero-tile night; sim_report_test main() is long.
+- The night_games CSV column repeats games; kept because the brief names it. runSimCell takes a SimCell value object, not seven named parameters (accepted).
+- Comment lines over 120 columns in sim_report.dart (77, 189, 218, 311) and sim_report_test.dart (1, 26); five public constants in sim_report.dart could be private; blockGap lacks a unit in its name (blockGapTiles).
+- tools suite: run-stops, run-wave and run-wire2 selftests fail inside the runner's job tree and combined check (3 times, same cases) while run-wave-test passes alone: load or environment, not our change. Verify on the main line.
+
+## board3m (Nov 27)
+- The 15-field CityRules(...) copy is written in rules.dart forPlayers, rules_test.dart, roadworks_offer_test.dart and tools/sim/sim_rules.dart; a copyWith (needs owner OK for a new method) or one test helper would cut it to one place.
+- board3m: night_adapter.dart holds two public types as one adapter pair; (sim_report.dart split done, board3f); docs/dev-tools.md lacks a tools/board-gate.sh row; the stat key "place" is a bare string in night_adapter.dart.
+- points chain in NightChampionDecider is a doc-only guard (board3m wave 4).
+
+## board3f (Nov 27, board line, tools/sim)
+- sim_final_test.dart: check (a) compares the final row to its matrix row but only adult 4 and 6 players assert road_length 6 and tile_cost; main() is 66 lines (one function per check); public check and csvFields lack dartdoc. Plain-script style is the sim convention (run with `dart run`, exit code 0/1); mine.sh does not run it, so its "No tests ran" is not a failure of the test.
+- sim_report.dart: the kidsPreset is passed only on the matrix branch of runSimCell and the gate column reads targetedGate, not gateOn (latent: no kids rules cell exists); finalRulesCells repeats the cell constructor of simMatrixCells; games: nightGames and city.nightGames are two sources of 5. Doc lines over 120 columns at 1, 2, 72, 112, 152 (also sim_cell.dart:16).
+- sim_stats.dart: CellTally's public fields and stats() have no dartdoc.

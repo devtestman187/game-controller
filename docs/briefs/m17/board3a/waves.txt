@@ -1,0 +1,10 @@
+# wave 1: two pure pieces, no shared files, no dependency between them
+g3a g3s
+# fix round 1 (review of wave 1): new-dir files only
+f3a
+# wave 3: rules engine (after g3a types); owner answer on the rule values pending
+g3b2
+# fix round 2 (main verdicts on wave3-g3b2)
+g3b3
+# fix round 3 (wave4 review items main ruled on)
+g3b4

@@ -1,0 +1,20 @@
+machine-lock: check.sh waits for the heavy step of pid 889528 (check.sh since 00:16:53 in /e/AI/game-controller-m17); polling every 15s
+machine-lock: check.sh got the lock after 285s
+PASS  format      (3s)
+PASS  analyze     (9s)
+CACHED  protocol    (passed 4h ago)
+CACHED machine-lock: check.sh got the lock after 345s
+PASS  format      (3s)
+PASS  analyze     (9s)
+CACHED  protocol    (passed 4h ago)
+CACHED  connection  (passed 2h ago)
+CACHED  metrics     (passed 4h ago)
+CACHED  kit         (passed 1h ago)
+CACHED  look        (passed 4h ago)
+CACHED  arena       (passed 1h ago)
+CACHED  puzzle      (passed 1h ago)
+CACHED  host        (passed 8m ago)
+CACHED  phone       (passed 8m ago)
+CACHED  tv          (passed 8m ago)
+CACHED  tools       (passed 7h ago)
+All checks passed (29s, 11 cached). Logs: C:\Users\mrman\AppData\Local\Temp/thumbparty-check-20261127-001823

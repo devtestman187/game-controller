@@ -1,0 +1,9 @@
+- 00:36 briefs g3d1 g3d2 g3d2b committed e7d50dd0 (g3d3 inline by driver: worker Bash cannot run the sim CLI). start run, since=1795761390. next: thumb-wait
+- 00:48 g3d1 result 5: tools suite red on run-stops/run-wave/run-wire2 selftests (runner timing tests, 330s/69s/74s; main line loading machine). class: environment. retry unchanged, since=1795762106
+- 01:04 g3d1 failed twice: same 3 runner selftests (run-stops/run-wave/run-wire2) red in the runner check, green alone on the base (run-wave-test PASS 4/4). class: environment (load). Owner answer A folded into briefs; g3d1 renamed g3d1r; restart with RUN_CHECK_SKIP=tools; driver runs tools suite on the tip at the end
+- 01:09 owner final roadworks (A, one, A) folded in: sim-model rewritten, briefs g3d1s/g3d2/g3d2b committed; RUN_CHECK_SKIP=tools
+- 01:09 base check stopped: flutter engine.realm write race with main line (environment). retry
+- 01:24 g3d1s hand-applied (75053303, class environment: 3 runner selftests red in job tree x3). g3d2/g3d2b check: format analyze; worker runs sim-test.sh. restart
+- 01:50 g3d2 hand-committed 7c25a187 (class environment, tools suite). Wave1 review findings (g3d1s, 6) -> g3g: seed-inequality test, greedy with nothing pickable asserts, wrap line bots.dart:5, dartdocs check/main in bots_test. restart w/ RUN_CHECK_SKIP=tools
+- 02:21 g3d2b hand-committed acae9fc2. next: matrix, g3d3 report, g3g fix
+- 02:23 matrix run (5000 nights seed 17) -> docs/briefs/m17/city/sim-results.csv; wave1 should-fixes by hand; g3g brief (wave2 review: must + 2 should in night_sim_test). run g3g

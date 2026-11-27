@@ -16,8 +16,10 @@
 set -u
 for v in $(compgen -e | grep -E "^RUN_"); do unset "$v"; done # the caller's RUN_* settings (RUN_PAUSE_AFTER_WAVE leaked, Nov 25)
 # The caller's limit and poll settings must not reach the runner: each case sets its own below.
+# The runner is started with WORKER=claude MAX_JOBS=n; the stub worker runs as flash, so they must not reach the nested runner (board3c s0).
 unset RUN_CHECK_MAX_MIN RUN_REVIEW_MAX_MIN RUN_POLL_S RUN_LIMIT_UNIT_S RUN_JOB_FACTOR_PCT \
   RUN_EXPECT_DEFAULT_MIN RUN_TURN_CAP RUN_BASE_CHECK_MAX_MIN BRIEF_CHECK_SKIP BRIEF_CHECK_CMD
+unset WORKER MAX_JOBS
 cd "$(dirname "$0")/../.." || exit 2
 loc=$(pwd)
 tmp="$(mktemp -d "${TMPDIR:-${TEMP:-/tmp}}/run-wire2-test-XXXXXX")" || exit 2

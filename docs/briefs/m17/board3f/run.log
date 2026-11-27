@@ -1,0 +1,38 @@
+2026-11-27 13:07:43 RUN_MAX_MIN=69 min (computed backstop of the jobs still to do)
+2026-11-27 13:07:43 start at e7a8244a on board-line
+2026-11-27 13:07:44 worker: claude
+2026-11-27 13:07:45 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-27 13:07:45 run-base e7a8244a668cca0654c14d80288599a443bb5d9b
+2026-11-27 13:07:53 phase: preflight
+2026-11-27 13:08:03 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-27 13:08:29 phase: worker (preflight took 36s)
+2026-11-27 13:08:30 start split
+2026-11-27 13:11:20 split finished: result 0 (13 turns, 2 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 18/228078/27150/16193
+2026-11-27 13:11:20 phase: tests-first (worker took 171s)
+2026-11-27 13:11:34 phase: check (tests-first took 14s)
+2026-11-27 13:11:42 combined check: skips protocol connection metrics kit look arena puzzle host phone tv (no job's change reaches them)
+2026-11-27 13:21:09 phase: apply (check took 575s)
+2026-11-27 13:21:09 finding: split's report has no Summary block in its first 40 lines
+2026-11-27 13:21:11 committed split: 29af9c4d m17 board3f: split sim_report.dart into cell, stats and report
+2026-11-27 13:21:11 phase: review (apply took 2s)
+2026-11-27 13:21:32 phase: worker (review took 21s)
+2026-11-27 13:23:46 start final-row
+2026-11-27 13:29:22 final-row finished: result 0 (33 turns, 4 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 46/854676/42354/23971
+2026-11-27 13:29:22 phase: tests-first (worker took 470s)
+2026-11-27 13:29:27 tests-first ok: tools/sim/sim_final_test.dart fails on the old code
+2026-11-27 13:29:35 phase: check (tests-first took 13s)
+2026-11-27 13:29:43 combined check: skips protocol connection metrics kit look arena puzzle host phone tv (no job's change reaches them)
+2026-11-27 13:37:29 phase: apply (check took 474s)
+2026-11-27 13:37:31 committed final-row: dfe83a5f m17 board3f: final-rules row built through SimRules.forNight
+2026-11-27 13:37:31 phase: review (apply took 2s)
+2026-11-27 13:37:33 reviewed wave1: 11 finding(s)
+2026-11-27 13:39:51 reviewed wave2: 7 finding(s)
+2026-11-27 13:39:52 start the run's review
+METRICS final-row worker=claude model=claude-haiku-5-5 turns=33 in=46 out=23971 cache=897030 min=4.3 wall=5.6 result=0
+METRICS run-review worker=claude model=claude-haiku-5-5 turns=24 in=24 out=32976 cache=512819 min=2.6 wall=- result=0
+METRICS split worker=claude model=claude-haiku-5-5 turns=13 in=18 out=16193 cache=255228 min=1.8 wall=2.8 result=0
+METRICS wave1-review worker=claude model=claude-haiku-5-5 turns=30 in=32 out=17479 cache=619998 min=2.1 wall=- result=0
+METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=25 in=26 out=23904 cache=561431 min=1.9 wall=- result=0
+2026-11-27 13:42:53 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/board3f/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 2 jobs, 35 min
+2026-11-27 14:03:08 full check: All checks passed (783s, 0 cached) on code tip ce01d972 (uncached)
