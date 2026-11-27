@@ -1,0 +1,18 @@
+job: night2b d2h — the how-to announcement carries the director's reason, and its caption says it
+stop: no UI (no screen shows the caption yet; Thumby shows it later), no new event type, no protocolVersion change; facts only, never a name
+read: docs/briefs/templates/COMMON.md · packages/party_host/lib/src/night/night_flow.dart:60-110 (NightEvent, NightHowTo) · packages/party_host/lib/src/night/night_flow_controller.dart:78-135,236-262 (constructors, _emitHowTo) · packages/party_host/lib/src/night/night_flow_provider.dart (whole) · packages/party_host/lib/src/night/night_captions.dart (whole) · packages/party_host/lib/src/night/night_director.dart:6-24 (DirectorReason) · packages/party_host/lib/src/night/night_pick_provider.dart (from d2w: pickFor returns a NightPick with a reason) · packages/party_host/test/night_captions_test.dart (whole) · plan: "Round announcement uses the director's reason code as a caption through the P1 contract (no new seam)"; "Hidden changes feel unfair: Thumby announces the pick"
+changes: NightHowTo.reason · NightFlowController.reasonFor · captionFor
+model: haiku
+turns: 55
+expected-min: 25
+tests-first: exempt a new field: the new tests cannot compile on the base
+do:
+1 night_flow.dart: `const NightHowTo(this.round, {this.reason})` with `final DirectorReason? reason`; `facts` is `{'round': round}` plus `'reason': reason.name` only when reason is not null (so every existing event and test is unchanged). Import night_director.dart; check there is no import cycle.
+2 night_flow_controller.dart: both constructors take `DirectorReason? Function(int round)? reasonFor` (stored final); `_emitHowTo(round)` emits `NightHowTo(round, reason: reasonFor?.call(round))`; the resumed constructor's replay of played rounds never calls it.
+3 night_flow_provider.dart: pass `reasonFor: (round) => ref.read(nightPickProvider.notifier).pickFor(round)?.reason` when building the controller (a night on picker host gets null, so nothing changes).
+4 night_captions.dart: a `NightHowTo` with a reason reads `How to play round $r: <phrase>`; the phrases (plain words, no names): opening "an easy start"; steady "the same level again"; easedAfterLopsided "an easier game, as the scores were far apart"; raisedAtCloseTable "a harder game, as the scores are close"; kindForLastPlace "a gentle game first, for the player behind". Without a reason the caption is exactly as today. Make the switch over DirectorReason exhaustive (no default).
+5 Tests: NEW packages/party_host/test/night_how_to_reason_test.dart: facts carry the reason name only when set; two NightHowTo with different reasons are not equal; one caption test per reason (exact text) and the no-reason caption unchanged; the controller emits the reason from `reasonFor` for round 2 and none for the resumed replay; a controller with no reasonFor emits `NightHowTo(1)` equal to today's (use the helpers of night_flow_controller_test.dart:1-90); the provider passes the pick's reason (container with picker director, round 1 played, `nightRandomProvider` seeded, round 2's how-to has a reason).
+6 Before finishing run `dart analyze` on the files you changed and fix every info, warning and error.
+allow: packages/party_host/lib/src/night/night_flow.dart · packages/party_host/lib/src/night/night_flow_controller.dart · packages/party_host/lib/src/night/night_flow_provider.dart · packages/party_host/lib/src/night/night_captions.dart · packages/party_host/test/night_how_to_reason_test.dart · packages/party_host/test/night_captions_test.dart · packages/party_host/test/night_flow_controller_test.dart
+check: format analyze
+report: docs/briefs/m17/night2b/d2h-report.md

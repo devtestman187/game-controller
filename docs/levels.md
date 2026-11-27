@@ -333,11 +333,11 @@ tools/level.sh render arena                    # writes docs/design/maps/arena.p
 
 `_template.json` is a field that already passes `check`: a wall down the middle with a gap at each end, one slide, a race and a Bumper Round. Edit it from there. Run `tools/check.sh arena` before committing; the map tests redraw `docs/design/maps/` too.
 
-**Tier.** A map's `tier` is its difficulty, `"easy"`, `"medium"` or `"hard"`: the night director will use it to keep a night inside the host's difficulty range. The first rating is set by hand, with the obstacle count (walls, plus 2 × hazards, plus 2 × movers, plus belts) as a guide; no single cut-off gives it, so the owner confirms it:
+**Tier.** A map's `tier` is its difficulty, `"easy"`, `"medium"` or `"hard"`: the night director reads it (as a `Level`) to keep a night inside the host's difficulty range, so the host's easiest and hardest limits and the Kids preset (easy only) decide which maps a night may play. Tiers are set by hand; obstacle counts are a guide (walls, plus 2 × hazards, plus 2 × movers, plus belts), because no single cut-off gives the ratings below:
 
 | Map | playroom | pinball | toy-factory | spinning-tops | block-castle |
 | --- | --- | --- | --- | --- | --- |
-| Obstacles | 13 | 10 | 12 | 20 | 30 |
-| Tier | easy | easy | medium | medium | hard |
+| Obstacles (guide) | 13 | 10 | 12 | 20 | 30 |
+| Tier (set by hand) | easy | easy | medium | medium | hard |
 
 Provisional: the owner confirms it and the Arena-map bots harden it (M17 P7). `tools/level.sh new map` starts a map at easy.
