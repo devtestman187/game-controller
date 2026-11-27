@@ -1,0 +1,18 @@
+job: phone1a y0a — protocol: Capability.choices, ChoicesMessage / ChoicePickMessage / ChoicesEndMessage, codec, host gate, tests
+stop: no host round logic (y0b), no old-phone fallback (y0c), no phone UI, no protocolVersion change, no slot-7 colour. Do not add the cap to any phone hello.
+read: docs/briefs/templates/COMMON.md · docs/briefs/m17/phone1a/contract.md (section Wire) · packages/protocol/lib/src/night.dart:1-110 · packages/protocol/lib/src/capabilities.dart:1-40 · packages/protocol/lib/src/codec.dart:10-45 · packages/protocol/lib/src/messages.dart:1-15 · packages/connection/lib/src/host_connection.dart:205-245 · packages/connection/lib/src/host_server.dart:225-245 · packages/connection/lib/src/client_messages.dart:40-75 · packages/protocol/test/night_end_test.dart · packages/connection/test/night_end_gate_test.dart
+changes: Capability.choices · ChoicesMessage · ChoicePickMessage · ChoicesEndMessage · ChoiceCard · wireType 'choices' 'choice_pick' 'choices_end'
+probe: docs/briefs/m17/phone1a/probe-y0a.patch
+model: haiku
+turns: 60
+expected-min: 30
+tests-first: exempt new messages with no earlier behaviour: the new codec and gate tests are the first tests of them
+do:
+1 New part file protocol/lib/src/choices.dart (replaces the probe stub) with ChoiceCard and the three messages exactly as the contract's Wire section says; `part 'choices.dart';` in messages.dart; add `Capability.choices` (doc line) in capabilities.dart; register the three wireTypes in codec.dart `_decoders`. Follow night.dart for toJson/fromPayload/==; reject bad input with FormatException (empty id, duplicate ids, 0 or over 6 cards, maxCount outside 1..9).
+2 protocol/test/coverage_all_test.dart: add the comment line `//   lib/src/choices.dart - part of another library` in alphabetical order (the file is generated; hand-edit only that line).
+3 host_connection.dart switch: `ChoicePickMessage()`: `if (paired && hello!.supports(Capability.choices)) _forward(message, _host.nowMs);`; add ChoicesMessage() and ChoicesEndMessage() to the group that closes with protocolError. host_server.dart capabilityFor: both host messages map to Capability.choices. client_messages.dart: put the two host messages in the "Ignoring unexpected" group with a comment that B6 (y0d) routes them; ChoicePickMessage goes there too.
+4 Tests, new files protocol/test/choices_codec_test.dart (round trips of each message, card with and without detail/cost, a bad payload per rule above, extra field ignored, a Choices with picked+locked) and connection/test/choices_gate_test.dart (mirror night_end_gate_test over TestTransport: a Choices reaches only the phone that lists the cap; an old phone with `[view]` only stays paired and its input still arrives; a ChoicePick from the old phone is ignored and does not close it; from the capable phone it reaches `server.messages`).
+5 Before finishing run `dart analyze` on the changed files and fix every info, warning and error on them; run `dart test packages/protocol/test/choices_codec_test.dart packages/connection/test/choices_gate_test.dart`.
+allow: packages/protocol/lib/src/choices.dart · packages/protocol/lib/src/messages.dart · packages/protocol/lib/src/capabilities.dart · packages/protocol/lib/src/codec.dart · packages/protocol/test/coverage_all_test.dart · packages/protocol/test/choices_codec_test.dart · packages/connection/lib/src/host_connection.dart · packages/connection/lib/src/host_server.dart · packages/connection/lib/src/client_messages.dart · packages/connection/test/choices_gate_test.dart
+check: format analyze
+report: docs/briefs/m17/phone1a/y0a-report.md

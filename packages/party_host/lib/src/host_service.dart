@@ -141,7 +141,7 @@ class LiveHostService implements HostService {
       // Touch metrics and the rating prompt (M9), and each player's character
       // in the players message and the frames (M16 identity): a phone asks for
       // another character only of a host that lists it.
-      capabilities: const [Capability.metrics, Capability.rating, Capability.identity],
+      capabilities: const [Capability.metrics, Capability.rating, Capability.identity, Capability.choices],
     );
     _gameHost = ServerGameHost(_server)..shareView = shareView;
     _stats = LiveStats(

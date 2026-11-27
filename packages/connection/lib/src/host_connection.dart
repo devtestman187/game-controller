@@ -220,6 +220,8 @@ final class HostConnection {
         if (paired) _forward(message, _host.nowMs);
       case SetCharacterMessage():
         _host.characterChosen(this, message.character);
+      case ChoicePickMessage():
+        if (paired && hello!.supports(Capability.choices)) _forward(message, _host.nowMs);
       case WelcomeMessage() ||
           PairResultMessage() ||
           HapticEventMessage() ||
@@ -236,7 +238,9 @@ final class HostConnection {
           PlayerAwayMessage() ||
           PlayerBackMessage() ||
           PlayersMessage() ||
-          NightEndMessage():
+          NightEndMessage() ||
+          ChoicesMessage() ||
+          ChoicesEndMessage():
         close(CloseCodes.protocolError, 'Unexpected ${message.type}');
     }
   }

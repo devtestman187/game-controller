@@ -7,6 +7,7 @@
 // Skipped, with the reason, because importing the file would not be right:
 //   lib/src/capabilities.dart - part of another library
 //   lib/src/character.dart - part of another library
+//   lib/src/choices.dart - part of another library
 //   lib/src/game_controls.dart - part of another library
 //   lib/src/haptic.dart - part of another library
 //   lib/src/input.dart - part of another library

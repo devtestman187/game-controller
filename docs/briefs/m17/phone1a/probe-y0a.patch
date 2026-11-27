@@ -1,0 +1,47 @@
+diff --git a/packages/protocol/lib/src/choices.dart b/packages/protocol/lib/src/choices.dart
+new file mode 100644
+index 00000000..30a4460e
+--- /dev/null
++++ b/packages/protocol/lib/src/choices.dart
+@@ -0,0 +1,29 @@
++part of 'messages.dart';
++
++// Probe stub (y0a): the three new messages, so probe-deps can see which switches break.
++final class ChoicesMessage extends Message {
++  const ChoicesMessage();
++  static const String wireType = 'choices';
++  @override
++  String get type => wireType;
++  @override
++  Map<String, Object?> toPayload() => {};
++}
++
++final class ChoicePickMessage extends Message {
++  const ChoicePickMessage();
++  static const String wireType = 'choice_pick';
++  @override
++  String get type => wireType;
++  @override
++  Map<String, Object?> toPayload() => {};
++}
++
++final class ChoicesEndMessage extends Message {
++  const ChoicesEndMessage();
++  static const String wireType = 'choices_end';
++  @override
++  String get type => wireType;
++  @override
++  Map<String, Object?> toPayload() => {};
++}
+diff --git a/packages/protocol/lib/src/messages.dart b/packages/protocol/lib/src/messages.dart
+index 0554b546..1a2ac277 100644
+--- a/packages/protocol/lib/src/messages.dart
++++ b/packages/protocol/lib/src/messages.dart
+@@ -1,6 +1,7 @@
+ import 'dart:convert';
+ 
+ part 'capabilities.dart';
++part 'choices.dart';
+ part 'character.dart';
+ part 'game_controls.dart';
+ part 'haptic.dart';

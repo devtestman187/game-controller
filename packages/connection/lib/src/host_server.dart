@@ -157,8 +157,7 @@ class HostServer {
   Future<void> stop() async {
     _heartbeat?.cancel();
     _heartbeat = null;
-    // Sessions first: each phone sees 1001 "Host is closing", as it always
-    // has.
+    // Sessions first: each phone sees 1001 "Host is closing", as it always has.
     for (final s in _sessions.toList()) {
       s.close(CloseCodes.goingAway, 'Host is closing');
     }
@@ -230,6 +229,7 @@ class HostServer {
     RatingAskMessage() => Capability.rating,
     PlayersMessage() => Capability.identity,
     NightEndMessage() => Capability.night,
+    ChoicesMessage() || ChoicesEndMessage() => Capability.choices,
     GameLayoutMessage() => Capability.layout,
     StatusMessage() => Capability.status,
     ViewStartMessage() ||
