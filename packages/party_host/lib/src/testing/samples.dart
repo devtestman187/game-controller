@@ -48,13 +48,15 @@ HostViewState sampleState() => HostViewState(
 );
 
 /// A connected phone, like the sample state's first controller, without
-/// input.
+/// input. [capabilities] are what the phone lists in its hello; none by default,
+/// so the phone is an old app (M17 y0e), which a test asks for by listing them.
 ControllerInfo phoneInfo(
   String id,
   int player, {
   String platform = 'android',
   String? name,
   PlayerCharacter? character,
+  List<String> capabilities = const [],
 }) => ControllerInfo(
   controllerId: id,
   name: name ?? 'Phone $player',
@@ -65,6 +67,7 @@ ControllerInfo phoneInfo(
   since: DateTime(2026),
   player: player,
   character: character,
+  capabilities: capabilities,
 );
 
 /// [s] with [c] added to its controllers, as the host reports a new phone.
