@@ -29,6 +29,9 @@ const _seed = 1;
 /// How many votes the first game gets in the tie test, and the second one too.
 const _tieVotes = 1;
 
+/// How long a round that closes by its own timer lasts in a test, so it ends fast on the real clock.
+const _shortRound = Duration(milliseconds: 100);
+
 /// A vote round the test finishes by hand.
 final class _FakeHandle implements VoteHandle {
   _FakeHandle() : atClose = {};
@@ -212,7 +215,9 @@ void main() {
   });
 
   group('ServerVoteHandle', () {
-    Future<({ServerVoteHandle handle, ChoiceRound round})> setup() async {
+    Future<({ServerVoteHandle handle, ChoiceRound round})> setup({
+      Duration duration = const Duration(minutes: 5),
+    }) async {
       final link = InProcessListener();
       final server = HostServer(
         hostId: 'host-1',
@@ -253,7 +258,7 @@ void main() {
           title: 'Vote',
           cardsFor: (_) => const [ChoiceCard(id: 'a', title: 'A'), ChoiceCard(id: 'b', title: 'B')],
         ),
-        timing: ChoiceTiming(duration: const Duration(minutes: 5), grace: const Duration(minutes: 5), nowMs: () => 0),
+        timing: ChoiceTiming(duration: duration, grace: const Duration(minutes: 5), nowMs: () => 0),
       );
       final oldPhones = OldPhoneChoices(round: round, host: host, input: server.messages);
       round.start();
@@ -291,5 +296,70 @@ void main() {
 
       expect(outcomes[_player], const ChoiceOutcome(cardId: null, count: 0, byDefault: true));
     });
+
+    test('a round that closes by its own timer completes done with the outcomes, with no closeNow', () async {
+      final s = await setup(duration: _shortRound);
+      s.round.pick(_player, pickId: 'b');
+
+      final outcomes = await s.handle.done.timeout(_waitLimit);
+
+      expect(outcomes[_player], _vote('b'));
+      expect(s.round.isClosed, isTrue);
+    });
+
+    test('dispose before the round closes completes done with an empty map', () async {
+      final s = await setup();
+
+      s.handle.dispose();
+
+      expect(await s.handle.done.timeout(_waitLimit), isEmpty);
+    });
+  });
+
+  group('the default voteStarterProvider', () {
+    const offer = ChoiceRoundSetup(round: 1, title: 'Vote', cardsFor: _noCards);
+
+    ProviderContainer container(GameHost host, List<GamePlayer> players) {
+      final container = ProviderContainer(
+        overrides: [gamePlayersProvider.overrideWith(TestRoster.new), gameHostProvider.overrideWithValue(host)],
+      );
+      addTearDown(container.dispose);
+      (container.read(gamePlayersProvider.notifier) as TestRoster).put(players);
+      return container;
+    }
+
+    ServerGameHost serverHost() {
+      final server = HostServer(
+        hostId: 'host-1',
+        hostName: 'Test TV',
+        appVersion: 'test',
+        listeners: [InProcessListener()],
+        capabilities: const [Capability.choices],
+      );
+      final host = ServerGameHost(server);
+      addTearDown(() async {
+        await host.dispose();
+        await server.dispose();
+      });
+      return host;
+    }
+
+    test('gives null when only local or simulated players are in the roster', () {
+      final starter = container(serverHost(), const [
+        GamePlayer(id: 'local-1', number: 1, local: true),
+        GamePlayer(id: 'sim-1', number: 2, simulated: true),
+      ]).read(voteStarterProvider);
+
+      expect(starter(offer, const Duration(seconds: 1)), isNull);
+    });
+
+    test('gives null for a host that is not a ServerGameHost, even with a real player', () {
+      final host = MemoryGameHost();
+      final starter = container(host, const [GamePlayer(id: _player, number: 1)]).read(voteStarterProvider);
+
+      expect(starter(offer, const Duration(seconds: 1)), isNull);
+    });
   });
 }
+
+List<ChoiceCard> _noCards(String _) => const [];

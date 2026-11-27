@@ -63,6 +63,8 @@ final class ServerVoteHandle implements VoteHandle {
   @override
   void dispose() {
     _complete();
+    // A round let go of before it closed has no votes; whoever awaits `done` must not wait for ever.
+    if (!_done.isCompleted) _done.complete(const {});
     unawaited(_sub?.cancel());
     unawaited(oldPhones.dispose());
     unawaited(round.dispose());

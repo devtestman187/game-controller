@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:connection/connection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
@@ -31,6 +32,26 @@ const _defaultPoolIds = [
   'bumperRound:toy-factory',
   'bumperRound:spinning-tops',
 ];
+
+/// The phone that votes in the vote picker test.
+const _voter = 'phone-1';
+
+/// A vote round that has already closed with [outcomes].
+final class _SettledHandle implements VoteHandle {
+  _SettledHandle(this.outcomes);
+
+  /// What the round settled.
+  final Map<String, ChoiceOutcome> outcomes;
+
+  @override
+  Future<Map<String, ChoiceOutcome>> get done => Future.value(outcomes);
+
+  @override
+  Map<String, ChoiceOutcome> closeNow() => outcomes;
+
+  @override
+  void dispose() {}
+}
 
 /// A container whose prefs are [prefs], with the maps read from the data files and [random] as the night's random
 /// source; the maps are loaded before it is returned, so a pick reads their tiers.
@@ -215,10 +236,19 @@ void main() {
   test(
     'the vote picker plays the game its settled vote chose, and the same round asked twice gives that pick',
     () async {
-      final container = await _loaded(overrides: [voteStarterProvider.overrideWithValue((_, _) => null)]);
+      String? votedId;
+      final container = await _loaded(
+        overrides: [
+          voteStarterProvider.overrideWithValue((setup, _) {
+            votedId = setup.cardsFor(_voter).last.id;
+            return _SettledHandle({_voter: ChoiceOutcome(cardId: votedId, count: 1, byDefault: false)});
+          }),
+        ],
+      );
       _useSettings(container, const NightSettings(picker: NightPicker.vote));
       await container.read(nightVoteProvider.notifier).run(1);
       final voted = container.read(nightVoteProvider)!.result!.variant;
+      expect(voted.id, votedId, reason: 'the vote settled on the card the phone picked');
 
       final notifier = container.read(nightPickProvider.notifier);
       final pick = notifier.pickFor(1);
