@@ -360,3 +360,11 @@ Not built. bugs2 wave A with the 1-hour cache showed no large Sonnet cache write
 ## pausewire notes (Nov 26)
 - choice_round_pausable_test.dart: the "closing removes the pausable" test passes without detach (a closed round ignores pause); use a recording NightPausable-style check. "Picks stay" is not asserted after pause/resume (only lockedIds). `_Setup` has 6 parameters and bare magic numbers (lines 37, 66-82).
 - ChoiceRoundPausable is unexported and no night path creates a ChoiceRound yet: M17b build stop must construct it next to the round (and cover host away / "Get ready" cases).
+
+## night2a notes (Nov 27)
+- Director not wired: nightNextVariantProvider is still null. B8 must (a) convert the map tier (String on ArenaMap) to Level where tierOfMap is built, (b) apply the pick's map and tier at game start (the n1i hook opens a game by NightVariant only, and cannot start an Arena race), (c) keep the played list for the director (not saved with the night, so a restart forgets it), (d) decide whether a close table at the top tier needs its own DirectorReason (today it says steady).
+- Shares lopsidedShare 0.5 and closeShare 0.2 are constructor defaults (first guesses); move to settings with a range when the night bots tune them. isKind = easy tier is a stand-in (no co-op or catch-up variant yet); isKind and NightSettings.isKids sound alike.
+- night_director.dart holds DirectorReason, DirectorPick and NightDirector (three public types); variant.dart hard-codes the plan 1.6 map ids; the no-repeat rule is written in both the director and ShufflePicker; test "eases one tier" (night_director_test.dart:77) asserts the kind pick.
+- puzzle_screen.dart is at 380 lines (k1 trimmed a dartdoc): split before the next job touches it. isKids is equality with the preset, so an edited Kids night is no longer capped at A little. The Kids cat pace (NightSettings.cat = calm) has no reader either.
+- Reports d2a/d2d/k1 lack the review-rules part A self-check lines and d2a a Summary; k1's new tests were not proved failing on the base by the runner (no tests-first line).
+- Map ratings (d2b) are by hand from obstacle counts (no single cut-off gives them): owner confirms; Bumper pool of 4 maps excludes playroom although playroom.json has a bumper section (plan 1.6).

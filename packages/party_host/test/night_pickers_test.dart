@@ -38,7 +38,6 @@ void main() {
         }
         played.add(next);
       }
-      expect(played.take(_pool.length).toSet(), _pool.toSet());
     });
 
     test('after a full pass never repeats the variant just played', () {

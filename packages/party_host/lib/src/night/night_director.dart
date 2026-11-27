@@ -8,7 +8,8 @@ enum DirectorReason {
   /// The first round of the night, at the easiest tier the night may play.
   opening,
 
-  /// The table is neither lopsided nor close, or it has fewer than two players, so the tier stays.
+  /// The table is neither lopsided nor close, it has fewer than two players, or it is close but the tier cannot rise
+  /// (the pool has nothing harder inside the host's range), so the tier stays.
   steady,
 
   /// The table is lopsided and no kind variant is left in the pool, so the tier eases one step.

@@ -17,3 +17,10 @@
 - S7 tests-first proof only a compile failure - minor - lesson candidate
 - Q4 one-player table steady - f1; Q5/Q6/Q7 keep as built
 - could items: C wording "uses" fixed in levels.md; rest (toString removed in f1, pickers doc/test in f2) else code-health: report self-check lines, d2a Summary, hard-coded map ids in variant.dart (plan 1.6 content), isKind vs isKids naming, duplicated no-repeat rule, k1 tests-first not proved by runner
+# Wave 3 verdicts (driver)
+- night_director.dart:128 and test:127 over 120 columns - invalid: awk length shows no line over 120 in either file, and dart format is clean
+- ten-draw pickers test passes on base - minor: pins behaviour that was already right (tests-first exempt in the brief); kept
+- steady dartdoc - trivial, fixed by hand (names the close-but-cannot-rise case)
+- NightDirector third public type in night_director.dart - minor - code-health (split with the DirectorInput move in B8)
+- duplicate expect in pickers test (line 41) - trivial, removed by hand
+- "eases one tier" test name - minor - code-health
