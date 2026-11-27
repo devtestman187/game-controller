@@ -84,10 +84,11 @@ Future<_Setup> _setup(
   return _Setup(server, capable, old, round, clock);
 }
 
-/// Waits until the round has set phone-1, which is away, to the default.
+/// Waits until the round has set both phones, which are away, to the default.
 Future<void> _untilLocked(ChoiceRound round) async {
-  if (round.lockedIds.contains('phone-1')) return;
-  await round.changes.firstWhere((_) => round.lockedIds.contains('phone-1')).timeout(_waitLimit);
+  bool both() => round.lockedIds.containsAll(const ['phone-1', 'phone-2']);
+  if (both()) return;
+  await round.changes.firstWhere((_) => both()).timeout(_waitLimit);
 }
 
 void main() {
@@ -327,7 +328,8 @@ void main() {
           s.server.dropAllConnections();
           await _untilLocked(s.round);
 
-          expect(s.round.lockedIds, {'phone-1'});
+          // Both phones are dropped, so both are away and both get the default.
+          expect(s.round.lockedIds, {'phone-1', 'phone-2'});
           expect(s.round.defaultId, 'save');
           s.round.pick('phone-1', pickId: 'build', count: 2);
           expect(s.round.close()['phone-1'], const ChoiceOutcome(cardId: 'build', count: 2, byDefault: false));
