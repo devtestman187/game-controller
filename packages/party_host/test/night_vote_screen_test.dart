@@ -262,6 +262,26 @@ void main() {
     });
   });
 
+  testWidgets('a settled vote of round 2 does not stay on the scoreboard of the last round', (tester) async {
+    final started = _Started();
+    await _openScoreboard(tester, HostLook.menu, started, length: NightLength.three, roundsPlayed: 1);
+    started.handles.single.finish({'a': _vote(_offered(tester)[0])});
+    await tester.pump();
+    expect(find.byKey(const Key('nightVoteStrip')), findsOneWidget);
+
+    final container = appContainer(tester);
+    final night = container.read(partyNightProvider.notifier);
+    night.recordRound(roundResult(points: {'p1': 5}, winners: {'p1'}));
+    night.recordRound(roundResult(points: {'p1': 5}, winners: {'p1'}));
+    Navigator.of(tester.element(find.byType(NightScoreboardScreen)))
+        .push(MaterialPageRoute<void>(builder: (_) => const NightScoreboardScreen()));
+    await tester.pump();
+    await tester.pump();
+
+    expect(container.read(nightVoteProvider), isNull);
+    expect(find.byKey(const Key('nightVoteStrip')), findsNothing);
+  });
+
   testWidgets('with the director as picker the scoreboard starts no vote', (tester) async {
     await forEachLook(tester, (look) async {
       final started = _Started();

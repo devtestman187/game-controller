@@ -17,7 +17,8 @@ const _countdownTick = Duration(seconds: 1);
 
 /// A vote round that is running: it closes by its own timer or by [closeNow].
 abstract interface class VoteHandle {
-  /// Completes with each player's outcome when the round closes, by its timer or by [closeNow].
+  /// Completes with each player's outcome when the round closes, by its timer or by [closeNow]; with none when
+  /// the handle is disposed first.
   Future<Map<String, ChoiceOutcome>> get done;
 
   /// Closes the round now and returns the outcomes; a round already closed returns the same ones.

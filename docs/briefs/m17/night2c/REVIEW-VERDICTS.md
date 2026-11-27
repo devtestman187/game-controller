@@ -28,3 +28,11 @@
 - should night_settings_test:136 no-key case, all_looks hostPicks gap: deferred to docs/code-health.md.
 - should mine.sh non-.dart untracked: owner question (literal vs .dart reading); left as built.
 - could: help text "every time" kept (harmless); mine.sh header, driver-kit sentence, report Summary blocks: code-health.
+
+## run review (REVIEW.md): 1 must, 10 should, 10 could
+- must night_pick_test.dart:256: checked by mutation (takeResult ignored): the test fails; real, no change needed (seed fixed at 1).
+- should scoreboard stale strip: real, fixed by hand with a test that fails without the fix (night_scoreboard_screen.dart _startVote cancels).
+- should VoteHandle.done doc: fixed.
+- should cardsFor live read, no-picker test, all_looks hostPicks, End-night vote test, agent-cost no-flag test, agent_cost.py main length/60, missing A-part self-checks: deferred to docs/code-health.md.
+- could: all deferred to docs/code-health.md (mine.sh header, driver-kit sentences, shared old-phone helper, file sizes, pickerVoteHelp 5 seconds, help text).
+- Owner questions: Kids tap sets director; a Next tap closes an open vote; every start-card press starts a vote; mine.sh untracked non-.dart rule; Vote timing (5 s) unconfirmed.

@@ -79,10 +79,15 @@ class _NightScoreboardScreenState extends ConsumerState<NightScoreboardScreen> i
   /// With the vote as picker, the phones vote for the next round's game while this scoreboard shows. Not after the last
   /// round, and not with another picker.
   void _startVote() {
+    if (!mounted) return;
     final night = ref.read(partyNightProvider);
-    if (!mounted || night == null || night.isOver) return;
-    if (ref.read(nightSettingsProvider).picker != NightPicker.vote) return;
-    unawaited(ref.read(nightVoteProvider.notifier).run(night.round + 1));
+    final votes = ref.read(nightVoteProvider.notifier);
+    // A settled vote of the round before must not stay on a scoreboard that starts none.
+    if (night == null || night.isOver || ref.read(nightSettingsProvider).picker != NightPicker.vote) {
+      votes.cancel();
+      return;
+    }
+    unawaited(votes.run(night.round + 1));
   }
 
   @override
