@@ -159,3 +159,25 @@ METRICS g3b2 worker=claude model=claude-haiku-5-5 turns=22 in=36 out=37522 cache
 METRICS wave3-g3b2-review worker=claude model=claude-haiku-5-5 turns=14 in=14 out=18045 cache=242589 min=1.4 wall=- result=0
 2026-11-26 23:37:22 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/board3a/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 4 jobs, 18 min
+2026-11-26 23:38:39 RUN_MAX_MIN=45 min (computed backstop of the jobs still to do)
+2026-11-26 23:38:39 start at 45022317 on board-line
+2026-11-26 23:38:39 worker: claude
+2026-11-26 23:38:41 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-26 23:38:47 phase: preflight
+2026-11-26 23:38:55 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-26 23:40:26 phase: worker (preflight took 99s)
+2026-11-26 23:40:27 skip g3a (already done)
+2026-11-26 23:40:28 skip g3s (already done)
+2026-11-26 23:40:43 phase: worker (worker took 17s)
+2026-11-26 23:40:44 skip f3a (already done)
+2026-11-26 23:45:04 phase: worker (worker took 261s)
+2026-11-26 23:45:05 skip g3b2 (already done)
+2026-11-26 23:45:20 phase: worker (worker took 16s)
+2026-11-26 23:45:21 start g3b3
+2026-11-26 23:51:26 g3b3 finished: result 0 (15 turns, 3 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 22/342563/36459/20593
+2026-11-26 23:51:27 phase: tests-first (worker took 367s)
+2026-11-26 23:51:33 phase: check (tests-first took 6s)
+2026-11-26 23:51:40 combined check: skips protocol connection metrics kit look arena puzzle tools (no job's change reaches them)
+2026-11-26 23:54:53 phase: apply (check took 200s)
+2026-11-26 23:54:55 committed g3b3: a52abe50 city: shared final place, driving rule and start assignment
+2026-11-26 23:54:55 phase: review (apply took 2s)
