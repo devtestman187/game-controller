@@ -6,3 +6,14 @@
 - dartdoc/schema 'uses' wording, two-sentence schema description - minor - code-health
 - docs/levels.md file-format table lacks tier row - must but trivial - folded into d2b (allow already has docs/levels.md)
 - decisions: isKids is equality with the preset (an edited Kids night is no longer capped): accepted, noted for owner; tier optional until d2b rates all five: d2b covers all five; isKind = easy tier: accepted default
+# Run review verdicts (driver)
+- M1-M4 director tests pass without their rule - must - f1
+- M5 pick has six parameters - must - f1 (DirectorInput)
+- M6 three public types in night_pickers.dart - must - f2 (split, file stays as re-export)
+- S1 pick 52 lines, S3 line over 120, S4 DirectorReason docs - should - f1
+- S2 tier table vs obstacle rule - owner question Q1; levels.md now says set by hand, owner confirms (trivial, done)
+- S5 puzzle_screen.dart at 380 lines - minor - code-health (split before the next job touches it)
+- S6 tier String vs Level - minor - code-health, B8 converts at the map boundary
+- S7 tests-first proof only a compile failure - minor - lesson candidate
+- Q4 one-player table steady - f1; Q5/Q6/Q7 keep as built
+- could items: C wording "uses" fixed in levels.md; rest (toString removed in f1, pickers doc/test in f2) else code-health: report self-check lines, d2a Summary, hard-coded map ids in variant.dart (plan 1.6 content), isKind vs isKids naming, duplicated no-repeat rule, k1 tests-first not proved by runner

@@ -1,0 +1,8 @@
+diff --git a/packages/party_host/lib/src/night/director_input.dart b/packages/party_host/lib/src/night/director_input.dart
+new file mode 100644
+index 00000000..33d5469b
+--- /dev/null
++++ b/packages/party_host/lib/src/night/director_input.dart
+@@ -0,0 +1,2 @@
++// probe stub
++final class DirectorInput { const DirectorInput(); }

@@ -233,7 +233,7 @@ Positions are fractions, so the field plays the same in any window. Sizes and sp
 | `line` | One line about the map, for the picker's card. |
 | `notes` | Optional, free text, ignored by the app. |
 | `theme` | The floor's look, `"playroom"` when the file says none: `"playroom"`, `"pinball"`, `"castle"`, `"factory"` or `"tops"`. A theme only changes how the field is drawn; it never changes the play. The schema, the parser and `check` refuse a theme this build has not got. |
-| `tier` | The difficulty, `"easy"`, `"medium"` or `"hard"`, which the night director uses to keep a night inside the host's difficulty range. Optional: a map with none is not yet rated. The schema, the parser and `check` refuse any other tier. |
+| `tier` | The difficulty, `"easy"`, `"medium"` or `"hard"`, which the night director will use to keep a night inside the host's difficulty range. Optional: a map with none is not yet rated. The schema, the parser and `check` refuse any other tier. |
 | `walls` | The walls, each `{"from": [x, y], "to": [x, y], "bouncy": true}`: an axis-aligned block `ArenaFieldRules.wallThickness` thick round the line between the two ends. A wall with both ends at one spot is not a wall; a `bouncy` one (the default false) kicks a marble back at 1.5 times its speed, as a pinball table's slingshots do. |
 | `hazards` | The hazards: `{"slide": {"from": …, "to": …}}` back and forth between two points, `{"orbit": {"centre": …, "radius": …}}` round a circle (`radius` a fraction of the shorter side), each with `periodS` (one full cycle) and optional `phase` (where in the cycle it starts, 0 to 1); or `{"still": {"at": …}}` for a hazard that never moves (a drain), which sends a marble back to its start and has no period or phase. |
 | `springs` | The springs, each `{"at": [x, y], "radius": …}`: a green cap over a yellow coil, never red, since red means a hazard. A marble that hits one bounces off at 1.5 times its speed, with `bump`; it is not a hazard and drops nothing. `radius` (a fraction of the shorter side) is 0.05 when the file says none. |
@@ -333,7 +333,7 @@ tools/level.sh render arena                    # writes docs/design/maps/arena.p
 
 `_template.json` is a field that already passes `check`: a wall down the middle with a gap at each end, one slide, a race and a Bumper Round. Edit it from there. Run `tools/check.sh arena` before committing; the map tests redraw `docs/design/maps/` too.
 
-**Tier.** A map's `tier` is its difficulty, `"easy"`, `"medium"` or `"hard"`: the night director uses it to keep a night inside the host's difficulty range. The first rating is by obstacle count (walls, plus 2 × hazards, plus 2 × movers, plus belts):
+**Tier.** A map's `tier` is its difficulty, `"easy"`, `"medium"` or `"hard"`: the night director will use it to keep a night inside the host's difficulty range. The first rating is set by hand, with the obstacle count (walls, plus 2 × hazards, plus 2 × movers, plus belts) as a guide; no single cut-off gives it, so the owner confirms it:
 
 | Map | playroom | pinball | toy-factory | spinning-tops | block-castle |
 | --- | --- | --- | --- | --- | --- |

@@ -1,0 +1,24 @@
+diff --git a/packages/party_host/lib/src/night/shuffle_picker.dart b/packages/party_host/lib/src/night/shuffle_picker.dart
+new file mode 100644
+index 00000000..33d5469b
+--- /dev/null
++++ b/packages/party_host/lib/src/night/shuffle_picker.dart
+@@ -0,0 +1,2 @@
++// probe stub
++final class ShufflePickerProbe { const ShufflePickerProbe(); }
+diff --git a/packages/party_host/lib/src/night/playlist_picker.dart b/packages/party_host/lib/src/night/playlist_picker.dart
+new file mode 100644
+index 00000000..33d5469b
+--- /dev/null
++++ b/packages/party_host/lib/src/night/playlist_picker.dart
+@@ -0,0 +1,2 @@
++// probe stub
++final class PlaylistPickerProbe { const PlaylistPickerProbe(); }
+diff --git a/packages/party_host/lib/src/night/rotating_chooser.dart b/packages/party_host/lib/src/night/rotating_chooser.dart
+new file mode 100644
+index 00000000..33d5469b
+--- /dev/null
++++ b/packages/party_host/lib/src/night/rotating_chooser.dart
+@@ -0,0 +1,2 @@
++// probe stub
++final class RotatingChooserProbe { const RotatingChooserProbe(); }

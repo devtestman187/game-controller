@@ -2,3 +2,5 @@
 d2a d2c k1
 # wave 2: map ratings (needs d2a), director (needs d2c), pickers (needs d2c): no shared files
 d2b d2d d2e
+# wave 3: fix round 1 (run review: director tests and signature; pickers split), no shared files
+f1 f2
