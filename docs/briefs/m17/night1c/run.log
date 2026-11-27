@@ -146,3 +146,8 @@ RESULT: DONE: 9 jobs, 30 min
 2026-11-26 21:05:33 phase: apply (check took 332s)
 2026-11-26 21:05:35 committed f4: 461c8b9c night1c f4: keep the night's controller through the last round's ceremony
 2026-11-26 21:05:36 phase: review (apply took 3s)
+2026-11-26 21:07:44 reviewed wave5: 5 finding(s)
+METRICS f4 worker=claude model=claude-haiku-5-5 turns=31 in=56 out=28342 cache=1166023 min=4.8 wall=7.8 result=0
+METRICS wave5-review worker=claude model=claude-haiku-5-5 turns=23 in=30 out=20658 cache=630625 min=1.7 wall=- result=0
+2026-11-26 21:07:52 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/night1c/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 10 jobs, 17 min
