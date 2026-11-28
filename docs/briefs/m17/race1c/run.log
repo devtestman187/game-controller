@@ -39,3 +39,5 @@
 2026-11-27 23:15:47 phase: apply (check took 252s)
 2026-11-27 23:15:51 committed r3g: bffec65d r3g: fuse values in FuseParams (provisional)
 2026-11-27 23:15:51 phase: review (apply took 4s)
+2026-11-27 23:15:53 reviewed wave2: 12 finding(s)
+2026-11-27 23:17:20 reviewed wave3: 7 finding(s)
