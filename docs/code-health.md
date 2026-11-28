@@ -433,3 +433,6 @@ Not built. bugs2 wave A with the 1-hour cache showed no large Sonnet cache write
 - slot_paint.dart golden glow constants share one block comment (one doc line each); snapshot.dart lerpTo dartdoc lacks `golden`; golden_glow_paint_test paints Sunny only (add a Night case); puzzle_screen.dart is at 380 lines and puzzle_painter.dart at 378: split before the next edit.
 - Commit 901486e6 subject reads "Subject: `fix(glow1): ...`" (left, no history rewrite).
 - glow1 f1 (wave 3 review): golden_match_painter_test shouldRepaint test cannot fail as written (rewrite to check what it names); pin the painter pixel checks to target 0's slot rectangle.
+
+## city art (map2a, Nov 28)
+Deferred from docs/briefs/m17/map2a/REVIEW.md and wave3/4 reviews: layout mm floor and px-per-mm (decide when the map is wired to a screen); shared tile drawing for both painters; shared test helpers (_boardFor, _CountingCanvas) in test/support; m2b-report review-rules lines and the CityTokenArt name (free functions kept); late-joiner scene test should also pin tile 1; painter-test helper boolean names; layout dead branch; cache at logical pixels (use devicePixelRatio before a phone host wires it); public surface trim; TextPainter reuse per badge. Open for the owner: built tiles now use the star colour (device look check).

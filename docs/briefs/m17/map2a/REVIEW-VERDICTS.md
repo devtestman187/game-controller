@@ -7,3 +7,6 @@
 - should m2b report review-rules lines, CityTokenArt name, layout mm floor and dead branch, shared tile drawing, shared test helpers - deferred - docs/code-health.md (no wiring yet; floor and px-per-mm belong with the screen that wires the map)
 - could (14) - deferred - docs/code-health.md
 - open questions 2-3, 7, 9-10: owner device check or wiring time, parked, no rule change
+- wave3 must: dispose and size-change tests pass on old code - minor/invalid as must: they pin existing guards by design - recorded in f2-report.md (closed)
+- wave3 must: f2 report says tests not run on old code - closed: noted honestly in f2-report.md
+- wave3 should (release-mode doc, failure test does not paint, hand-built TV look), wave4 should (pin late-joiner tile to 1), could (helper boolean names) - deferred - docs/code-health.md

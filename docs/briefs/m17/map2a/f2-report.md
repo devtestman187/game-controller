@@ -27,3 +27,6 @@ map2a f2: cache failure handling, paint size assert and dispose tests done; open
 
 ## Delete
 - none
+
+## Driver note (tests-first)
+The dispose-during-build and size-change tests cover guards that already existed on the base (city_painter.dart `_isDisposed` and `_wantedSize != size` checks); they were written to pin that behaviour, so they pass on the old code. The failing-build and size-assert tests are the new behaviour. The worker did not run the new tests against the base first.
