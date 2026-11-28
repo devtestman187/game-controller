@@ -1,0 +1,5 @@
+# race1c: one job per wave, in this order (no shared-file parallelism)
+r3e
+r3f
+r3g
+# r3h (fix round) is added only if the reviews find must items
