@@ -94,7 +94,8 @@ fi
 # musts: closed words count only as whole words, and a negated one ("not fixed", "unfixed") is blanked first
 if [ ! -f "$batch/REVIEW.md" ]; then say SKIP musts "no $batch/REVIEW.md"
 else
-  om="$(grep -n -i -E '^[[:space:]]*([-*]|[0-9]+[.)])?[[:space:]]*(\*\*must\*\*|must:)' "$batch/REVIEW.md" | sed -E 's/(^|[^[:alnum:]])(not|never|isn.t|un)[[:space:]-]*(yet[[:space:]-]+)?(fixed|closed|answered)//Ig' | grep -v -w -i -E 'fixed|closed|answered' | cut -d: -f1 | tr '
+  # grep -w also closes on "x-fixed"; accepted.
+  om="$(grep -n -i -E '^[[:space:]]*([-*]|[0-9]+[.)])?[[:space:]]*(\*\*must\*\*|must:)' "$batch/REVIEW.md" | sed -E 's/(^|[^[:alnum:]])(not|never|isn.t|wasn.t|won.t|can.t|cannot|un)[[:space:]-]*(((yet|been|be)[[:space:]-]+)*)(fixed|closed|answered)//Ig' | grep -v -w -i -E 'fixed|closed|answered' | cut -d: -f1 | tr '
 ' ' ')"
   if [ -n "$om" ]; then say FAIL musts "$(echo $om | wc -w | tr -d ' ') open must finding(s) in $batch/REVIEW.md at line(s): $om"
   else say OK musts "no open must finding"; fi

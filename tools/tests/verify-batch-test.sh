@@ -78,9 +78,14 @@ printf -- '- **must** a.dart:1 not fixed
 - **must** f un-fixed
 - **must** g isn'"'"'t fixed
 - **must** h never closed
+- **must** i has not been fixed
+- **must** j wasn'"'"'t fixed
+- **must** k won'"'"'t be fixed
+- **must** l cannot be fixed
+- **must** m can'"'"'t be closed
 ' > "$r/docs/briefs/m1/b1/REVIEW.md"
 v "$base..$tip" --no-tracker
-expect musts-negated 1 "FAIL musts: 8 open must finding(s) in docs/briefs/m1/b1/REVIEW.md at line(s): 1 2 3 4 5 6 7 8"
+expect musts-negated 1 "FAIL musts: 13 open must finding(s) in docs/briefs/m1/b1/REVIEW.md at line(s): 1 2 3 4 5 6 7 8 9 10 11 12 13"
 printf -- '- **must** a.dart:1 Fixed in tl1 (x)
 - **must** b (FIXED)
 - **must** c fixed
