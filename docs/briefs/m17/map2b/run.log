@@ -1,0 +1,26 @@
+2026-11-28 04:16:33 RUN_MAX_MIN=69 min (computed backstop of the jobs still to do)
+2026-11-28 04:16:33 start at 92e89106 on m17
+2026-11-28 04:16:33 worker: claude
+2026-11-28 04:16:34 proc-sweep: ORPHAN 59740 flutter_tester 11844s C:/src/flutter/bin/cache/artifacts/engine/windows-x64/flutter_tester.exe --disable-vm-service --enable-checked-mode --ve
+2026-11-28 04:16:34 proc-sweep: proc-sweep: 1 process(es) listed (1 orphaned flutter_tester/dart)
+2026-11-28 04:16:34 run-base 92e891068205b482a2fe9c9e475c33cae41a743e
+2026-11-28 04:16:38 phase: preflight
+2026-11-28 04:16:45 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-28 04:17:00 phase: worker (preflight took 22s)
+2026-11-28 04:17:00 start m2c
+2026-11-28 04:17:26 start m2d
+2026-11-28 04:21:26 m2c finished: result 0 (33 turns, 4 min) model claude-sonnet-5-5, ladder 1, tokens in/read/write/out 36/625667/38232/12247
+2026-11-28 04:46:24 m2d finished: result 0 (2 turns, 0 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 6/190188/2466/382
+2026-11-28 04:46:24 WARN: m2d logged 2 turns, 0 min but ran 28 min wall: a resumed session's usage row covers its last resume only, its real turns are unknown
+2026-11-28 04:46:24 phase: tests-first (worker took 1764s)
+2026-11-28 04:47:39 tests-first ok: packages/party_host/test/city/art/city_frame_test.dart fails on the old code
+2026-11-28 04:47:54 tests-first ok: packages/party_host/test/city/art/city_map_view_test.dart fails on the old code
+2026-11-28 04:48:41 phase: check (tests-first took 137s)
+2026-11-28 04:48:49 combined check: skips protocol connection metrics kit look arena puzzle tools (no job's change reaches them)
+2026-11-28 04:52:09 phase: apply (check took 208s)
+2026-11-28 04:52:10 finding: m2c's report has no Summary block in its first 40 lines
+2026-11-28 04:52:11 committed m2c: f1c05e79 map2b: CityMapView fits phone and TV, token floor
+2026-11-28 04:52:11 finding: m2d's report has no Summary block in its first 40 lines
+2026-11-28 04:52:13 committed m2d: 85b22132 map2b: frame sampler, draw-call budget test, measure hook
+2026-11-28 04:52:13 phase: review (apply took 4s)
+2026-11-28 04:52:13 wave review skipped: wave 1 is the whole run, the run review covers it
