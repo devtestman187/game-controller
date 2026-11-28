@@ -117,12 +117,24 @@ final class Systest {
   }
 
   /// Lets what is in flight arrive: the in-process link needs only the clock to move; a socket also needs the real
-  /// event loop.
-  Future<void> settle([Duration time = const Duration(milliseconds: 50)]) async {
+  /// event loop, which is given up to [_socketWait] and left early once [done] holds.
+  Future<void> settle([Duration time = const Duration(milliseconds: 50), bool Function()? done]) async {
     if (listener is! InProcessListener) {
-      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 40)));
+      await tester.runAsync(() => _waitForSocket(done));
     }
     await tester.pump(time);
+  }
+
+  /// The real time a socket reply needs; it is polled for in [_socketPollSlice] steps, so a known condition ends the
+  /// wait early. Without a condition the whole time is waited, as before, so no test gets shorter or flakier.
+  static const _socketWait = Duration(milliseconds: 40);
+  static const _socketPollSlice = Duration(milliseconds: 2);
+
+  static Future<void> _waitForSocket(bool Function()? done) async {
+    for (var waited = Duration.zero; waited < _socketWait; waited += _socketPollSlice) {
+      if (done?.call() == true) return;
+      await Future<void>.delayed(_socketPollSlice);
+    }
   }
 
   /// Moves the clock on by [total] in steps of [step], letting everything in flight arrive in between.
@@ -136,7 +148,7 @@ final class Systest {
   Future<void> until(bool Function() done, {Duration limit = const Duration(seconds: 10)}) async {
     for (var spent = Duration.zero; !done(); spent += const Duration(milliseconds: 50)) {
       if (spent > limit) fail('the state was not reached in $limit');
-      await settle();
+      await settle(const Duration(milliseconds: 50), done);
     }
   }
 
