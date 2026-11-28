@@ -90,3 +90,8 @@ RESULT: DONE: 5 jobs, 19 min
 2026-11-27 21:02:23 phase: apply (check took 237s)
 2026-11-27 21:02:25 committed f2: c478bb6d test: pin the present on the phone path at three phone sizes
 2026-11-27 21:02:25 phase: review (apply took 2s)
+2026-11-27 21:04:17 reviewed wave4: 10 finding(s)
+METRICS f2 worker=claude model=claude-haiku-5-5 turns=20 in=28 out=10653 cache=370918 min=1.7 wall=2.2 result=0
+METRICS wave4-review worker=claude model=claude-haiku-5-5 turns=16 in=18 out=18611 cache=281596 min=1.5 wall=- result=0
+2026-11-27 21:04:22 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/race1b/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 6 jobs, 9 min
