@@ -8,6 +8,21 @@ void _run(PresentRules rules, int seconds) {
   }
 }
 
+const _start = PresentRules.startFuseMs;
+const _cut = PresentRules.snapCutMs;
+const _min = PresentRules.minFuseMs;
+
+/// Bats the present from whoever holds it until the fuse sits on the floor; returns the holder then. Needs a live
+/// present. Works for any sensible fuse values (a cut above 0, a floor under the start).
+PuzzleSide _batToFloor(PresentRules rules) {
+  for (var i = 0; i < 100; i++) {
+    final st = rules.state!;
+    if (st.fuseMs <= _min) return st.holder;
+    rules.onSnap(st.holder);
+  }
+  fail('the fuse never reached the floor');
+}
+
 void main() {
   test('no present comes before the start delay', () {
     final rules = PresentRules();
@@ -18,13 +33,13 @@ void main() {
   test('the first present comes at the start delay, held by the left side, with the start fuse', () {
     final rules = PresentRules();
     _run(rules, PresentRules.startDelayS.round());
-    expect(rules.state, const PresentState(holder: PuzzleSide.left, fuseMs: 12000, fuseTotalMs: 12000));
+    expect(rules.state, const PresentState(holder: PuzzleSide.left, fuseMs: _start, fuseTotalMs: _start));
   });
 
   test('one present at a time: it counts its fuse down and no second one comes while it is out', () {
     final rules = PresentRules();
     _run(rules, PresentRules.startDelayS.round() + 3);
-    expect(rules.state, const PresentState(holder: PuzzleSide.left, fuseMs: 9000, fuseTotalMs: 12000));
+    expect(rules.state, const PresentState(holder: PuzzleSide.left, fuseMs: _start - 3000, fuseTotalMs: _start));
   });
 
   test('a snap with no present out does nothing', () {
@@ -33,34 +48,46 @@ void main() {
     expect(rules.state, isNull);
   });
 
-  test('a snap by the holder bats the present to the other side and cuts its fuse by 1500 ms', () {
+  test('a snap by the holder bats the present to the other side and cuts its fuse by the snap cut', () {
     final rules = PresentRules();
     _run(rules, PresentRules.startDelayS.round() + 3);
     rules.onSnap(PuzzleSide.left);
-    expect(rules.state, const PresentState(holder: PuzzleSide.right, fuseMs: 7500, fuseTotalMs: 12000));
+    expect(_start - 3000 - _cut, greaterThanOrEqualTo(_min), reason: 'fixture: the cut must not hit the floor');
+    expect(
+      rules.state,
+      const PresentState(holder: PuzzleSide.right, fuseMs: _start - 3000 - _cut, fuseTotalMs: _start),
+    );
   });
 
-  test('the fuse never falls below the 4000 ms floor', () {
+  test('the fuse never falls below the floor', () {
     final rules = PresentRules();
     _run(rules, PresentRules.startDelayS.round() + 3);
-    rules.onSnap(PuzzleSide.left); // right holds, fuse 7500
-    rules.onSnap(PuzzleSide.right); // left holds, fuse 6000
-    rules.onSnap(PuzzleSide.left); // right holds, fuse 4500
-    rules.onSnap(PuzzleSide.right); // left holds, 3000 would be cut, so 4000
-    expect(rules.state, const PresentState(holder: PuzzleSide.left, fuseMs: 4000, fuseTotalMs: 12000));
+    final holder = _batToFloor(rules);
+    rules.onSnap(holder); // one more cut would go under the floor: it stays on it
+    expect(
+      rules.state,
+      PresentState(
+        holder: holder == PuzzleSide.left ? PuzzleSide.right : PuzzleSide.left,
+        fuseMs: _min,
+        fuseTotalMs: _start,
+      ),
+    );
   });
 
-  test('a snap on a fuse already under the 4000 ms floor leaves the fuse as it was', () {
+  test('a snap on a fuse already under the floor leaves the fuse as it was', () {
     final rules = PresentRules();
-    _run(rules, PresentRules.startDelayS.round() + 9); // 12000 less 9000 ms run down: 3000 left
-    rules.onSnap(PuzzleSide.left); // right holds, the 3000 ms fuse stays, it is not lifted to 4000
-    expect(rules.state, const PresentState(holder: PuzzleSide.right, fuseMs: 3000, fuseTotalMs: 12000));
+    final secs = (_start - _min) ~/ 1000 + 1; // the first whole second count that runs the fuse under the floor
+    final left = _start - secs * 1000;
+    expect(left, greaterThan(0), reason: 'fixture: the fuse must still be lit');
+    _run(rules, PresentRules.startDelayS.round() + secs);
+    rules.onSnap(PuzzleSide.left); // right holds, the fuse stays, it is not lifted to the floor
+    expect(rules.state, PresentState(holder: PuzzleSide.right, fuseMs: left, fuseTotalMs: _start));
   });
 
   test('a snap by the other side changes nothing', () {
     final rules = PresentRules();
     _run(rules, PresentRules.startDelayS.round() + 3);
-    rules.onSnap(PuzzleSide.left); // right holds, fuse 7500
+    rules.onSnap(PuzzleSide.left); // right holds
     final before = rules.state;
     rules.onSnap(PuzzleSide.left);
     expect(rules.state, before);
@@ -69,22 +96,16 @@ void main() {
   test('a fuse that runs out pops the present on the side holding it', () {
     final rules = PresentRules();
     _run(rules, PresentRules.startDelayS.round() + 3);
-    rules.onSnap(PuzzleSide.left); // right holds, fuse 7500
-    rules.onSnap(PuzzleSide.right); // left holds, fuse 6000
-    rules.onSnap(PuzzleSide.left); // right holds, fuse 4500
-    rules.onSnap(PuzzleSide.right); // left holds, fuse 4000
-    _run(rules, 4);
-    expect(rules.state, const PresentState(holder: PuzzleSide.left, fuseMs: 0, fuseTotalMs: 12000, popped: true));
+    final holder = _batToFloor(rules);
+    _run(rules, (_min / 1000).ceil());
+    expect(rules.state, PresentState(holder: holder, fuseMs: 0, fuseTotalMs: _start, popped: true));
   });
 
-  test('a popped present stays for 1500 ms, and the next one comes 15 s after it is gone', () {
+  test('a popped present stays for the pop time, and the next one comes the gap after it is gone', () {
     final rules = PresentRules();
     _run(rules, PresentRules.startDelayS.round() + 3);
-    rules.onSnap(PuzzleSide.left); // right holds, fuse 7500
-    rules.onSnap(PuzzleSide.right); // left holds, fuse 6000
-    rules.onSnap(PuzzleSide.left); // right holds, fuse 4500
-    rules.onSnap(PuzzleSide.right); // left holds, fuse 4000
-    _run(rules, 4); // pops
+    final holder = _batToFloor(rules);
+    _run(rules, (_min / 1000).ceil()); // pops
     _run(rules, 1); // 500 ms of the pop left
     expect(rules.state?.popped, isTrue);
     _run(rules, 1); // the pop is over
@@ -92,7 +113,14 @@ void main() {
     _run(rules, PresentRules.gapS.round() - 1);
     expect(rules.state, isNull);
     _run(rules, 1);
-    expect(rules.state, const PresentState(holder: PuzzleSide.right, fuseMs: 12000, fuseTotalMs: 12000));
+    expect(
+      rules.state,
+      PresentState(
+        holder: holder == PuzzleSide.left ? PuzzleSide.right : PuzzleSide.left,
+        fuseMs: _start,
+        fuseTotalMs: _start,
+      ),
+    );
   });
 
   test('disabling the rules removes the present at once', () {
