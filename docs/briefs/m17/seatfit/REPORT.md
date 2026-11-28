@@ -6,8 +6,16 @@ Inline batch (no runner, no worker jobs; driver wrote it directly). Range 1fa286
 - Job 4: badge not clipped (rect and text inside the screen at all 3 sizes); the red stripe is Flutter's DEBUG banner from the test harness MaterialApp. One-line fix in test/support/host_harness.dart (shipped apps already hide it). Nothing logged in code-health.
 - Job 5: docs/code-health.md (pausewire notes, line 363) and STATUS.md known-gap line. Notes location found by grep, no Haiku helper.
 - Notes: owner's 36 px overflow did not reproduce (5-6 px); it needs a longer waiting line (names wrapping), and the fix covers it by scaling. The _NotJoined line still has no maxLines: minor, in code-health? not added.
-- check.sh: All checks passed (227s, 8 cached). Findings: none open. Fixed, unverified on a device: the lobby with phones waiting at 4 a side (please check).
+- check.sh: All checks passed (see run.log). Findings: none open. Fixed, unverified on a device: the lobby with phones waiting at 4 a side (please check).
 - Proposed lessons: 0. Calls: driver about 25, no waiters. Release notes: unchanged (no tester-visible text beyond "4 a side lobby no longer overflows on small screens").
 ## proc-sweep
 proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
 no background command of mine is still running
+
+## Verify round (fixes after the independent verify)
+- run.log now exists with the `full check:` line (batch-close.sh --run-check): `tail -1 run.log`. Code tip 4a486954.
+- REVIEW.md written (tools/review.sh: 0 fail, 1 note).
+- Real scale the side card gets from the FittedBox, measured at every lobby stage (nobody joined, after each join, settled) in join_side_fit_test.dart. The pre-fix overflow was transient (the waiting line wrapping while many phones wait), so the settled state alone shows scale 1.0.
+  - 640x360: 0.899 (1-4 a side). 800x360: 0.939 (1-3 a side), 0.894 (4 a side, nine phones waiting). 960x540: 0.899. Host phone plays (own player, 640x360): 1.0.
+  - Min 0.894, max 1.0; none below 0.75, so no design question. The test fails below 0.84 (lowest measured minus 0.05, rounded down).
+- The test file's first version missed the transient stage; the new one covers it and the host-phone variant (13 cases).
