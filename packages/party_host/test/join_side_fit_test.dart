@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
 import 'package:party_host/testing.dart';
 import 'package:puzzle_game/puzzle_game.dart';
-import 'package:toy_look/toy_look.dart';
 
 import 'support/all_looks.dart';
 import 'support/host_harness.dart';
