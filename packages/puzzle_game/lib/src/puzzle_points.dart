@@ -44,8 +44,9 @@ extension PuzzlePointsRules on PuzzleGame {
     piece.placedOnce = true;
     final base = again ? PuzzlePoints.wrongSnap : PuzzlePoints.snap;
     _award(base, targetAt(target), PuzzleIcon.star);
-    // The first claim on the golden slot pays the same snap again, in the same place (M17 race1c r3e).
-    if (golden?.claim(side, target) == true) _award(base, targetAt(target), PuzzleIcon.star);
+    // The first claim on the golden slot pays the same snap again, in the same place (M17 race1c r3e). Only a correct
+    // snap claims: a try again pays its own points and leaves the slot glowing (M17 race1c r3h).
+    if (!again && golden?.claim(side, target) == true) _award(base, targetAt(target), PuzzleIcon.star);
     if (again) p.tryAgains++;
     if (!puzzle.pieces[piece.index].big || carriers.length < 2) return;
     _award(PuzzlePoints.together, targetAt(target), PuzzleIcon.star);

@@ -3,6 +3,29 @@ import 'dart:math';
 import 'game.dart';
 import 'puzzle_values.dart';
 
+/// What each board has, read off the match for one step of the golden slot: the targets each board has not filled yet,
+/// and how many pieces each board has placed (the side behind is the one with fewer).
+final class GoldenInputs {
+  const GoldenInputs({
+    required this.openLeft,
+    required this.openRight,
+    required this.placedLeft,
+    required this.placedRight,
+  });
+
+  /// The targets the left board has not filled yet.
+  final Set<int> openLeft;
+
+  /// The targets the right board has not filled yet.
+  final Set<int> openRight;
+
+  /// The pieces the left board has placed.
+  final int placedLeft;
+
+  /// The pieces the right board has placed.
+  final int placedRight;
+}
+
 /// The golden slot (M17 race1c r3e): one target outline glows on both boards of a two-board match, and the first side
 /// to fill it earns double the snap's points (see `PuzzlePointsRules._awardSnap`). Pure Dart: it never draws.
 final class GoldenSlot {
@@ -13,8 +36,9 @@ final class GoldenSlot {
   /// PROVISIONAL (kid playtest). Seconds of a round before the first slot glows.
   static const firstDelayS = 10.0;
 
-  /// PROVISIONAL (kid playtest). Seconds from a claim, or from a glowing slot clearing, to the next glow.
-  static const gapS = 10.0;
+  /// PROVISIONAL (kid playtest). Seconds from a claim, or from a glowing slot clearing, to the next glow. This is the
+  /// golden slot's gap, not the present's gap (`PresentRules.gapS`).
+  static const glowGapS = 10.0;
 
   /// The weight of a target open on both boards, and of one open only on the side that is behind on a tie. The side
   /// behind gets the double: its own targets weigh [_behindWeight] when it trails.
@@ -22,10 +46,10 @@ final class GoldenSlot {
   static const _behindWeight = 2;
 
   /// The target index that glows, or null while none does.
-  int? slot;
+  int? _slot;
 
   /// The side that filled the last claimed slot first, or null before any claim.
-  PuzzleSide? claimedBy;
+  PuzzleSide? _claimedBy;
 
   /// Targets already claimed: they never glow again, so the double is paid once per target.
   final _claimed = <int>{};
@@ -34,34 +58,31 @@ final class GoldenSlot {
   double _delayS = firstDelayS;
   double _waitedS = 0;
 
+  /// The target index that glows, or null while none does.
+  int? get slot => _slot;
+
+  /// The side that filled the last claimed slot first, or null before any claim.
+  PuzzleSide? get claimedBy => _claimedBy;
+
   /// Advances by [dt] seconds. While [enabled] and no slot glows, counts the wait and then picks a target open on at
   /// least one board, weighted towards the side behind. A glowing slot that both sides have locked clears, with no claim.
-  /// [openLeft] and [openRight] are the targets each board has not filled yet.
-  void update(
-    double dt, {
-    required bool enabled,
-    required Set<int> openLeft,
-    required Set<int> openRight,
-    required int placedLeft,
-    required int placedRight,
-    required Random random,
-  }) {
+  void update(double dt, {required bool enabled, required GoldenInputs inputs}) {
     if (!enabled) {
-      slot = null;
+      _slot = null;
       return;
     }
-    final glowing = slot;
+    final glowing = _slot;
     if (glowing != null) {
-      if (openLeft.contains(glowing) || openRight.contains(glowing)) return;
-      slot = null;
+      if (inputs.openLeft.contains(glowing) || inputs.openRight.contains(glowing)) return;
+      _slot = null;
       _restart();
       return;
     }
     _waitedS += dt;
     if (_waitedS < _delayS) return;
-    final picked = _pick(openLeft, openRight, placedLeft, placedRight, random);
+    final picked = _pick(inputs);
     if (picked == null) return;
-    slot = picked;
+    _slot = picked;
     _waitedS = 0;
   }
 
@@ -70,30 +91,28 @@ final class GoldenSlot {
   void stepBoards(double dt, {required bool enabled, required List<PuzzleGame> boards}) {
     final left = boards.firstWhere((g) => g.side == PuzzleSide.left, orElse: () => boards.first);
     final right = boards.firstWhere((g) => g.side == PuzzleSide.right, orElse: () => boards.first);
-    update(
-      dt,
-      enabled: enabled,
+    final inputs = GoldenInputs(
       openLeft: _openOn(left),
       openRight: _openOn(right),
       placedLeft: left.placed,
       placedRight: right.placed,
-      random: _random,
     );
+    update(dt, enabled: enabled, inputs: inputs);
   }
 
   /// The first claim on the glowing slot, by [side] at [target]: true, and the slot clears and the gap restarts. Any
   /// other claim (no slot glows, another target, or one already paid) is false and changes nothing.
   bool claim(PuzzleSide side, int target) {
-    if (slot != target) return false;
+    if (_slot != target) return false;
     _claimed.add(target);
-    claimedBy = side;
-    slot = null;
+    _claimedBy = side;
+    _slot = null;
     _restart();
     return true;
   }
 
   void _restart() {
-    _delayS = gapS;
+    _delayS = glowGapS;
     _waitedS = 0;
   }
 
@@ -108,28 +127,28 @@ final class GoldenSlot {
   }
 
   /// A target's pick weight: 0 when it is claimed, open on neither board, or open only on the side that leads.
-  int _weight(int target, Set<int> openLeft, Set<int> openRight, int placedLeft, int placedRight) {
+  int _weight(int target, GoldenInputs inputs) {
     if (_claimed.contains(target)) return 0;
-    final onLeft = openLeft.contains(target);
-    final onRight = openRight.contains(target);
+    final onLeft = inputs.openLeft.contains(target);
+    final onRight = inputs.openRight.contains(target);
     if (onLeft && onRight) return _sharedWeight;
     if (!onLeft && !onRight) return 0;
-    final ownPlaced = onLeft ? placedLeft : placedRight;
-    final otherPlaced = onLeft ? placedRight : placedLeft;
+    final ownPlaced = onLeft ? inputs.placedLeft : inputs.placedRight;
+    final otherPlaced = onLeft ? inputs.placedRight : inputs.placedLeft;
     if (ownPlaced < otherPlaced) return _behindWeight;
     if (ownPlaced == otherPlaced) return _sharedWeight;
     return 0;
   }
 
   /// A weighted pick among the candidates, in target order so a seed picks the same slot every time.
-  int? _pick(Set<int> openLeft, Set<int> openRight, int placedLeft, int placedRight, Random random) {
+  int? _pick(GoldenInputs inputs) {
     final candidates = [
-      for (final target in ({...openLeft, ...openRight}.toList()..sort()))
-        (target: target, weight: _weight(target, openLeft, openRight, placedLeft, placedRight)),
+      for (final target in ({...inputs.openLeft, ...inputs.openRight}.toList()..sort()))
+        (target: target, weight: _weight(target, inputs)),
     ].where((c) => c.weight > 0).toList();
     final total = candidates.fold(0, (sum, c) => sum + c.weight);
     if (total == 0) return null;
-    var roll = random.nextInt(total);
+    var roll = _random.nextInt(total);
     for (final c in candidates) {
       if (roll < c.weight) return c.target;
       roll -= c.weight;

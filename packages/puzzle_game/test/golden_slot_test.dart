@@ -19,6 +19,16 @@ void main() {
     'p2': PuzzleSide.right,
   }, settings: const PuzzleSettings(chaos: Chaos.party));
 
+  /// Drops piece [i] for [id] off its outline, so the drop is wrong and its next snap is a try again.
+  void misplace(PuzzleMatch m, PuzzleGame game, String id, int i) {
+    game.player(id)!.pos = game.pieces[i].pos;
+    tap(m, id, const {});
+    final middle = game.field.board.center;
+    game.player(id)!.pos = middle;
+    game.pieces[i].pos = middle;
+    tap(m, id, const {});
+  }
+
   /// The slot a fresh golden slot picks once its first delay has passed, with [openLeft] and [openRight] open.
   int? pickOnce(
     Random random, {
@@ -31,11 +41,7 @@ void main() {
     golden.update(
       GoldenSlot.firstDelayS,
       enabled: true,
-      openLeft: openLeft,
-      openRight: openRight,
-      placedLeft: placedLeft,
-      placedRight: placedRight,
-      random: random,
+      inputs: GoldenInputs(openLeft: openLeft, openRight: openRight, placedLeft: placedLeft, placedRight: placedRight),
     );
     return golden.slot;
   }
@@ -59,11 +65,35 @@ void main() {
     expect(m.golden, isNull, reason: 'the claimed slot stops glowing');
   });
 
-  test('a snap earns its base points when no slot is golden (Chaos off)', () {
+  test('a snap on two boards with Chaos off earns its base 2 points, as no slot glows yet', () {
     final m = begin(flatWorld(), const {'p1': PuzzleSide.left, 'p2': PuzzleSide.right});
     final left = m.gameOf(PuzzleSide.left);
     place(m, left, 'p1', 0);
     expect(left.points, 2, reason: 'with no golden slot a snap is its base 2 points at pointsScale 1');
+  });
+
+  test('a snap on one board earns its base 2 points, as no golden slot runs there', () {
+    final m = begin(flatWorld(), const {'p1': PuzzleSide.left}, settings: const PuzzleSettings(chaos: Chaos.party));
+    final left = m.gameOf(PuzzleSide.left);
+    place(m, left, 'p1', 0);
+    expect(left.points, 2, reason: 'one board has no golden slot, so the snap is its base 2 points');
+  });
+
+  test('a wrong re-snap on the glowing slot pays its try-again point and leaves the slot glowing', () {
+    final m = race();
+    drive(m, idle, frames: 210);
+    final slot = m.golden ?? fail('no slot glows after 10.5 s');
+    final left = m.gameOf(PuzzleSide.left);
+    misplace(m, left, 'p1', slot);
+    expect(left.pieces[slot].state, PieceState.wrong, reason: 'the first drop misses the outline');
+    final before = left.points;
+    place(m, left, 'p1', slot);
+    expect(
+      left.points - before,
+      1,
+      reason: 'a try again pays PuzzlePoints.wrongSnap, 1 point, and never the golden double',
+    );
+    expect(m.golden, slot, reason: 'a wrong re-snap claims nothing, so the slot keeps glowing');
   });
 
   test('no slot glows when the present gate is off, on Wild, or on one board', () {
@@ -84,11 +114,7 @@ void main() {
     golden.update(
       1000,
       enabled: false,
-      openLeft: bothOpen,
-      openRight: bothOpen,
-      placedLeft: 0,
-      placedRight: 0,
-      random: Random(1),
+      inputs: const GoldenInputs(openLeft: bothOpen, openRight: bothOpen, placedLeft: 0, placedRight: 0),
     );
     expect(golden.slot, isNull, reason: 'the gate is off, so no pick is made');
   });
@@ -98,22 +124,14 @@ void main() {
     golden.update(
       GoldenSlot.firstDelayS,
       enabled: true,
-      openLeft: bothOpen,
-      openRight: bothOpen,
-      placedLeft: 0,
-      placedRight: 0,
-      random: Random(3),
+      inputs: const GoldenInputs(openLeft: bothOpen, openRight: bothOpen, placedLeft: 0, placedRight: 0),
     );
     final slot = golden.slot ?? fail('no slot glows after firstDelayS');
     final rest = {...bothOpen}..remove(slot);
     golden.update(
       0.05,
       enabled: true,
-      openLeft: rest,
-      openRight: rest,
-      placedLeft: 1,
-      placedRight: 1,
-      random: Random(3),
+      inputs: GoldenInputs(openLeft: rest, openRight: rest, placedLeft: 1, placedRight: 1),
     );
     expect(golden.slot, isNull, reason: 'both sides locked the slot, so it clears');
     expect(golden.claim(PuzzleSide.left, slot), isFalse, reason: 'a cleared slot cannot be claimed');
@@ -124,11 +142,7 @@ void main() {
     golden.update(
       GoldenSlot.firstDelayS,
       enabled: true,
-      openLeft: bothOpen,
-      openRight: bothOpen,
-      placedLeft: 0,
-      placedRight: 0,
-      random: Random(5),
+      inputs: const GoldenInputs(openLeft: bothOpen, openRight: bothOpen, placedLeft: 0, placedRight: 0),
     );
     final slot = golden.slot ?? fail('no slot glows after firstDelayS');
     final other = bothOpen.firstWhere((s) => s != slot);
