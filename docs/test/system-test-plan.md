@@ -6,7 +6,7 @@
 |---|---|
 | Last updated | 2026-11-27 (branch m17, base 5142a859; owner answers recorded the same day) |
 | Current phase | Plan written and owner questions answered; nothing from section 3 or later built yet |
-| Next step | Now: S3 checklist and the emulator probe (roadmap 1-2). S1 "systest" before B9 awaits the owner's go. Then the iPad landscape lock (small code item, roadmap 4) |
+| Next step | S1 done Nov 27 (12 tests, no bugs found in the scenarios covered). Next: B9. Open gaps: 40 ms real wait in settle() at packages/party_host/test/systest/systest_support.dart:123 (fold a poll-on-condition fix into the next tooling batch; fix it first if a systest flakes or B9 adds socket systests); real shared_preferences file untested (checklist D3 covers it on a device). |
 | Owner decisions pending | None blocking for S3, the probe or S1. Old-build APKs are done (Nov 27), so the Dec 20 action is cleared. Pending: the Pixel Tablet setup check (Android version, `adb shell wm size` and `wm density`, stays connected) before roadmap 7; the iPad lock experiment is not decided (roadmap 4) |
 | Last full system run | None yet. The m17.1 device-test list is the nearest thing (sections 2 and 6) |
 
