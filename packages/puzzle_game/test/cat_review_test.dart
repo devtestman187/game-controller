@@ -97,7 +97,10 @@ void main() {
     // Left leads 2-1, so the first Party visit knocks one of its pieces: 1-1.
     // The host then turns the chaos down to A little, and the left places its
     // piece again: the round's later visits may bat, never knock (b013).
-    final m = catRace(flatWorld(), timeLimitS: 120);
+    final m = begin(flatWorld(), const {
+      'p1': PuzzleSide.left,
+      'p2': PuzzleSide.right,
+    }, settings: const PuzzleSettings(chaos: Chaos.party, catPreset: CatPreset.wild));
     final left = m.gameOf(PuzzleSide.left);
     put(m, left, 'p1', 0);
     put(m, left, 'p1', 1);
@@ -105,13 +108,13 @@ void main() {
     final w = Watch(m);
     expect(w.catComes(), isTrue);
     expect(w.batsOne(), isTrue);
-    expect(w.bats.single.knocked, isTrue, reason: 'Party knocks the side ahead');
+    expect(w.bats.single.knocked, isTrue, reason: 'Wild knocks the side ahead');
 
-    m.settings = const PuzzleSettings(chaos: Chaos.little);
+    m.settings = const PuzzleSettings(chaos: Chaos.little, catPreset: CatPreset.wild);
     put(m, left, 'p1', 1);
     expect(left.placed, 2, reason: 'the left is ahead again, and allowed to be knocked');
     w.toTheEnd();
-    expect(w.starts, hasLength(3), reason: 'the round\'s plan is unchanged');
+    expect(w.starts, hasLength(4), reason: 'the round\'s plan is unchanged: a 2 minute Wild round plans 4 visits');
     expect(w.bats.where((bat) => bat.knocked), hasLength(1), reason: 'A little knocks nothing, even after the change');
   });
 }

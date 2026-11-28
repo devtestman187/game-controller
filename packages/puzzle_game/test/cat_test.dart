@@ -27,6 +27,13 @@ void main() {
     return w;
   }
 
+  /// The race of [catRace] on Wild, the preset whose cat knocks a placed piece (owner Q4): Calm and Lively have the
+  /// present instead.
+  PuzzleMatch wildRace(Puzzle puzzle, {int timeLimitS = 40}) => begin(puzzle, const {
+    'p1': PuzzleSide.left,
+    'p2': PuzzleSide.right,
+  }, settings: PuzzleSettings(chaos: Chaos.party, catPreset: CatPreset.wild, timeLimitS: timeLimitS));
+
   test('the warning comes 2 s before the bat, on the piece the cat bats', () {
     final w = Watch(catRace(flatWorld(), chaos: Chaos.little));
     expect(w.catComes(), isTrue);
@@ -71,13 +78,13 @@ void main() {
     }
   });
 
-  test('a 2 minute Party round on Lively knocks two placed pieces loose', () {
+  test('a 2 minute Party round on Wild knocks two placed pieces loose', () {
     // Left leads 2-1, so the first visit knocks one of its pieces: 1-1, and the
     // second visit goes to the right (never the same side twice in a row). The
     // left places its piece again while the cat is on the right, so the round's
     // third visit finds it ahead and knocks its second piece: the 2 knocks a
-    // 90 s window allows on Lively.
-    final m = catRace(flatWorld(), timeLimitS: 120);
+    // 2 minute Wild round allows before the third.
+    final m = wildRace(flatWorld(), timeLimitS: 120);
     final left = m.gameOf(PuzzleSide.left);
     put(m, left, 'p1', 0);
     put(m, left, 'p1', 1);
@@ -125,7 +132,7 @@ void main() {
   });
 
   test('Party knocks one placed piece of the side ahead back to its tray, and the side keeps its points', () {
-    final m = catRace(flatWorld());
+    final m = wildRace(flatWorld());
     final left = m.gameOf(PuzzleSide.left);
     put(m, left, 'p1', 0);
     put(m, left, 'p1', 1);
@@ -162,11 +169,11 @@ void main() {
   test('Party takes an older placed piece and leaves one placed in the last 3 s', () {
     // The plan comes from the seed alone, so a first run finds the visit's
     // time and the second plays the same round with pieces placed around it.
-    final probe = Watch(catRace(flatWorld()));
+    final probe = Watch(wildRace(flatWorld()));
     expect(probe.catComes(), isTrue);
     final when = probe.starts.single.at;
 
-    final m = catRace(flatWorld());
+    final m = wildRace(flatWorld());
     final left = m.gameOf(PuzzleSide.left);
     final w = Watch(m);
     w.to(when - 6);

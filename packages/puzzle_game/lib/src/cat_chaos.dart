@@ -268,15 +268,17 @@ final class CatChaos implements CatVisit {
     return loose.firstOrNull?.index;
   }
 
-  /// Whether the cat may knock a placed piece loose (PRD v2 G3, Party): never
-  /// on one board, only while the round's knocks last ([CatTuning.knocks]), on
-  /// a side ahead by at least one piece, and never the picture's last piece —
+  /// Whether the cat may knock a placed piece loose (PRD v2 G3, Party on Wild):
+  /// never on one board, only while the round's knocks last ([CatTuning.knocks]),
+  /// on a side ahead by at least one piece, and never the picture's last piece —
   /// knocking one of a side's placed pieces while only the last one is left
-  /// would take the round from it. The Chaos setting is read live, as the rest
-  /// of the cat's settings are, so a round changed to A little mid-round
-  /// knocks nothing more (b013).
+  /// would take the round from it. Calm and Lively have the hot-potato present
+  /// instead (owner Q4), so the knock is Wild only. The Chaos setting is read
+  /// live, as the rest of the cat's settings are, so a round changed to A little
+  /// mid-round knocks nothing more (b013).
   bool _mayKnock(PuzzleGame game) =>
       settings.chaos == Chaos.party &&
+      settings.catPreset == CatPreset.wild &&
       !oneBoard &&
       _knocksUsed < _knockBudget &&
       game.placed <= game.pieces.length - 2 &&

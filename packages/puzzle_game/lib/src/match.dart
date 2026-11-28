@@ -6,6 +6,8 @@ import 'package:game_kit/game_kit.dart';
 import 'cat_chaos.dart';
 import 'cat_view.dart';
 import 'game.dart';
+import 'present.dart';
+import 'present_rules.dart';
 import 'puzzle.dart';
 import 'puzzle_values.dart';
 import 'settings.dart';
@@ -105,7 +107,8 @@ class PuzzleMatch {
     this.target = LayoutTarget.screen,
   }) : teams = Map.unmodifiable(teams),
        format = MatchFormat.of(teams),
-       seed = random.nextInt(1 << 32) {
+       seed = random.nextInt(1 << 32),
+       _settings = settings {
     // Both sides start with the same tray, mirrored, so the race is fair: the
     // layout picks the angles and sizes the tray for them. A one-board screen
     // match has no layout; one on phones shows the layout's left world.
@@ -165,6 +168,11 @@ class PuzzleMatch {
   /// The cat both sides' games ask about a shoo (M14 a2).
   late final CatChaos _cat;
 
+  /// The hot-potato present (M17 r3b): on Calm and Lively it replaces the cat's knock (owner Q4).
+  final _present = PresentRules();
+
+  PuzzleSettings _settings;
+
   MatchResult? _result;
 
   /// Null until the match is over.
@@ -174,11 +182,15 @@ class PuzzleMatch {
   /// is away.
   CatView? get cat => _cat.view;
 
+  /// The present while it is out (M17 r3c); null while it is away.
+  PresentState? get present => _present.state;
+
   set settings(PuzzleSettings s) {
     for (final side in sides) {
       side.game.settings = s;
     }
     _cat.settings = s;
+    _settings = s;
   }
 
   /// The game a side plays (on one board, the only one).
@@ -212,6 +224,11 @@ class PuzzleMatch {
     // stands still whenever the round does, and once the round is over
     // [_decide] sends it away.
     if (_result == null) events.addAll(_cat.update(dt));
+    // A snap by the side holding the present bats it on; the present's clock runs on the round's own.
+    for (final e in events) {
+      if (e.event.kind == PuzzleEventKind.snap) _present.onSnap(e.side);
+    }
+    if (_result == null) _present.update(dt, enabled: PresentRules.enabled(_settings), oneBoard: !format.split);
     if (_result == null) _decide();
     return events;
   }
@@ -249,6 +266,7 @@ class PuzzleMatch {
     );
     // The round is over: the cat goes, and comes no more (PRD v2 G3).
     _cat.endRound();
+    _present.end();
   }
 
   /// The round as the night reads it (M14 a1, N1): each player's side's points
@@ -305,5 +323,6 @@ class PuzzleMatch {
     boards: [for (final s in sides) s.game.snapshot()],
     seed: format.split || target == LayoutTarget.phones ? seed : null,
     cat: _cat.view,
+    present: present,
   );
 }
