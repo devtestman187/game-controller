@@ -36,3 +36,14 @@ RESULT: STOPPED: a touched lib file is over 380 lines and must be split: package
 2026-11-28 01:15:20 committed g1: 34a88bcc feat(glow1): carry the golden slot's target in the match snapshot
 2026-11-28 01:15:21 committed c1: 901486e6 Subject: `fix(glow1): confetti freezes while the game is paused`
 2026-11-28 01:15:21 phase: review (apply took 3s)
+2026-11-28 01:15:43 phase: worker (review took 22s)
+2026-11-28 01:15:44 start g2
+2026-11-28 01:19:27 g2 finished: result 0 (42 turns, 3 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 48/1084501/55624/26980
+2026-11-28 01:19:46 WARN: job g2 used 42 turns, over its cap of 35 (its own checks passed; accepted)
+2026-11-28 01:19:46 phase: tests-first (worker took 243s)
+2026-11-28 01:20:01 tests-first ok: packages/puzzle_game/test/golden_glow_paint_test.dart fails on the old code
+2026-11-28 01:20:12 phase: check (tests-first took 26s)
+2026-11-28 01:20:19 combined check: skips protocol connection metrics kit look arena tools (no job's change reaches them)
+2026-11-28 01:24:10 phase: apply (check took 238s)
+2026-11-28 01:24:12 committed g2: d3889601 feat(glow1): pulse the golden slot's glow on an empty target
+2026-11-28 01:24:13 phase: review (apply took 3s)
