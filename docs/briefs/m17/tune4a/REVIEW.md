@@ -74,3 +74,7 @@ tune4a run review done: 17 findings (8 should, 9 could), 0 must; open: v3 run ap
 ## Delete — the files to delete, one `- path` line each (only files you may change), or `- none`.
 
 - none
+
+## Driver verdicts (after the reruns)
+
+The review above was written before sim-results-v3.csv existed (the h4a worker was refused the run). The driver then ran `dart run tools/sim/run_sim_v3.dart` with defaults (56 rows, 5000 nights, seed 17), re-ran it to temp paths (byte-identical CSV and tables), and h4b was rerun as h4b2 (REPORT-v3.md). No rule file changed (git status clean apart from the v3 outputs). Must findings: none (0 must). Open question 1 answered by the run, 2 yes (sim-test.sh is the gate for tools/sim), 3 keep v1 (stated in the tables), 4-6 keep as built, 7 no (v3 used). The 8 should and 9 could findings are tool polish in run_sim_v3.dart and its test: no fix round this batch (owner: no h4d), recorded in docs/code-health.md. REVIEW "Numbers against targets" is superseded: adult final-rule Plaza rate 0.9858-1.0000, 56 rows. Report figures spot-checked against the CSV (csv:5, 6, 13, 32, 53, 55 and the mixed catch-up range 0.2344-0.6610): they match.
