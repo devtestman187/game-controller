@@ -1,7 +1,7 @@
 ## Summary
 Verdict: one fix batch. Counts: must 1, should 3, could 6. No HAND-FIX lines in run.log, no fix commits, so nothing is "Fixed, unverified".
 Top five:
-1. **must** frame_probe.dart:19 — three public types in one file (breaks the one-public-type rule).
+1. **must** frame_probe.dart:19 — three public types in one file (breaks the one-public-type rule). Fixed in f1 (verifier confirmed at 4ed20137).
 2. **should** city_map_view_test.dart:23 — 50 ms real-time wait for the image build; flaky and against the no-real-time rule.
 3. **should** city_map_view_test.dart:80 — line over 120 columns.
 4. **should** across jobs — `_standardBoard` (city_frame_test.dart:64) and `_boardFor` (city_map_view_test.dart:31) build the same board; shared test helper.
@@ -17,7 +17,7 @@ Questions only the owner can answer:
 - Must the m2d stub-stage red run be repeated? run.log says it failed on the old code; m2d's report says the first run was not clean.
 
 ## Findings
-- **must** packages/party_host/lib/src/city/art/frame_probe.dart:19 holds three public types (FrameStats, FrameProbe, CityFrameHook) in one file, breaking the one-public-type-per-file rule → split into one file each (from: m2d).
+- **must** packages/party_host/lib/src/city/art/frame_probe.dart:19 holds three public types (FrameStats, FrameProbe, CityFrameHook) in one file, breaking the one-public-type-per-file rule → split into one file each (from: m2d). Fixed in f1 (verifier confirmed at 4ed20137).
 - **should** packages/party_host/test/city/art/city_map_view_test.dart:72 waits a fixed 50 ms of real time (`_imageBuildWait` at :23) for the image build → await the cache's build listener, as `_untilBuilt` in city_frame_test.dart:111 does (from: m2c).
 - **should** packages/party_host/test/city/art/city_map_view_test.dart:80 is 121+ columns → wrap the line (from: m2c).
 - **should** across jobs: packages/party_host/test/city/art/city_frame_test.dart:64 `_standardBoard` and city_map_view_test.dart:31 `_boardFor` build the same eight-district board; `_tvSize` and `_phonePortrait` are also repeated (city_frame_test.dart:17-18, city_map_view_test.dart:13,17) → move them to one shared test helper (from: across jobs).
