@@ -412,3 +412,10 @@ Not built. bugs2 wave A with the 1-hour cache showed no large Sonnet cache write
 - sim_report.dart: the kidsPreset is passed only on the matrix branch of runSimCell and the gate column reads targetedGate, not gateOn (latent: no kids rules cell exists); finalRulesCells repeats the cell constructor of simMatrixCells; games: nightGames and city.nightGames are two sources of 5. Doc lines over 120 columns at 1, 2, 72, 112, 152 (also sim_cell.dart:16).
 - sim_stats.dart: CellTally's public fields and stats() have no dartdoc.
 - race1a (Nov 27): `maxPerSideFor` Hard cap computes 5 but the setting stops at 4, nothing pins 5; `MatchFormat.of` labels equal splits above 4 (5v5) "uneven" (not reachable); host_text.dart sits at exactly 380 lines, split it at the next edit (join texts); join_screen.dart `build` repeats the `_cap` expression; two sources of the default 2 (const in join_screen.dart and settings default); docs/architecture.md:177 says "at most two a side"; some race1a worker reports lack the Summary block or the review-rules self-check.
+
+## race1b notes (B10, Nov 27)
+- present.dart: bare 0.5 lerp cutoffs, constructor and fromJson dartdoc, `as int` casts; present_painter.dart `_fuse` has 6 params, `_pxPerUnit` copy of text_paint's; present_rules_test.dart:4 line over 120; present_snapshot_test.dart imports nightFrame from another test file; present_snapshot_test.dart:98 size check has no lower bound.
+- No pause or host-away test for the present (rule A3): the present counts on the round's own clock, and the night pause stops the round update, but no test pins it.
+- puzzle_painter.dart is 373 lines and match.dart 328: near the size gate.
+- present_wiring_test.dart:91 no-present case compares plain with plain (still proves a deterministic render).
+- Stale file names (present_paint) in r3d-report.md.
