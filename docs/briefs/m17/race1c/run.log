@@ -28,3 +28,14 @@
 2026-11-27 23:08:02 finding: r3f's report has no Summary block in its first 40 lines
 2026-11-27 23:08:03 committed r3f: c78edb95 race1c r3f: pop confetti and who-held-it results line
 2026-11-27 23:08:04 phase: review (apply took 2s)
+2026-11-27 23:08:05 reviewed wave1: 12 finding(s)
+2026-11-27 23:08:25 phase: worker (review took 21s)
+2026-11-27 23:08:26 start r3g
+2026-11-27 23:11:08 r3g finished: result 0 (14 turns, 2 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 20/315727/40016/24004
+2026-11-27 23:11:08 phase: tests-first (worker took 163s)
+2026-11-27 23:11:23 tests-first ok: packages/puzzle_game/test/fuse_skill_test.dart fails on the old code
+2026-11-27 23:11:35 phase: check (tests-first took 27s)
+2026-11-27 23:11:42 combined check: skips protocol connection metrics kit look arena tools (no job's change reaches them)
+2026-11-27 23:15:47 phase: apply (check took 252s)
+2026-11-27 23:15:51 committed r3g: bffec65d r3g: fuse values in FuseParams (provisional)
+2026-11-27 23:15:51 phase: review (apply took 4s)
