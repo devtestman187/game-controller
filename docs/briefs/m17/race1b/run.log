@@ -96,3 +96,4 @@ METRICS wave4-review worker=claude model=claude-haiku-5-5 turns=16 in=18 out=186
 2026-11-27 21:04:22 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/race1b/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 6 jobs, 9 min
 full check: All checks passed (328s, 7 cached). Logs: C:\Users\mrman\AppData\Local\Temp/thumbparty-check-20261127-210522 2026-11-27 63445f54
+2026-11-27 21:20 full check: All checks passed (323s, 7 cached) on 9e3736ff

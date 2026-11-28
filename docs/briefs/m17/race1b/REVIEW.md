@@ -99,7 +99,7 @@ Review the race1b run: one fix batch, 1 must and 14 should
 
 Read-only review of the race1b run (r3a, r3b, r3c, r3d, f1) as one change,
 against the coding guidelines and review rules. No code changed. The one
-must: a no-present wiring test compares two identical frames and cannot
+must (fixed in 9e3736ff, the vacuous test was replaced by one pinning the pr key): a no-present wiring test compares two identical frames and cannot
 fail. The 14 shoulds: a budget test with no lower bound, a bare 0.5 in the
 halfway switch, a phone-size gap, a six-parameter helper, missing dartdoc,
 stale report claims, a PRD line that still says Party, and two jobs with
