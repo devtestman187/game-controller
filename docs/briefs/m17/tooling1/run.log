@@ -25,3 +25,26 @@ METRICS tl1 worker=claude model=claude-haiku-5-5 turns=10 in=20 out=11306 cache=
 METRICS tl2 worker=claude model=claude-haiku-5-5 turns=12 in=22 out=9383 cache=222404 min=2.4 wall=3.1 result=0
 2026-11-28 09:16:12 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/tooling1/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 2 jobs, 15 min
+2026-11-28 09:16:45 RUN_MAX_MIN=69 min (computed backstop of the jobs still to do)
+2026-11-28 09:16:46 start at ce738053 on m17
+2026-11-28 09:16:46 worker: claude
+2026-11-28 09:16:47 proc-sweep: ORPHAN 59740 flutter_tester 29856s C:/src/flutter/bin/cache/artifacts/engine/windows-x64/flutter_tester.exe --disable-vm-service --enable-checked-mode --ve
+2026-11-28 09:16:47 proc-sweep: proc-sweep: 1 process(es) listed (1 orphaned flutter_tester/dart)
+2026-11-28 09:16:51 phase: preflight
+2026-11-28 09:16:57 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-28 09:17:13 phase: worker (preflight took 22s)
+2026-11-28 09:17:13 skip tl1 (already done)
+2026-11-28 09:17:14 skip tl2 (already done)
+2026-11-28 09:17:29 phase: worker (worker took 16s)
+2026-11-28 09:17:30 start f1
+2026-11-28 09:17:55 start f2
+2026-11-28 09:20:00 f2 finished: result 0 (11 turns, 2 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 20/184608/12067/5099
+2026-11-28 09:20:52 f1 finished: result 0 (22 turns, 3 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 34/381166/17560/10479
+2026-11-28 09:20:52 phase: tests-first (worker took 203s)
+2026-11-28 09:20:55 phase: check (tests-first took 2s)
+2026-11-28 09:20:57 combined check: skips protocol connection metrics kit look arena puzzle (no job's change reaches them)
+2026-11-28 09:30:31 phase: apply (check took 577s)
+2026-11-28 09:30:33 committed f2: af73dd02 Widen the musts negation check to more forms
+2026-11-28 09:30:33 finding: f1's report has no Summary block in its first 40 lines
+2026-11-28 09:30:34 committed f1: a0adb69c Test support: make the socket settle no slower than before
+2026-11-28 09:30:35 phase: review (apply took 4s)
