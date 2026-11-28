@@ -49,3 +49,12 @@ RESULT: STOPPED: a touched lib file is over 380 lines and must be split: package
 2026-11-28 01:24:13 phase: review (apply took 3s)
 2026-11-28 01:24:14 reviewed wave1: 7 finding(s)
 2026-11-28 01:26:46 reviewed wave2: 4 finding(s)
+2026-11-28 01:26:47 start the run's review
+METRICS c1 worker=claude model=claude-haiku-5-5 turns=23 in=38 out=20404 cache=625842 min=3.0 wall=- result=0
+METRICS g1 worker=claude model=claude-haiku-5-5 turns=16 in=22 out=8436 cache=250470 min=1.4 wall=- result=0
+METRICS g2 worker=claude model=claude-haiku-5-5 turns=42 in=48 out=26980 cache=1140125 min=3.2 wall=3.7 result=0
+METRICS run-review worker=claude model=claude-haiku-5-5 turns=29 in=30 out=31820 cache=644586 min=2.5 wall=- result=0
+METRICS wave1-review worker=claude model=claude-haiku-5-5 turns=39 in=40 out=26766 cache=981302 min=2.2 wall=- result=0
+METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=20 in=22 out=27754 cache=467620 min=2.2 wall=- result=0
+2026-11-28 01:29:43 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/glow1/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 3 jobs, 19 min
