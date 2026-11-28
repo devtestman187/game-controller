@@ -58,3 +58,26 @@ METRICS wave1-review worker=claude model=claude-haiku-5-5 turns=39 in=40 out=267
 METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=20 in=22 out=27754 cache=467620 min=2.2 wall=- result=0
 2026-11-28 01:29:43 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/glow1/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 3 jobs, 19 min
+2026-11-28 01:30:24 RUN_MAX_MIN=45 min (computed backstop of the jobs still to do)
+2026-11-28 01:30:25 start at c9bcb46f on m17
+2026-11-28 01:30:25 worker: claude
+2026-11-28 01:30:25 proc-sweep: ORPHAN 59740 flutter_tester 1875s C:/src/flutter/bin/cache/artifacts/engine/windows-x64/flutter_tester.exe --disable-vm-service --enable-checked-mode --ve
+2026-11-28 01:30:25 proc-sweep: proc-sweep: 1 process(es) listed (1 orphaned flutter_tester/dart)
+2026-11-28 01:30:28 phase: preflight
+2026-11-28 01:30:34 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-28 01:30:50 phase: worker (preflight took 22s)
+2026-11-28 01:30:50 skip g1 (already done)
+2026-11-28 01:30:50 skip c1 (already done)
+2026-11-28 01:31:06 phase: worker (worker took 16s)
+2026-11-28 01:31:06 skip g2 (already done)
+2026-11-28 01:31:22 phase: worker (worker took 16s)
+2026-11-28 01:31:22 start f1
+2026-11-28 01:33:43 f1 finished: result 0 (22 turns, 2 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 38/562866/35697/17142
+2026-11-28 01:33:43 phase: tests-first (worker took 141s)
+2026-11-28 01:34:00 tests-first: packages/puzzle_game/test/golden_match_painter_test.dart passes on the old code, exempt by its brief
+2026-11-28 01:34:04 tests-first: packages/puzzle_game/test/golden_match_snapshot_test.dart passes on the old code, exempt by its brief
+2026-11-28 01:34:16 phase: check (tests-first took 33s)
+2026-11-28 01:34:20 combined check: skips protocol connection metrics kit look arena tools (no job's change reaches them)
+2026-11-28 01:38:09 phase: apply (check took 233s)
+2026-11-28 01:38:11 committed f1: 5a38c50c test(puzzle_game): pin the golden slot's handover to the snapshot and the painter
+2026-11-28 01:38:11 phase: review (apply took 2s)
