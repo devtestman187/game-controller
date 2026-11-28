@@ -87,4 +87,12 @@ void main() {
     expect(right, greaterThan(0), reason: 'the box and its fuse are on the right board');
     expect(left, 0, reason: 'the left board has no present');
   });
+
+  test('the frame carries a present as the pr key, and a frame with none carries no pr key', () {
+    final puzzle = load('boat');
+    expect(frame(puzzle).toJson().containsKey('pr'), isFalse);
+    final json = frame(puzzle, present: held(PuzzleSide.left)).toJson();
+    expect(json['pr'], isNotNull);
+    expect(MatchSnapshot.fromJson(json).present, held(PuzzleSide.left));
+  });
 }
