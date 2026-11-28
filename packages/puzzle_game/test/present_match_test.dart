@@ -53,7 +53,7 @@ void main() {
 
   test('no present on Off, on A little, on Wild, or on one board', () {
     final off = Watch(raceOn(CatPreset.lively, chaos: Chaos.off));
-    final wild = Watch(raceOn(CatPreset.wild, chaos: Chaos.party));
+    final wild = Watch(raceOn(CatPreset.wild));
     final little = Watch(raceOn(CatPreset.lively, chaos: Chaos.little));
     final solo = Watch(soloOn(Chaos.party));
     final end = PresentRules.startDelayS + 5;
@@ -64,7 +64,7 @@ void main() {
   });
 
   test('a snap by the side holding the present bats it to the other side', () {
-    final m = raceOn(CatPreset.lively, chaos: Chaos.party);
+    final m = raceOn(CatPreset.lively);
     final w = Watch(m);
     w.to(PresentRules.startDelayS + 1);
     expect(m.snapshot().present!.holder, PuzzleSide.left, reason: 'the left side holds the first present');
@@ -75,7 +75,7 @@ void main() {
   });
 
   test('the present never changes a side\'s placed count, even when its fuse pops', () {
-    final m = raceOn(CatPreset.lively, chaos: Chaos.party);
+    final m = raceOn(CatPreset.lively);
     final left = m.gameOf(PuzzleSide.left);
     final right = m.gameOf(PuzzleSide.right);
     put(m, left, 'p1', 0);
