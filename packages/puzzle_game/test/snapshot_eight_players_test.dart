@@ -60,6 +60,7 @@ MatchSnapshot nightFrame(int players) {
     ],
     seed: frameSeed,
     cat: const CatView(state: CatState.walk, side: PuzzleSide.right, at: Offset(123.4, 56.7), target: 5),
+    present: const PresentState(holder: PuzzleSide.left, fuseMs: 12345, fuseTotalMs: 15000),
   );
 }
 

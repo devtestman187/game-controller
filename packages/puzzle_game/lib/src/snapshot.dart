@@ -5,6 +5,7 @@ import 'package:game_kit/game_kit.dart';
 
 import 'cat_view.dart';
 import 'points.dart';
+import 'present.dart';
 import 'puzzle_values.dart';
 
 /// A piece as the view sees it.
@@ -269,7 +270,7 @@ double _lerpAngleDeg(double from, double to, double t) {
 /// A whole match as the view sees it (S8): one board, or the left and right
 /// boards of the split screen.
 final class MatchSnapshot implements GameSnapshot {
-  const MatchSnapshot({required this.boards, this.seed, this.cat});
+  const MatchSnapshot({required this.boards, this.seed, this.cat, this.present});
 
   static const version = 2;
 
@@ -283,6 +284,10 @@ final class MatchSnapshot implements GameSnapshot {
 
   /// The cat, while it is out (M14 a2, PRD v2 G3); null while it is away.
   final CatView? cat;
+
+  /// The present, while it is out (M17 r3a); null while it is away. A frame from before it has no `pr` and decodes
+  /// with none.
+  final PresentState? present;
 
   bool get split => boards.length == 2;
 
@@ -316,6 +321,7 @@ final class MatchSnapshot implements GameSnapshot {
     'b': [for (final b in boards) b.toJson()],
     'sd': ?seed,
     if (cat case final c?) 'cat': c.toJson(),
+    if (present case final p?) 'pr': p.toJson(),
   };
 
   String encode() => jsonEncode(toJson());
@@ -328,6 +334,7 @@ final class MatchSnapshot implements GameSnapshot {
       boards: [for (final b in (j['b'] as List).cast<Map<String, Object?>>()) PuzzleSnapshot.fromJson(b)],
       seed: j['sd'] as int?,
       cat: j['cat'] == null ? null : CatView.fromJson((j['cat'] as List).cast<Object?>()),
+      present: j['pr'] == null ? null : PresentState.fromJson((j['pr'] as List).cast<Object?>()),
     );
   }
 
@@ -345,10 +352,13 @@ final class MatchSnapshot implements GameSnapshot {
     if (t >= 1) return next;
     final a = cat;
     final b = next.cat;
+    final pa = present;
+    final pb = next.present;
     return MatchSnapshot(
       boards: [for (final (i, a) in boards.indexed) i < next.boards.length ? a.lerpTo(next.boards[i], t) : a],
       seed: seed,
       cat: a != null && b != null ? a.lerpTo(b, t) : (t < 0.5 ? a : b),
+      present: pa != null && pb != null ? pa.lerpTo(pb, t) : (t < 0.5 ? pa : pb),
     );
   }
 }

@@ -20,6 +20,7 @@ export 'src/piece_moments.dart';
 export 'src/piece_size.dart';
 export 'src/play_view.dart';
 export 'src/points.dart';
+export 'src/present.dart';
 export 'src/puzzle.dart';
 export 'src/puzzle_module.dart';
 export 'src/puzzle_rules.dart';
