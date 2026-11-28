@@ -62,7 +62,7 @@ final class CityOverlayPainter extends CustomPainter {
   void _paintBuiltTiles(Canvas canvas, CityRoadScene road) {
     final built = math.min(road.builtTiles, road.roadLength - 1);
     for (var i = 0; i < built; i++) {
-      _paintSlab(canvas, layout.tileRect(road.roadId, i), look.colors.paper);
+      _paintSlab(canvas, layout.tileRect(road.roadId, i), look.colors.star);
     }
   }
 
