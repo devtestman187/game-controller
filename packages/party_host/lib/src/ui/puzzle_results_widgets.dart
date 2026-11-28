@@ -36,6 +36,7 @@ class _Results extends ConsumerWidget {
     required this.puzzle,
     required this.match,
     required this.times,
+    required this.present,
   });
 
   final MatchResult result;
@@ -68,6 +69,7 @@ class _Results extends ConsumerWidget {
   /// What this round did to each finished side's best time (T15): the chip
   /// says which boards beat theirs.
   final Map<PuzzleSide, BestTimeResult> times;
+  final PresentTracker present;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -129,6 +131,7 @@ class _Results extends ConsumerWidget {
                         ),
                         isRecord: times[side]?.isRecord ?? false,
                       ),
+                    PresentHeldLine(tracker: present),
                     ..._controls(context),
                   ],
                 ),

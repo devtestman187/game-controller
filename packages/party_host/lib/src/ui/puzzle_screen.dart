@@ -34,6 +34,7 @@ import 'night_reveal_screen.dart';
 import 'night_scoreboard_screen.dart';
 import 'pause_menu.dart';
 import 'player_badge.dart';
+import 'present_pop_widgets.dart';
 import 'puzzle_best_times.dart';
 import 'puzzle_choice.dart';
 import 'puzzle_pad_scale.dart';
@@ -96,6 +97,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   /// results. Made here, not lazily: dispose() can't read providers any more.
   late final HostMusic _music;
   final _againFocus = FocusNode(debugLabel: 'rematch');
+  final _present = PresentTracker();
 
   /// The screen's randomness, made once here at the edge: the puzzle to play
   /// and the match's trays start from it (S8).
@@ -239,11 +241,6 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
     });
   }
 
-  /// Each frame of the round: its clock, for the music's tempo (M13 design
-  /// section 8, rule 3).
-  void _clocked(int timeLeftMs, int warningS) =>
-      _music.roundScreenClock(this, timeLeftMs: timeLeftMs, warningS: warningS);
-
   void _replaceWith(Widget screen) {
     _handedOver = true;
     Navigator.of(context).pushReplacement(MaterialPageRoute<void>(builder: (_) => screen));
@@ -353,6 +350,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                       },
                     ),
                   ),
+                  Positioned.fill(child: PresentConfetti(tracker: _present)),
                   if (_cardShown && result != null)
                     // The results cover the board (it stays mounted: the
                     // results' photos are its last frame) and are drawn in the
@@ -370,6 +368,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                         puzzle: puzzle,
                         match: _play.currentState?.match,
                         times: _times,
+                        present: _present,
                       ),
                     ),
                 ],

@@ -15,6 +15,13 @@ extension _PuzzleResultsRoute on _PuzzleScreenState {
     _showAfterNight(const NightRevealScreen());
   }
 
+  /// Each frame of the round: its clock, for the music's tempo (M13 design section 8, rule 3), and its present, for
+  /// the pop's confetti and the results' line (M17 r3f).
+  void _clocked(int timeLeftMs, int warningS) {
+    _music.roundScreenClock(this, timeLeftMs: timeLeftMs, warningS: warningS);
+    _present.feed(_play.currentState?.match.present);
+  }
+
   /// Replaces every route above the game picker with [screen], so a night of
   /// five rounds leaves a phone five routes, not fifteen.
   void _showAfterNight(Widget screen) =>
