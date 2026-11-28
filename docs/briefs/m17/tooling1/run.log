@@ -49,3 +49,9 @@ RESULT: DONE: 2 jobs, 15 min
 2026-11-28 09:30:34 committed f1: a0adb69c Test support: make the socket settle no slower than before
 2026-11-28 09:30:35 phase: review (apply took 4s)
 2026-11-28 09:33:21 reviewed wave2: 7 finding(s)
+2026-11-28 09:33:21 start the run's review
+METRICS f1 worker=claude model=claude-haiku-5-5 turns=22 in=34 out=10479 cache=398726 min=2.8 wall=3.4 result=0
+METRICS f2 worker=claude model=claude-haiku-5-5 turns=11 in=20 out=5099 cache=196675 min=1.6 wall=2.1 result=0
+METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=14 in=20 out=17182 cache=339115 min=2.4 wall=- result=0
+2026-11-28 09:36:43 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/tooling1/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 4 jobs, 19 min
