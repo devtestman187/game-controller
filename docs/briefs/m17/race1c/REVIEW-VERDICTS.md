@@ -7,3 +7,10 @@
 - FuseParams doc; capped assertion - should - r3h3
 - confetti vs pause rule; 14 px piece; +3/+4 line overruns; report wording; could items - minor - docs/code-health.md (race1c notes), pause rule owner question
 - present_pop_widgets pause: owner question (no design decision taken)
+## wave4 review (r3h, r3h2, r3h3)
+- present_pop_widgets.dart:132 line over 120 - must - fixed by hand (local `level`), format, analyze, 9 tests pass
+- confetti dispose test and one-board golden test pass on the base - must - closed: accepted as labelled pin tests (tests-first exempt, behaviour already correct)
+- fuse_skill new checks without base run - should - closed: r3h3's present_rules test fails on base (tests-first ok in run.log); sim checks accepted
+- new tests in existing files - should - closed: exception accepted (allow lists named them)
+- _present.dispose() untested, could items (docs, `!`, dartdoc) - minor - docs/code-health.md race1c notes
+- decisions: wrong re-snap pays 1 (confirmed), cat knock-out counts as try again (follows owner wording), fuse may run under the floor between snaps (intended), Shuffle comment reworded to keep net growth 0 (accepted)

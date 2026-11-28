@@ -423,3 +423,7 @@ Not built. bugs2 wave A with the 1-hour cache showed no large Sonnet cache write
 
 ## seatfit notes (Nov 27)
 - _NotJoined (join_screen_widgets.dart:35-51) has no maxLines: with many phones waiting it wraps and the side cards scale to about 0.89 (seatfit test pins 0.84). Consider maxLines 2 with ellipsis.
+
+## race1c notes (Nov 27)
+- puzzle_screen.dart `_present.dispose()` has no test; golden_slot.dart:68 line over 120; `GoldenInputs` constructor dartdoc; golden_slot_test `game.player(id)!`; fuse_skill_test `_breaksSnapRule` doc; confetti piece fixed 14 px (check on device); code comments with job tags in golden_slot.dart and present_pop_widgets.dart; match.dart 339 and game.dart 325 lines (over the 300 guide).
+- Open for owner: should the confetti freeze on the pause menu like the golden wait does (one pause rule); golden +2 points have no visual cue (no glow drawn yet).
