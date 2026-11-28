@@ -22,7 +22,7 @@ const cityMinTokenDiameterDp = 24.0;
 const cityChipMinTileSize = 20.0;
 
 /// Draws [snapshot] on the room it is given: the board, built tiles, tokens and, when the tiles
-/// are big enough, the Bolts chips.
+/// are big enough, the Bolts chips. The parent must give it a bounded width and height.
 class CityMapView extends StatefulWidget {
   /// Creates a view of [snapshot].
   const CityMapView({required this.snapshot, super.key});
@@ -68,6 +68,11 @@ class _CityMapViewState extends State<CityMapView> {
     final snapshot = widget.snapshot;
     return LayoutBuilder(
       builder: (context, constraints) {
+        if (!constraints.hasBoundedWidth || !constraints.hasBoundedHeight) {
+          throw FlutterError(
+            'CityMapView needs a bounded size, but its parent gave it unbounded constraints: $constraints',
+          );
+        }
         final size = constraints.biggest;
         final layout = _layoutFor(size, snapshot);
         final shown = layout.tileSize < cityChipMinTileSize ? _withoutChips(snapshot) : snapshot;

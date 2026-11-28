@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/src/city/art/city_map_view.dart';
@@ -19,8 +21,9 @@ const _allSizes = [_phonePortrait, _phoneLandscape, _phoneWide, _tablet, _tvSize
 const _playerCounts = [2, 4, 8];
 const _eightPlayers = 8;
 
-/// How long the test waits in real time for the cache's image build to finish before teardown.
-const _imageBuildWait = Duration(milliseconds: 50);
+/// How long a test waits for the cache's image build before it fails, so a build that never
+/// finishes cannot hang the run.
+const _imageBuildTimeout = Duration(seconds: 5);
 
 /// The tile a token stands on: past the start, short of the Plaza.
 const _tokenTile = 2;
@@ -69,17 +72,38 @@ Future<void> _pump(WidgetTester tester, HostLook look, Size size, CitySnapshot s
     screen: CityMapView(snapshot: snapshot),
     size: size,
   );
-  await tester.runAsync(() => Future<void>.delayed(_imageBuildWait));
+  await _untilImageBuilt(tester, size);
   await tester.pump();
 }
 
-CustomPaint _paintOf<T extends CustomPainter>(WidgetTester tester) => tester
+/// Waits until the view's static image is built for [size], listening to its cache the way
+/// `_untilBuilt` does in city_frame_test.dart; returns at once when the image is already there.
+Future<void> _untilImageBuilt(WidgetTester tester, Size size) async {
+  final cache = _board(tester).cache;
+  if (cache.imageFor(size) != null) return;
+  final done = Completer<void>();
+  void onBuilt() {
+    if (!done.isCompleted) done.complete();
+  }
+
+  cache.addListener(onBuilt);
+  try {
+    await tester.runAsync(() => done.future.timeout(_imageBuildTimeout));
+  } finally {
+    cache.removeListener(onBuilt);
+  }
+}
+
+/// The first painter of type [T] among the view's custom paints, typed so callers need no cast.
+T _paintOf<T extends CustomPainter>(WidgetTester tester) => tester
     .widgetList<CustomPaint>(find.descendant(of: find.byType(CityMapView), matching: find.byType(CustomPaint)))
-    .firstWhere((paint) => paint.painter is T);
+    .map((paint) => paint.painter)
+    .whereType<T>()
+    .first;
 
-CityOverlayPainter _overlay(WidgetTester tester) => _paintOf<CityOverlayPainter>(tester).painter! as CityOverlayPainter;
+CityOverlayPainter _overlay(WidgetTester tester) => _paintOf<CityOverlayPainter>(tester);
 
-CityPainter _board(WidgetTester tester) => _paintOf<CityPainter>(tester).painter! as CityPainter;
+CityPainter _board(WidgetTester tester) => _paintOf<CityPainter>(tester);
 
 void main() {
   group('CityMapView fits every size', () {
@@ -163,6 +187,45 @@ void main() {
       await _pump(tester, HostLook.menu, _phonePortrait, _snapshotFor(4));
       expect(_board(tester).cache, same(cache));
       expect(cache.buildCount, 2, reason: 'a new size builds once more');
+    });
+  });
+
+  group('CityMapView needs a bounded size', () {
+    testWidgets('throws a clear FlutterError under an unbounded height, a Column in a vertical scroll view', (
+      tester,
+    ) async {
+      await pumpHostLook(
+        tester,
+        HostLook.menu,
+        screen: SingleChildScrollView(
+          child: Column(children: [CityMapView(snapshot: _snapshotFor(2))]),
+        ),
+        size: _phonePortrait,
+      );
+
+      expect(
+        tester.takeException(),
+        isA<FlutterError>().having((error) => error.toString(), 'text', contains('bounded size')),
+      );
+    });
+
+    testWidgets('throws a clear FlutterError under an unbounded width, a Row in a horizontal scroll view', (
+      tester,
+    ) async {
+      await pumpHostLook(
+        tester,
+        HostLook.menu,
+        screen: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(children: [CityMapView(snapshot: _snapshotFor(2))]),
+        ),
+        size: _phonePortrait,
+      );
+
+      expect(
+        tester.takeException(),
+        isA<FlutterError>().having((error) => error.toString(), 'text', contains('bounded size')),
+      );
     });
   });
 }
