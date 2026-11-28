@@ -55,3 +55,14 @@ RESULT: STOPPED: tools/review.sh found a FAIL after r3d r3b (see .dart_tool/run-
 2026-11-27 20:43:44 committed r3c: fc596b8f B10 r3c: the present on Calm and Lively, the cat's knock on Wild only
 2026-11-27 20:43:44 phase: review (apply took 3s)
 2026-11-27 20:46:38 reviewed wave3: 10 finding(s)
+2026-11-27 20:46:39 start the run's review
+METRICS f1 worker=claude model=claude-haiku-5-5 turns=41 in=44 out=19223 cache=852525 min=2.4 wall=3.0 result=0
+METRICS r3a worker=claude model=claude-haiku-5-5 turns=23 in=24 out=19924 cache=374847 min=3.4 wall=4.0 result=0
+METRICS r3b worker=claude model=claude-haiku-5-5 turns=16 in=30 out=20821 cache=430523 min=5.7 wall=6.2 result=0
+METRICS r3c worker=claude model=claude-haiku-5-5 turns=51 in=66 out=33111 cache=1628586 min=3.5 wall=4.1 result=0
+METRICS r3d worker=claude model=claude-haiku-5-5 turns=31 in=42 out=36257 cache=973196 min=3.4 wall=4.0 result=0
+METRICS run-review worker=claude model=claude-haiku-5-5 turns=49 in=58 out=73721 cache=2007297 min=5.6 wall=- result=0
+METRICS wave1-review worker=claude model=claude-haiku-5-5 turns=13 in=16 out=15140 cache=222078 min=1.2 wall=- result=0
+METRICS wave3-review worker=claude model=claude-haiku-5-5 turns=28 in=32 out=31838 cache=697199 min=2.5 wall=- result=0
+2026-11-27 20:52:40 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/race1b/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 5 jobs, 19 min
