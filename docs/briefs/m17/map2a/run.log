@@ -44,3 +44,11 @@ RESULT: STOPPED: tools/review.sh found a FAIL after m2b (see .dart_tool/run-jobs
 2026-11-28 03:26:26 hand-fixed m2b: tests-first proof and worker review done (marked in done.txt)
 2026-11-28 03:26:26 skip m2b (already done)
 2026-11-28 03:28:32 reviewed wave2: 10 finding(s)
+2026-11-28 03:28:33 start the run's review
+METRICS m2a worker=claude model=claude-sonnet-5-5 turns=32 in=44 out=24789 cache=851392 min=4.9 wall=5.5 result=0
+METRICS m2b worker=claude model=claude-haiku-5-5 turns=32 in=52 out=56935 cache=1620454 min=5.7 wall=6.2 result=0
+METRICS run-review worker=claude model=claude-haiku-5-5 turns=36 in=32 out=58174 cache=961052 min=4.5 wall=- result=0
+METRICS wave1-review worker=claude model=claude-haiku-5-5 turns=15 in=16 out=28925 cache=310760 min=2.3 wall=- result=0
+METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=21 in=24 out=21907 cache=528225 min=1.8 wall=- result=0
+2026-11-28 03:33:26 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/map2a/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 2 jobs, 9 min
