@@ -48,3 +48,4 @@ RESULT: DONE: 2 jobs, 15 min
 2026-11-28 09:30:33 finding: f1's report has no Summary block in its first 40 lines
 2026-11-28 09:30:34 committed f1: a0adb69c Test support: make the socket settle no slower than before
 2026-11-28 09:30:35 phase: review (apply took 4s)
+2026-11-28 09:33:21 reviewed wave2: 7 finding(s)
