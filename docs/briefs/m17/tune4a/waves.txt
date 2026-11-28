@@ -1,3 +1,2 @@
-# tune4a: h4a sim run, then h4b report (h4b reads h4a output)
-h4a
-h4b
+# tune4a: h4b rerun as h4b2 now that the v3 CSV and tables are committed
+h4b2
