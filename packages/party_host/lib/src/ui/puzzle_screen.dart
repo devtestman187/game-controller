@@ -166,8 +166,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
     });
   }
 
-  /// The results' Shuffle switch (B-011): the series remembers it for the
-  /// rounds that follow. Here, like [_showPuzzle], for [setState]'s sake.
+  /// The results' Shuffle switch (B-011): the series keeps it for later rounds; here for [setState]'s sake.
   void _shuffle(bool isOn) {
     final series = _series;
     if (series == null) return;
@@ -180,6 +179,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
     _music.roundScreenClosed(this);
     if (!_handedOver) _keyboard.dispose();
     _againFocus.dispose();
+    _present.dispose();
     super.dispose();
   }
 

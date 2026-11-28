@@ -27,6 +27,9 @@ final class PresentTracker {
     }
     _wasPopped = popped;
   }
+
+  /// Frees [pops]; call it once the round's screen is gone and nothing listens any more.
+  void dispose() => pops.dispose();
 }
 
 /// How many pieces a pop throws.
@@ -40,6 +43,15 @@ const _confettiReachShare = 0.45;
 
 /// The golden angle in radians: it spreads the pieces evenly round the burst without a random source.
 const _goldenAngle = 2.399963;
+
+/// How many distinct depths the pieces fly to; piece i takes depth i modulo this, so the depths repeat.
+const _confettiDepthLevels = 5;
+
+/// The nearest a piece flies, as a share of its full reach.
+const _confettiDepthNear = 0.4;
+
+/// How much further the farthest piece flies than the nearest, as a share of its full reach.
+const _confettiDepthSpan = 0.6;
 
 /// A short confetti burst over the board each time the present pops (M17 r3f), for [PresentRules.popMs]. It takes no
 /// touch and uses no asset, so it shows under every look and on the TV.
@@ -117,7 +129,7 @@ class _ConfettiPainter extends CustomPainter {
     for (var i = 0; i < _confettiPieces; i++) {
       final angle = i * _goldenAngle;
       // Pieces fly to different depths, and fade out over the burst's last half.
-      final depth = 0.4 + 0.6 * ((i % 5) / 4);
+      final depth = _confettiDepthNear + _confettiDepthSpan * ((i % _confettiDepthLevels) / (_confettiDepthLevels - 1));
       final at = centre + Offset(cos(angle), sin(angle)) * (reach * depth);
       paint.color = colours[i % colours.length].withValues(alpha: (1 - progress).clamp(0, 1));
       canvas.save();
@@ -150,17 +162,20 @@ class PresentHeldLine extends StatelessWidget {
       'Everyone batted it around!';
 
   @override
-  Widget build(BuildContext context) {
-    final side = tracker.heldAtPop;
-    if (side == null) return const SizedBox.shrink();
-    final look = ToyLookScope.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(top: ToySizes.space8),
-      child: Text(
-        text(side),
-        key: const Key('presentHeldLine'),
-        style: look.type.body.copyWith(color: look.colors.ink),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: tracker.pops,
+    builder: (context, _) {
+      final side = tracker.heldAtPop;
+      if (side == null) return const SizedBox.shrink();
+      final look = ToyLookScope.of(context);
+      return Padding(
+        padding: const EdgeInsets.only(top: ToySizes.space8),
+        child: Text(
+          text(side),
+          key: const Key('presentHeldLine'),
+          style: look.type.body.copyWith(color: look.colors.ink),
+        ),
+      );
+    },
+  );
 }

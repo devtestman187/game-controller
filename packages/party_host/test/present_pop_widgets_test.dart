@@ -63,6 +63,38 @@ void main() {
       expect(text, 'The present was with the Right side last. Everyone batted it around!');
       expect(tester.takeException(), isNull, reason: 'the line fits a 300 px wide column in this look');
     });
+
+    testWidgets('a mounted held line shows the side of a pop that comes after it mounted (${look.name})', (
+      tester,
+    ) async {
+      final tracker = PresentTracker();
+      await pumpHostLook(tester, look, screen: stage(tracker));
+      expect(find.byKey(const Key('presentHeldLine')), findsNothing, reason: 'no pop yet');
+
+      tracker.feed(presentOn(PuzzleSide.left, popped: true));
+      await tester.pump();
+      final text = tester.widget<Text>(find.byKey(const Key('presentHeldLine'))).data;
+      expect(text, 'The present was with the Left side last. Everyone batted it around!');
+    });
+
+    testWidgets('confetti unmounted mid-burst leaves no pops listener and no running animation (${look.name})', (
+      tester,
+    ) async {
+      final tracker = PresentTracker();
+      await pumpHostLook(tester, look, screen: stage(tracker));
+      tracker.feed(presentOn(PuzzleSide.left, popped: true));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(tester.hasRunningAnimations, isTrue, reason: 'the burst is running');
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      expect(tester.hasRunningAnimations, isFalse, reason: 'the burst controller is disposed with the confetti');
+
+      tracker.feed(null);
+      tracker.feed(presentOn(PuzzleSide.right, popped: true));
+      expect(tester.takeException(), isNull, reason: 'a later pop reaches no disposed burst controller');
+      expect(tester.hasRunningAnimations, isFalse, reason: 'and starts no burst');
+    });
   }
 
   test('a pop counts once however many frames show it, and again for the next present', () {
