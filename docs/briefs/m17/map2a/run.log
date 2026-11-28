@@ -43,3 +43,4 @@ RESULT: STOPPED: tools/review.sh found a FAIL after m2b (see .dart_tool/run-jobs
 2026-11-28 03:26:24 tests-first ok: packages/party_host/test/city/art/city_scene_test.dart fails on the old code
 2026-11-28 03:26:26 hand-fixed m2b: tests-first proof and worker review done (marked in done.txt)
 2026-11-28 03:26:26 skip m2b (already done)
+2026-11-28 03:28:32 reviewed wave2: 10 finding(s)
