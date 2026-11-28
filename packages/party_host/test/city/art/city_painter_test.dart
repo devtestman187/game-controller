@@ -192,7 +192,64 @@ void main() {
     });
   });
 
+  group('CityStaticCache failures and disposal', () {
+    const small = Size(16, 16);
+    const bigger = Size(32, 32);
+    void draw(Canvas canvas) => canvas.drawRect(Offset.zero & small, Paint());
+
+    testWidgets('a failing build logs once, keeps no image and a later request retries', (tester) async {
+      final logs = <String>[];
+      final cache = CityStaticCache(log: logs.add);
+      addTearDown(cache.dispose);
+      var notified = 0;
+      cache.addListener(() => notified++);
+      await tester.runAsync(() => cache.build(Size.zero, draw));
+      expect(logs, hasLength(1));
+      expect(cache.imageFor(Size.zero), isNull);
+      expect(notified, 0);
+      cache.request(Size.zero, draw);
+      expect(cache.buildCount, 2, reason: 'the failed size is wanted again, not stuck');
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+      await tester.runAsync(() => cache.build(small, draw));
+      expect(cache.imageFor(small), isNotNull);
+      expect(notified, 1);
+    });
+
+    testWidgets('dispose during a build leaves no image and no notification', (tester) async {
+      final cache = CityStaticCache();
+      var notified = 0;
+      cache.addListener(() => notified++);
+      await tester.runAsync(() async {
+        final building = cache.build(small, draw);
+        cache.dispose();
+        await building;
+      });
+      expect(cache.imageFor(small), isNull);
+      expect(notified, 0);
+    });
+
+    testWidgets('a size change during a build keeps only the newest size', (tester) async {
+      final cache = CityStaticCache();
+      addTearDown(cache.dispose);
+      var notified = 0;
+      cache.addListener(() => notified++);
+      await tester.runAsync(() async {
+        final first = cache.build(small, draw);
+        final second = cache.build(bigger, draw);
+        await Future.wait([first, second]);
+      });
+      expect(cache.imageFor(small), isNull);
+      expect(cache.imageFor(bigger), isNotNull);
+      expect(notified, 1);
+    });
+  });
+
   group('CityPainter in a screen', () {
+    test('paint refuses a size the layout was not built for', () {
+      final painter = _painter(_tvSize, CityStaticCache());
+      expect(() => painter.paint(_CountingCanvas(), _phonePortrait), throwsAssertionError);
+    });
+
     for (final size in [_tvSize, _phonePortrait, _phoneLandscape]) {
       testWidgets('$size paints under every look without an error', (tester) async {
         await forEachLook(tester, (look) async {

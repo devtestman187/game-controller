@@ -7,6 +7,7 @@ library;
 import 'dart:async';
 import 'dart:ui' as ui;
 
+import 'package:connection/connection.dart' show LogSink;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:toy_look/toy_look.dart';
@@ -48,8 +49,11 @@ final class CityPainter extends CustomPainter {
   /// The image of the static layer, built on the first paint of a size.
   final CityStaticCache cache;
 
+  /// Draws the board. The layout must have been built for the paint [size]: a layout for another
+  /// size would misplace every tile, so that is refused rather than drawn wrong.
   @override
   void paint(Canvas canvas, Size size) {
+    assert(size == layout.size, 'The layout is for ${layout.size}, but the paint size is $size');
     final image = cache.imageFor(layout.size);
     if (image != null) {
       canvas.drawImage(image, Offset.zero, Paint());
@@ -132,6 +136,10 @@ final class CityPainter extends CustomPainter {
 /// The image comes from a [ui.PictureRecorder]; the [ui.Picture] is disposed as soon as it is
 /// rendered, never kept. A new size builds a new image and drops the old one.
 class CityStaticCache extends ChangeNotifier {
+  /// A cache that reports a failed build to [log], when given.
+  CityStaticCache({LogSink? log}) : _log = log ?? ((_) {});
+
+  final LogSink _log;
   ui.Image? _image;
   Size? _imageSize;
   Size? _wantedSize;
@@ -152,7 +160,8 @@ class CityStaticCache extends ChangeNotifier {
   }
 
   /// Draws [draw] into a new image of [size] and keeps it, replacing the one before. A build
-  /// that a later size has overtaken is thrown away. Completes when the image is kept.
+  /// that a later size has overtaken is thrown away. Completes when the image is kept, or when
+  /// the build failed: the failure is logged, no image is kept and a later [request] retries.
   Future<void> build(Size size, void Function(Canvas canvas) draw) async {
     _wantedSize = size;
     _buildCount++;
@@ -162,6 +171,11 @@ class CityStaticCache extends ChangeNotifier {
     final ui.Image image;
     try {
       image = await picture.toImage(size.width.ceil(), size.height.ceil());
+    } on Object catch (error) {
+      // The engine can refuse an image (empty or too big a size); the board stays drawn directly.
+      _log('City map image for $size failed: $error');
+      if (_wantedSize == size) _wantedSize = null;
+      return;
     } finally {
       picture.dispose();
     }
