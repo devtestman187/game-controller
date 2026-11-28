@@ -29,3 +29,14 @@
 2026-11-27 18:59:00 phase: apply (check took 279s)
 2026-11-27 18:59:02 committed f1b: e57b3402 race1a f1b: maxPerSide setting 2 to 4; the join cap follows it
 2026-11-27 18:59:02 phase: review (apply took 2s)
+2026-11-27 18:59:03 reviewed wave1: 14 finding(s)
+2026-11-27 18:59:24 phase: worker (review took 22s)
+2026-11-27 18:59:25 start f1c
+2026-11-27 19:00:32 f1c finished: result 0 (11 turns, 0 min) model claude-sonnet-5-5, ladder 1, tokens in/read/write/out 14/136410/30896/2834
+2026-11-27 19:00:33 phase: tests-first (worker took 69s)
+2026-11-27 19:00:33 phase: check (tests-first took 0s)
+2026-11-27 19:00:49 combined check: skips protocol connection metrics kit look arena puzzle host phone tv tools (no job's change reaches them)
+2026-11-27 19:01:06 phase: apply (check took 33s)
+2026-11-27 19:01:06 finding: f1c's report has no Summary block in its first 40 lines
+2026-11-27 19:01:08 committed f1c: a858fb34 none (stopped before any change)
+2026-11-27 19:01:08 phase: review (apply took 2s)
