@@ -74,7 +74,7 @@ const _footerKey = Key('hostFrameFooter');
 const _playerNames = ['Bartholome', 'Maxi', 'Alexandria', 'Chris', 'Nightshade', 'Jo'];
 
 /// The players a case joins: nobody, two a side, and six phones with two
-/// watching (the most Shape Race seats: two a side, `maxPerSide`).
+/// watching (the most Shape Race seats: two a side, `defaultMaxPerSide`).
 const _counts = [0, 4, 6];
 
 /// How a text on the join screen is drawn, in frame px: the look's style
@@ -120,9 +120,9 @@ Future<FakeHostService> _pumpJoin(WidgetTester tester, Size device, int players)
   if (players == 0) return fake;
   final ids = [for (var i = 0; i < players; i++) 'p${i + 1}'];
   await neutral(tester, fake, ids);
-  // Two a side is what Shape Race seats (`maxPerSide`); a fifth and sixth
+  // Two a side is what Shape Race seats (`defaultMaxPerSide`); a fifth and sixth
   // phone keep watching and show on the "not joined" line.
-  for (final id in ids.take(2 * maxPerSide)) {
+  for (final id in ids.take(2 * defaultMaxPerSide)) {
     await press(tester, fake, id, GamepadButton.a);
   }
   return fake;
@@ -152,7 +152,7 @@ void main() {
           find.byKey(const Key('side-left')),
           find.byKey(const Key('side-right')),
           find.byKey(const Key('joinFormat')),
-          if (count > 2 * maxPerSide) find.byKey(const Key('notJoined')),
+          if (count > 2 * defaultMaxPerSide) find.byKey(const Key('notJoined')),
         ];
         for (final part in parts) {
           expect(part, findsOneWidget);

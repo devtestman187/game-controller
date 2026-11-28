@@ -54,9 +54,9 @@ final joinLayout = GameLayoutMessage(labels: _joinLabels, hidden: _hidden);
 /// The buttons once joined: A or Start begins the match, B leaves the side.
 final joinedLayout = GameLayoutMessage(labels: _joinedLabels, hidden: _hidden);
 
-/// The most players on one side: Shape Race seats two a side, and
-/// [MatchFormat.of] reads the match's format from that.
-const maxPerSide = 2;
+/// The players on one side by default: Shape Race seats two a side until the
+/// maxPerSide setting says more (up to 4, limited by the level).
+const defaultMaxPerSide = 2;
 
 /// The join screen's gaps, in frame px: under the hint, and between the lines
 /// under the sides.
@@ -71,7 +71,7 @@ const _frameBodyFloorPx = 392.0;
 
 /// Where a joining player goes: the side with fewer players (left on a
 /// tie), or null when both are full at [cap] a side.
-PuzzleSide? sideForNewPlayer(Map<String, PuzzleSide> teams, {int cap = maxPerSide}) {
+PuzzleSide? sideForNewPlayer(Map<String, PuzzleSide> teams, {int cap = defaultMaxPerSide}) {
   final left = teams.values.where((s) => s == PuzzleSide.left).length;
   final right = teams.length - left;
   if (left >= cap && right >= cap) return null;
@@ -87,8 +87,8 @@ String formatName(MatchFormat format) => HostText.formatName(format);
 enum _Key { a, b, left, right, start }
 
 /// The join screen (PRD v2 T13): players press A to join and push left or
-/// right (the D-pad, the left stick or a tilt) to pick a side, at most two
-/// a side. B leaves a side, or goes back for a player who hasn't joined.
+/// right (the D-pad, the left stick or a tilt) to pick a side: two a side by
+/// default, up to four with the maxPerSide setting, limited by the level. B leaves a side, or goes back for a player who hasn't joined.
 /// Start (or the remote's OK on Start) begins the match; the format follows
 /// from who joined. Simulated controllers join by themselves. On a desktop
 /// the keyboard joins with Space and picks a side with the arrows.
@@ -100,7 +100,8 @@ enum _Key { a, b, left, right, start }
 /// 5): the title and the pairing code in the 64 px header, the hint, the two
 /// short sides and their lines in the body, and Start and Back in the 84 px
 /// footer, where a thumb reaches them. The sides never scroll (rule 6): a seat
-/// is one 52 px row, the most Shape Race seats ([maxPerSide] a side).
+/// is one row of at most 52 px, and the seats of a side (two by default, up to
+/// four with the maxPerSide setting, limited by the level) fit the body.
 class JoinScreen extends ConsumerStatefulWidget {
   const JoinScreen({super.key, required this.choice, this.teams = const {}, this.keyboard});
 
@@ -354,6 +355,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
             keyboard: ref.watch(hostTouchFirstProvider) ? null : _keyboard,
             players: roster,
             teams: _teams,
+            seats: cap,
             ownPlayerId: own,
             onPick: ownHere == null ? null : (side) => _pickSide(ownHere, side),
             watching: watching,

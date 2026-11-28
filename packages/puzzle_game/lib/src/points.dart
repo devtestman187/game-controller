@@ -34,6 +34,11 @@ abstract final class PuzzlePoints {
   /// big piece carried by two (two awards each) and the picture is finished.
   static const maxPopups = 5;
 
+  /// The most pop-ups one side can make in one frame with [perSide] players on
+  /// a side: each player's snaps of a big piece (two awards each) and the
+  /// finish, which is [maxPopups] at two a side and 9 at four.
+  static int maxPopupsFor(int perSide) => 2 * perSide + 1;
+
   /// How far a pop-up [ageMs] old has risen, in screen px: [risePx] over
   /// [popupMs]. Still with the effects off (G5): it appears and goes where it
   /// is.

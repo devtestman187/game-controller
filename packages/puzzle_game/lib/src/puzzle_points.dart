@@ -23,13 +23,14 @@ final class _Popup {
 extension PuzzlePointsRules on PuzzleGame {
   /// Counts [base] points times the round's scale for this game's side, at
   /// [place], with a pop-up that lives [PuzzlePoints.popupMs]. The oldest
-  /// pop-up goes when a side has more than [PuzzlePoints.maxPopups]: no frame
-  /// carries more.
+  /// pop-up goes when a side has more than [PuzzlePoints.maxPopupsFor] its
+  /// players a side: no frame carries more.
   void _award(int base, Offset place, PuzzleIcon icon) {
     final amount = base * settings.pointsScale;
     points += amount;
     _popups.add(_Popup(side, place, amount, icon));
-    while (_popups.length > PuzzlePoints.maxPopups) {
+    final cap = PuzzlePoints.maxPopupsFor(settings.maxPerSide);
+    while (_popups.length > cap) {
       _popups.removeAt(0);
     }
   }

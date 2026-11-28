@@ -311,7 +311,7 @@ Future<void> _openArenaResults(WidgetTester tester, PhoneFitSetup setup) async {
 Future<void> _openPuzzleResults(WidgetTester tester, PhoneFitSetup setup) async {
   final fake = await hostInFrame(tester, setup);
   await openJoin(tester);
-  final joined = math.min(setup.names.length, 2 * maxPerSide);
+  final joined = math.min(setup.names.length, 2 * defaultMaxPerSide);
   for (var i = 0; i < joined; i++) {
     await press(tester, fake, 'p${i + 1}', GamepadButton.a);
   }
@@ -339,7 +339,7 @@ Future<void> _openJoinScreen(WidgetTester tester, PhoneFitSetup setup) async {
   await tester.tap(house);
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 500));
-  final joined = math.min(setup.names.length, 2 * maxPerSide);
+  final joined = math.min(setup.names.length, 2 * defaultMaxPerSide);
   for (var i = 0; i < joined; i++) {
     await press(tester, fake, 'p${i + 1}', GamepadButton.a);
   }

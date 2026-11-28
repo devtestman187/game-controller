@@ -177,6 +177,18 @@ void main() {
     expect(game.snapshot().popups, isNotEmpty);
   });
 
+  test('a side keeps up to 2 * perSide + 1 pop-ups: 5 at two a side, 9 at four a side', () {
+    for (final (perSide, kept) in [(2, 5), (4, 9)]) {
+      final m = board(twoSquares(), settings: PuzzleSettings(maxPerSide: perSide));
+      final game = m.gameOf(PuzzleSide.left);
+      for (var i = 0; i < kept + 3; i++) {
+        game.awardCatShooed('p1', Offset(i.toDouble(), 0));
+      }
+      expect(PuzzlePoints.maxPopupsFor(perSide), kept, reason: '$perSide a side');
+      expect(game.snapshot().popups, hasLength(kept), reason: '$perSide a side keeps $kept, the oldest go');
+    }
+  });
+
   test('a night says so in the frame; a round outside one does not', () {
     expect(board(twoSquares()).snapshot().boards.single.night, isFalse);
     expect(board(twoSquares(), settings: const PuzzleSettings(night: true)).snapshot().boards.single.night, isTrue);

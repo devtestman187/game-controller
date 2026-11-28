@@ -32,10 +32,13 @@ Color sideColor(ToyLook look, PuzzleSide side) => look.colors.player(side == Puz
 /// Both sides, side by side. [players] is the whole roster, so an away player
 /// who has a side keeps it (M16 item 2).
 class _Sides extends StatelessWidget {
-  const _Sides({required this.players, required this.teams, this.ownPlayerId, this.onPick});
+  const _Sides({required this.players, required this.teams, required this.seats, this.ownPlayerId, this.onPick});
 
   final List<GamePlayer> players;
   final Map<String, PuzzleSide> teams;
+
+  /// How many seats each side draws: the cap the join rules allow.
+  final int seats;
 
   /// The host phone's own player, marked on its side; null on a TV.
   final String? ownPlayerId;
@@ -56,6 +59,7 @@ class _Sides extends StatelessWidget {
             child: _SidePanel(
               key: Key('side-${side.name}'),
               side: side,
+              seats: seats,
               players: [
                 for (final p in players)
                   if (teams[p.id] == side) p,
@@ -77,14 +81,25 @@ class _Sides extends StatelessWidget {
 /// still to join. On the host phone it is a touch target too (m12-host-touch
 /// rule 5): a tap moves the own player here, when the side has room.
 ///
-/// A side never scrolls (DESIGN section 1, rule 6): [maxPerSide] seats and the
+/// A side never scrolls (DESIGN section 1, rule 6): [seats] seats and the
 /// band fit the frame's body at every device size, so the card has no
-/// scrollable at all (S8j).
+/// scrollable at all (S8j). Two seats keep their 52 px; more seats shrink in
+/// height, no further than a badge, so they fit.
 class _SidePanel extends StatelessWidget {
-  const _SidePanel({super.key, required this.side, required this.players, this.ownPlayerId, this.onTap});
+  const _SidePanel({
+    super.key,
+    required this.side,
+    required this.players,
+    required this.seats,
+    this.ownPlayerId,
+    this.onTap,
+  });
 
   final PuzzleSide side;
   final List<GamePlayer> players;
+
+  /// How many seats the side draws, joined or empty.
+  final int seats;
 
   /// The host phone's own player, marked "(you)" on its row; null on a TV.
   final String? ownPlayerId;
@@ -103,36 +118,47 @@ class _SidePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final look = ToyLookScope.of(context);
-    final card = ToyCard(
-      // The band is the card's own, so it can be the short 28 px one: the
-      // look's card header is a button's line tall.
-      padding: EdgeInsets.zero,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _SideHeader(side: side, color: sideColor(look, side)),
-          Padding(
-            padding: const EdgeInsets.only(top: _seatHeadroomPx),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final p in players)
-                  Opacity(
-                    opacity: p.away ? _awayRowOpacity : 1,
-                    child: _PlayerRow(label: _label(p), number: p.number, character: p.character),
-                  ),
-                for (var i = players.length; i < maxPerSide; i++)
-                  _EmptySeat(roomLeft: i == players.length ? maxPerSide - players.length : null),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
     final tap = onTap;
-    return GestureDetector(behavior: HitTestBehavior.opaque, onTap: tap, child: card);
+    return LayoutBuilder(
+      builder: (context, room) {
+        // What the card's room leaves for the seats once the band, the
+        // headroom and the card's outline are taken; unbounded room keeps the
+        // full row.
+        final left = room.maxHeight - _sideHeaderPx - _seatHeadroomPx - 2 * look.sizes.outlineWidth;
+        final rowPx = room.hasBoundedHeight
+            ? (left / seats).clamp(scoreRowBadgePx, scoreRowHeightPx).toDouble()
+            : scoreRowHeightPx;
+        final card = ToyCard(
+          // The band is the card's own, so it can be the short 28 px one: the
+          // look's card header is a button's line tall.
+          padding: EdgeInsets.zero,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _SideHeader(side: side, color: sideColor(look, side)),
+              Padding(
+                padding: const EdgeInsets.only(top: _seatHeadroomPx),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final p in players)
+                      Opacity(
+                        opacity: p.away ? _awayRowOpacity : 1,
+                        child: _PlayerRow(label: _label(p), number: p.number, character: p.character, heightPx: rowPx),
+                      ),
+                    for (var i = players.length; i < seats; i++)
+                      _EmptySeat(roomLeft: i == players.length ? seats - players.length : null, heightPx: rowPx),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+        return GestureDetector(behavior: HitTestBehavior.opaque, onTap: tap, child: card);
+      },
+    );
   }
 }
 
@@ -180,10 +206,13 @@ class _SideHeader extends StatelessWidget {
 /// than wrap, and the row's room keeps the accessory's reach clear of the
 /// card's edge.
 class _PlayerRow extends StatelessWidget {
-  const _PlayerRow({required this.label, required this.number, this.character});
+  const _PlayerRow({required this.label, required this.number, required this.heightPx, this.character});
 
   final String label;
   final int number;
+
+  /// The row's height, in frame px: 52 unless the side's seats need less.
+  final double heightPx;
 
   /// The character the host gave them (M14 L7), or null for the default.
   final PlayerCharacter? character;
@@ -192,7 +221,7 @@ class _PlayerRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final look = ToyLookScope.of(context);
     return SizedBox(
-      height: scoreRowHeightPx,
+      height: heightPx,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: ToySizes.space12),
         child: Row(
@@ -217,7 +246,10 @@ class _PlayerRow extends StatelessWidget {
 /// A seat no phone has taken yet: a dashed line across the side's paper, with
 /// the room it leaves, on a seat's line.
 class _EmptySeat extends StatelessWidget {
-  const _EmptySeat({required this.roomLeft});
+  const _EmptySeat({required this.roomLeft, required this.heightPx});
+
+  /// The seat's height, in frame px: the same as a joined player's row.
+  final double heightPx;
 
   /// How many more players the whole side has room for, said on its first
   /// empty seat only; null on the others, which keep the line's height.
@@ -227,7 +259,7 @@ class _EmptySeat extends StatelessWidget {
   Widget build(BuildContext context) {
     final look = ToyLookScope.of(context);
     return SizedBox(
-      height: scoreRowHeightPx,
+      height: heightPx,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: ToySizes.space12, vertical: ToySizes.space8),
         child: CustomPaint(

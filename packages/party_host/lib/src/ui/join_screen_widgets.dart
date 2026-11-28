@@ -165,6 +165,7 @@ class _JoinBody extends StatelessWidget {
     required this.keyboard,
     required this.players,
     required this.teams,
+    required this.seats,
     required this.ownPlayerId,
     required this.onPick,
     required this.watching,
@@ -176,6 +177,9 @@ class _JoinBody extends StatelessWidget {
   final LocalPlayerSource? keyboard;
   final List<GamePlayer> players;
   final Map<String, PuzzleSide> teams;
+
+  /// How many seats each side draws: the cap the state computes.
+  final int seats;
   final String? ownPlayerId;
   final void Function(PuzzleSide side)? onPick;
   final List<GamePlayer> watching;
@@ -192,7 +196,7 @@ class _JoinBody extends StatelessWidget {
         _JoinHint(text: hint, keyboard: keyboard),
         const SizedBox(height: _hintGapPx),
         Expanded(
-          child: _Sides(players: players, teams: teams, ownPlayerId: ownPlayerId, onPick: onPick),
+          child: _Sides(players: players, teams: teams, seats: seats, ownPlayerId: ownPlayerId, onPick: onPick),
         ),
         if (watching.isNotEmpty) ...[const SizedBox(height: _lineGapPx), _NotJoined(watching: watching, full: full)],
         const SizedBox(height: _lineGapPx),
