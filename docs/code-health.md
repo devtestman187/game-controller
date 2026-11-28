@@ -436,3 +436,5 @@ Not built. bugs2 wave A with the 1-hour cache showed no large Sonnet cache write
 
 ## city art (map2a, Nov 28)
 Deferred from docs/briefs/m17/map2a/REVIEW.md and wave3/4 reviews: layout mm floor and px-per-mm (decide when the map is wired to a screen); shared tile drawing for both painters; shared test helpers (_boardFor, _CountingCanvas) in test/support; m2b-report review-rules lines and the CityTokenArt name (free functions kept); late-joiner scene test should also pin tile 1; painter-test helper boolean names; layout dead branch; cache at logical pixels (use devicePixelRatio before a phone host wires it); public surface trim; TextPainter reuse per badge. Open for the owner: built tiles now use the star colour (device look check).
+
+- map2b: CityMapView._withoutChips copies CitySnapshot field by field; a CitySnapshot.copyWith (city_scene.dart, map2a) would stop a new field being dropped silently.

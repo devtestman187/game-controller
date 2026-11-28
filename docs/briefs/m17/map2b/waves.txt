@@ -1,2 +1,4 @@
-# map2b: m2c and m2d share no files; the fix round m2f is added after the review
+# map2b: fix round (m2f): f1 and f2 share no files; f3 dedupes the helpers both touch
 m2c m2d
+f1 f2
+f3
