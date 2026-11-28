@@ -1,3 +1,4 @@
 - f1d's report has no Summary block in its first 40 lines
 - f1c's report has no Summary block in its first 40 lines
 - f1c's report has no Summary block in its first 40 lines
+- f2's report has no Summary block in its first 40 lines

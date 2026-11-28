@@ -98,3 +98,14 @@ RESULT: STOPPED: commit of f1c refused (see .dart_tool/run-jobs/docs_briefs_m17_
 2026-11-27 19:28:38 committed f1c: 61287f2e race1a f1c: side panel draws N seats, pop-up cap scales
 2026-11-27 19:28:38 phase: review (apply took 2s)
 2026-11-27 19:28:39 wave 3 review skipped: the committed wave3-review-report.md already covers f1c
+2026-11-27 19:29:00 phase: worker (review took 22s)
+2026-11-27 19:29:00 start f2
+2026-11-27 19:36:08 f2 finished: result 0 (36 turns, 7 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 68/1348018/42593/19269
+2026-11-27 19:36:08 phase: tests-first (worker took 428s)
+2026-11-27 19:37:23 tests-first: packages/party_host/test/join_cap_screen_test.dart passes on the old code, exempt by its brief
+2026-11-27 19:37:32 phase: check (tests-first took 84s)
+2026-11-27 19:37:37 combined check: skips protocol connection metrics kit look arena tools (no job's change reaches them)
+2026-11-27 19:41:36 phase: apply (check took 244s)
+2026-11-27 19:41:37 finding: f2's report has no Summary block in its first 40 lines
+2026-11-27 19:41:38 committed f2: 8a0bfbf2 race1a f2: review fixes for the seat cap Add a join screen test for the per-side cap at Medium and Easy, and the default of two. The screen's cap came from the saved setting but no test pumped the screen, so a broken read would have passed. Delete the two join_cap tests that only repeated per_side_rule_test.dart. Rename maxPerSideFor's parameter to wantedPerSide and document that the result is players per side, not pieces. No behaviour change. ```
+2026-11-27 19:41:38 phase: review (apply took 2s)
