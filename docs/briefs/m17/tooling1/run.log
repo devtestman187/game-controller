@@ -77,3 +77,4 @@ RESULT: DONE: 4 jobs, 19 min
 2026-11-28 09:48:26 phase: apply (check took 464s)
 2026-11-28 09:48:27 committed f3: 6adf8b3a Negation words in the musts check: accept isnt, wont, hasnt, dont
 2026-11-28 09:48:27 phase: review (apply took 1s)
+2026-11-28 09:51:21 reviewed wave3: 4 finding(s)
