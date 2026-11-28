@@ -2,5 +2,5 @@
 r3a
 # wave 2: rules and painter, no shared files (both need r3a)
 r3b r3d
-# wave 3: wiring (needs r3b)
-r3c
+# wave 3: wiring (r3c needs r3b); f1 draws the present (r3d could not: puzzle_painter.dart is a part of view.dart)
+r3c f1
