@@ -18,7 +18,7 @@ const cityCompleteRoadShare = 0.4;
 /// Paints one frame of the board's moving layer over the static map: [scene] as [layout] places it.
 final class CityOverlayPainter extends CustomPainter {
   /// Paints [scene] as [layout] places it, in [look]'s colours and shape.
-  CityOverlayPainter({required this.layout, required this.scene, required this.look});
+  CityOverlayPainter({required this.layout, required this.scene, required this.look, this.minTokenDiameter = 0});
 
   /// Where everything sits.
   final CityLayout layout;
@@ -28,6 +28,13 @@ final class CityOverlayPainter extends CustomPainter {
 
   /// The colours, outline width and shader to draw in.
   final ToyLook look;
+
+  /// The smallest a token's disc may be, in logical pixels, so a small screen keeps tokens a
+  /// thumb can see; 0 leaves the size to the tile.
+  final double minTokenDiameter;
+
+  /// The radius of a token's disc: its share of a tile, but never under half [minTokenDiameter].
+  double get tokenRadius => math.max(layout.tileSize * cityTokenRadiusShare, minTokenDiameter / 2);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -48,7 +55,7 @@ final class CityOverlayPainter extends CustomPainter {
     if (scene.hasRoadworksCone) _paintCone(canvas);
     for (final token in scene.tokens) {
       final colour = cityTokenColour(look, token.slot, absent: token.absent);
-      paintCityDisc(canvas, token.centre, layout.tileSize * cityTokenRadiusShare, colour, look);
+      paintCityDisc(canvas, token.centre, tokenRadius, colour, look);
       final badge = token.badgeNumber;
       if (badge != null) paintCityLabel(canvas, '$badge', token.centre, look);
     }
@@ -123,5 +130,8 @@ final class CityOverlayPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CityOverlayPainter oldDelegate) =>
-      oldDelegate.layout != layout || oldDelegate.scene != scene || oldDelegate.look != look;
+      oldDelegate.layout != layout ||
+      oldDelegate.scene != scene ||
+      oldDelegate.look != look ||
+      oldDelegate.minTokenDiameter != minTokenDiameter;
 }
