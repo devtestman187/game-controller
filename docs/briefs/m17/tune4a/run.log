@@ -17,3 +17,12 @@
 2026-11-28 08:27:56 phase: apply (check took 464s)
 2026-11-28 08:27:58 committed h4a: 8ee46ed5 tune4a h4a: add the v3 final-rules simulator run script
 2026-11-28 08:27:58 phase: review (apply took 2s)
+2026-11-28 08:28:20 phase: worker (review took 22s)
+2026-11-28 08:28:21 start h4b
+2026-11-28 08:29:08 h4b finished: result 0 (10 turns, 0 min) model claude-sonnet-5-5, ladder 1, tokens in/read/write/out 12/80616/20790/2080
+2026-11-28 08:29:08 phase: tests-first (worker took 48s)
+2026-11-28 08:29:09 phase: check (tests-first took 1s)
+2026-11-28 08:29:10 combined check: skips protocol connection metrics kit look arena puzzle host phone tv tools (no job's change reaches them)
+2026-11-28 08:29:27 phase: apply (check took 18s)
+2026-11-28 08:29:29 committed h4b: 8da7b691 tune4a h4b: report that REPORT-v3 is blocked on the missing v3 run
+2026-11-28 08:29:29 phase: review (apply took 2s)
