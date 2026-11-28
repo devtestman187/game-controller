@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:connection/connection.dart';
 
 import 'cat_view.dart';
+import 'golden_slot.dart';
 import 'points.dart';
 import 'puzzle.dart';
 import 'puzzle_values.dart';
@@ -54,6 +55,10 @@ class PuzzleGame {
   /// The cat, when the side's match has one (M14 a2): a dot pressing A on it
   /// shoos it instead of picking a piece up.
   CatVisit? cat;
+
+  /// The golden slot both boards share in a two-board match (M17 race1c r3e): a claimed snap pays double. Null on one
+  /// board, where nothing glows.
+  GoldenSlot? golden;
 
   /// The start angles the split layout sized the tray for; null on one board,
   /// where the game picks its own and retries until they fit.

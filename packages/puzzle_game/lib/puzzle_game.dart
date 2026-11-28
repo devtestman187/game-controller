@@ -12,6 +12,7 @@ export 'src/cat_tuning.dart';
 export 'src/cat_view.dart';
 export 'src/celebration.dart';
 export 'src/game.dart';
+export 'src/golden_slot.dart';
 export 'src/library.dart';
 export 'src/match.dart';
 export 'src/match_view.dart';

@@ -6,6 +6,7 @@ import 'package:game_kit/game_kit.dart';
 import 'cat_chaos.dart';
 import 'cat_view.dart';
 import 'game.dart';
+import 'golden_slot.dart';
 import 'present.dart';
 import 'present_rules.dart';
 import 'puzzle.dart';
@@ -108,7 +109,8 @@ class PuzzleMatch {
   }) : teams = Map.unmodifiable(teams),
        format = MatchFormat.of(teams),
        seed = random.nextInt(1 << 32),
-       _settings = settings {
+       _settings = settings,
+       _golden = GoldenSlot(random) {
     // Both sides start with the same tray, mirrored, so the race is fair: the
     // layout picks the angles and sizes the tray for them. A one-board screen
     // match has no layout; one on phones shows the layout's left world.
@@ -145,6 +147,7 @@ class PuzzleMatch {
     _cat = CatChaos(games: [for (final s in sides) s.game], oneBoard: !format.split, seed: seed, settings: settings);
     for (final s in sides) {
       s.game.cat = _cat;
+      s.game.golden = format.split ? _golden : null;
     }
   }
 
@@ -170,6 +173,7 @@ class PuzzleMatch {
 
   /// The hot-potato present (M17 r3b): on Calm and Lively it replaces the cat's knock (owner Q4).
   final _present = PresentRules();
+  final GoldenSlot _golden;
 
   PuzzleSettings _settings;
 
@@ -185,6 +189,8 @@ class PuzzleMatch {
   /// The present while it is out (M17 r3c); null while it is away.
   PresentState? get present => _present.state;
 
+  /// The target the golden slot glows on (M17 race1c r3e), or null while none does.
+  int? get golden => _golden.slot;
   set settings(PuzzleSettings s) {
     for (final side in sides) {
       side.game.settings = s;
@@ -229,6 +235,11 @@ class PuzzleMatch {
       if (e.event.kind == PuzzleEventKind.snap) _present.onSnap(e.side);
     }
     if (_result == null) _present.update(dt, enabled: PresentRules.enabled(_settings), oneBoard: !format.split);
+    _golden.stepBoards(
+      dt,
+      enabled: _result == null && PresentRules.enabled(_settings) && format.split,
+      boards: [for (final s in sides) s.game],
+    );
     if (_result == null) _decide();
     return events;
   }

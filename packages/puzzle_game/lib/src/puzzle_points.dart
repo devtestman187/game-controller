@@ -42,7 +42,10 @@ extension PuzzlePointsRules on PuzzleGame {
   void _awardSnap(PuzzlePlayer p, PieceRuntime piece, {required int target, required List<String> carriers}) {
     final again = piece.wronged || piece.placedOnce;
     piece.placedOnce = true;
-    _award(again ? PuzzlePoints.wrongSnap : PuzzlePoints.snap, targetAt(target), PuzzleIcon.star);
+    final base = again ? PuzzlePoints.wrongSnap : PuzzlePoints.snap;
+    _award(base, targetAt(target), PuzzleIcon.star);
+    // The first claim on the golden slot pays the same snap again, in the same place (M17 race1c r3e).
+    if (golden?.claim(side, target) == true) _award(base, targetAt(target), PuzzleIcon.star);
     if (again) p.tryAgains++;
     if (!puzzle.pieces[piece.index].big || carriers.length < 2) return;
     _award(PuzzlePoints.together, targetAt(target), PuzzleIcon.star);
