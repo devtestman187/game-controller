@@ -1,0 +1,17 @@
+2026-11-27 20:11:18 RUN_MAX_MIN=138 min (computed backstop of the jobs still to do)
+2026-11-27 20:11:18 start at 6359a020 on m17
+2026-11-27 20:11:18 worker: claude
+2026-11-27 20:11:20 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-27 20:11:20 run-base 6359a0200e3c0d92a8c0d1fc859d748dff532a48
+2026-11-27 20:11:32 phase: preflight
+2026-11-27 20:11:40 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-27 20:12:01 phase: worker (preflight took 29s)
+2026-11-27 20:12:02 start r3a
+2026-11-27 20:16:02 r3a finished: result 0 (23 turns, 3 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 24/341839/33008/19924
+2026-11-27 20:16:03 phase: tests-first (worker took 242s)
+2026-11-27 20:16:18 tests-first ok: packages/puzzle_game/test/present_snapshot_test.dart fails on the old code
+2026-11-27 20:16:30 phase: check (tests-first took 27s)
+2026-11-27 20:16:38 combined check: skips protocol connection metrics kit look arena tools (no job's change reaches them)
+2026-11-27 20:20:34 phase: apply (check took 244s)
+2026-11-27 20:20:36 committed r3a: af673590 Add PresentState to the match snapshot, with a 40-byte budget
+2026-11-27 20:20:36 phase: review (apply took 2s)
