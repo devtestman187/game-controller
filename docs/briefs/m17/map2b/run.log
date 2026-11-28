@@ -52,3 +52,12 @@ RESULT: DONE: 2 jobs, 37 min
 2026-11-28 05:05:59 committed f2: 3ac99e27 map2b f2: wait on the image build in map view tests; guard unbounded size
 2026-11-28 05:06:01 committed f1: a63842f9 party_host: split frame_probe.dart, hook rebuilds only on text change
 2026-11-28 05:06:01 phase: review (apply took 3s)
+2026-11-28 05:06:23 phase: worker (review took 22s)
+2026-11-28 05:06:23 start f3
+2026-11-28 05:09:41 f3 finished: result 0 (24 turns, 3 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 24/353850/30120/15409
+2026-11-28 05:09:41 phase: tests-first (worker took 198s)
+2026-11-28 05:09:50 phase: check (tests-first took 9s)
+2026-11-28 05:09:55 combined check: skips protocol connection metrics kit look arena puzzle tools (no job's change reaches them)
+2026-11-28 05:13:18 phase: apply (check took 208s)
+2026-11-28 05:13:20 committed f3: f6f05ce6 test: share the city art board and wait helpers in one test file
+2026-11-28 05:13:20 phase: review (apply took 2s)
