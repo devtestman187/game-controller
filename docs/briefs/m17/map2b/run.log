@@ -61,3 +61,12 @@ RESULT: DONE: 2 jobs, 37 min
 2026-11-28 05:13:18 phase: apply (check took 208s)
 2026-11-28 05:13:20 committed f3: f6f05ce6 test: share the city art board and wait helpers in one test file
 2026-11-28 05:13:20 phase: review (apply took 2s)
+2026-11-28 05:13:21 reviewed wave2: 6 finding(s)
+2026-11-28 05:15:55 reviewed wave3: 7 finding(s)
+METRICS f1 worker=claude model=claude-haiku-5-5 turns=32 in=52 out=26087 cache=972886 min=5.5 wall=6.2 result=0
+METRICS f2 worker=claude model=claude-haiku-5-5 turns=16 in=22 out=15824 cache=327124 min=3.4 wall=4.0 result=0
+METRICS f3 worker=claude model=claude-haiku-5-5 turns=24 in=24 out=15409 cache=383970 min=2.7 wall=3.3 result=0
+METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=27 in=28 out=19501 cache=565530 min=1.6 wall=- result=0
+METRICS wave3-review worker=claude model=claude-haiku-5-5 turns=28 in=28 out=28586 cache=579230 min=2.2 wall=- result=0
+2026-11-28 05:15:59 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/map2b/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 5 jobs, 20 min
