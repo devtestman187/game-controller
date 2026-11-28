@@ -28,3 +28,11 @@
 2026-11-28 08:29:29 phase: review (apply took 2s)
 2026-11-28 08:30:27 reviewed wave1: 13 finding(s)
 2026-11-28 08:30:28 reviewed wave2: 0 finding(s)
+2026-11-28 08:30:29 start the run's review
+METRICS h4a worker=claude model=claude-haiku-5-5 turns=41 in=70 out=39663 cache=1818187 min=6.3 wall=6.9 result=0
+METRICS h4b worker=claude model=claude-sonnet-5-5 turns=10 in=12 out=2080 cache=101406 min=0.3 wall=0.8 result=0
+METRICS run-review worker=claude model=claude-haiku-5-5 turns=26 in=42 out=20743 cache=827993 min=1.7 wall=- result=0
+METRICS wave1-review worker=claude model=claude-haiku-5-5 turns=16 in=20 out=25888 cache=392238 min=2.1 wall=- result=0
+METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=8 in=12 out=6462 cache=115928 min=0.5 wall=- result=0
+2026-11-28 08:32:39 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/tune4a/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 2 jobs, 21 min
