@@ -1,0 +1,9 @@
+- golden_slot update 8 params - must - r3h
+- confetti bare numbers - must - r3h2
+- wrong re-snap claims golden (owner Q2 suggestion: no) - should/real - r3h
+- snap lifts a short fuse (Q3 suggestion: no) - should/real - r3h3
+- gapS name clash - should - r3h; claimedBy/slot getters - should - r3h
+- tracker dispose; held line listens; confetti dispose test - should - r3h2
+- FuseParams doc; capped assertion - should - r3h3
+- confetti vs pause rule; 14 px piece; +3/+4 line overruns; report wording; could items - minor - docs/code-health.md (race1c notes), pause rule owner question
+- present_pop_widgets pause: owner question (no design decision taken)
