@@ -19,3 +19,13 @@
 2026-11-27 18:48:20 committed f1d: 00ef5726 Add per-side seat cap: 2 pieces per player minimum
 2026-11-27 18:48:22 committed f1a: 586f76a0 race1a f1a: MatchFormat for 3v3, 4v4 and uneven sides
 2026-11-27 18:48:22 phase: review (apply took 4s)
+2026-11-27 18:48:43 phase: worker (review took 21s)
+2026-11-27 18:48:44 start f1b
+2026-11-27 18:53:03 f1b finished: result 0 (33 turns, 4 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 34/586490/41561/18359
+2026-11-27 18:53:03 phase: tests-first (worker took 260s)
+2026-11-27 18:54:14 tests-first ok: packages/party_host/test/join_cap_test.dart fails on the old code
+2026-11-27 18:54:21 phase: check (tests-first took 78s)
+2026-11-27 18:54:33 combined check: skips protocol connection metrics kit look arena tools (no job's change reaches them)
+2026-11-27 18:59:00 phase: apply (check took 279s)
+2026-11-27 18:59:02 committed f1b: e57b3402 race1a f1b: maxPerSide setting 2 to 4; the join cap follows it
+2026-11-27 18:59:02 phase: review (apply took 2s)
