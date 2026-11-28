@@ -1,0 +1,18 @@
+2026-11-28 02:59:22 RUN_MAX_MIN=69 min (computed backstop of the jobs still to do)
+2026-11-28 02:59:22 start at c3d3822e on m17
+2026-11-28 02:59:22 worker: claude
+2026-11-28 02:59:23 proc-sweep: ORPHAN 59740 flutter_tester 7213s C:/src/flutter/bin/cache/artifacts/engine/windows-x64/flutter_tester.exe --disable-vm-service --enable-checked-mode --ve
+2026-11-28 02:59:23 proc-sweep: proc-sweep: 1 process(es) listed (1 orphaned flutter_tester/dart)
+2026-11-28 02:59:23 run-base c3d3822e2532b12cf108c8d89ab3d08f3ab5b5dc
+2026-11-28 02:59:29 phase: preflight
+2026-11-28 02:59:35 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-28 03:00:47 phase: worker (preflight took 78s)
+2026-11-28 03:00:47 start m2a
+2026-11-28 03:06:20 m2a finished: result 0 (32 turns, 5 min) model claude-sonnet-5-5, ladder 1, tokens in/read/write/out 44/794468/56924/24789
+2026-11-28 03:06:20 phase: tests-first (worker took 333s)
+2026-11-28 03:07:34 tests-first ok: packages/party_host/test/city/art/city_painter_test.dart fails on the old code
+2026-11-28 03:08:10 phase: check (tests-first took 110s)
+2026-11-28 03:08:15 combined check: skips protocol connection metrics kit look arena puzzle tools (no job's change reaches them)
+2026-11-28 03:11:24 phase: apply (check took 194s)
+2026-11-28 03:11:26 committed m2a: a1606249 map2a: static 2.5D city painter with image cache
+2026-11-28 03:11:26 phase: review (apply took 2s)
