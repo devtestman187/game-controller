@@ -24,6 +24,7 @@ final class PuzzleSettings {
     this.dropReadyHighlight = true,
     this.timeLimitS = 120,
     this.warningS = 15,
+    this.maxPerSide = 2,
     this.pointsScale = 1,
     this.night = false,
     this.chaos = Chaos.off,
@@ -52,6 +53,10 @@ final class PuzzleSettings {
   final bool dropReadyHighlight;
   final int timeLimitS;
   final int warningS;
+
+  /// The most players a side may seat, 2 to 4. The default 2 is Shape Race's
+  /// seating as it always was; a level may seat fewer ([maxPerSideFor]).
+  final int maxPerSide;
 
   /// Every award is multiplied by this (party-night N3): 2 for a night's last
   /// round, 1 otherwise.
@@ -85,6 +90,7 @@ final class PuzzleSettings {
     'hintDelayS': (min: 3.0, max: 60.0, step: 1.0),
     'timeLimitS': (min: 30.0, max: 600.0, step: 15.0),
     'warningS': (min: 0.0, max: 60.0, step: 5.0),
+    'maxPerSide': (min: 2.0, max: 4.0, step: 1.0),
     // A night's last round is worth double, the others once (N3): the most a
     // round may be worth is kept in reach of a frame's points.
     'pointsScale': (min: 1.0, max: 4.0, step: 1.0),
@@ -102,6 +108,7 @@ final class PuzzleSettings {
     'dropReadyHighlight': dropReadyHighlight,
     'timeLimitS': timeLimitS,
     'warningS': warningS,
+    'maxPerSide': maxPerSide,
     'pointsScale': pointsScale,
     'night': night,
     'chaos': chaos.name,
@@ -129,6 +136,7 @@ final class PuzzleSettings {
       dropReadyHighlight: m['dropReadyHighlight'] is bool ? m['dropReadyHighlight'] as bool : true,
       timeLimitS: d('timeLimitS', defaults.timeLimitS.toDouble()).round(),
       warningS: d('warningS', defaults.warningS.toDouble()).round(),
+      maxPerSide: d('maxPerSide', defaults.maxPerSide.toDouble()).round(),
       // A round's points never go down, and a frame's points stay small: the
       // scale is clamped to its range like the clock is.
       pointsScale: d('pointsScale', defaults.pointsScale.toDouble()).round(),

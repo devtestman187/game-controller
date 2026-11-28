@@ -70,13 +70,13 @@ const _lineGapPx = ToySizes.space8;
 const _frameBodyFloorPx = 392.0;
 
 /// Where a joining player goes: the side with fewer players (left on a
-/// tie), or null when both are full.
-PuzzleSide? sideForNewPlayer(Map<String, PuzzleSide> teams) {
+/// tie), or null when both are full at [cap] a side.
+PuzzleSide? sideForNewPlayer(Map<String, PuzzleSide> teams, {int cap = maxPerSide}) {
   final left = teams.values.where((s) => s == PuzzleSide.left).length;
   final right = teams.length - left;
-  if (left >= maxPerSide && right >= maxPerSide) return null;
-  if (left >= maxPerSide) return PuzzleSide.right;
-  if (right >= maxPerSide) return PuzzleSide.left;
+  if (left >= cap && right >= cap) return null;
+  if (left >= cap) return PuzzleSide.right;
+  if (right >= cap) return PuzzleSide.left;
   return right < left ? PuzzleSide.right : PuzzleSide.left;
 }
 
@@ -190,7 +190,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
 
   /// Simulated controllers press everything: they just join.
   bool _simulatedJoin(GamePlayer p) {
-    final side = _teams.containsKey(p.id) ? null : sideForNewPlayer(_teams);
+    final side = _teams.containsKey(p.id) ? null : sideForNewPlayer(_teams, cap: _cap);
     if (side == null) return false;
     _teams[p.id] = side;
     return true;
@@ -203,7 +203,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
   bool _ownJoin(List<GamePlayer> players) {
     final own = _ownPlayer;
     if (own == null || _teams.containsKey(own) || !players.any((p) => p.id == own)) return false;
-    final side = sideForNewPlayer(_teams);
+    final side = sideForNewPlayer(_teams, cap: _cap);
     if (side == null) return false;
     _teams[own] = side;
     return true;
@@ -236,13 +236,13 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
           _start();
           return (changed: false, stop: true);
         }
-        final to = sideForNewPlayer(_teams);
+        final to = sideForNewPlayer(_teams, cap: _cap);
         if (to == null) return (changed: false, stop: false);
         _teams[p.id] = to;
         return (changed: true, stop: false);
       case _Key.left || _Key.right:
         final to = key == _Key.left ? PuzzleSide.left : PuzzleSide.right;
-        final hasRoom = _teams.values.where((s) => s == to).length < maxPerSide;
+        final hasRoom = _teams.values.where((s) => s == to).length < _cap;
         if (side == null || side == to || !hasRoom) return (changed: false, stop: false);
         _teams[p.id] = to;
         return (changed: true, stop: false);
@@ -280,11 +280,16 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
   /// screen, so its own player never takes a side (m12-host-touch rule 5).
   String? get _ownPlayer => ref.read(hostServiceProvider).shareView ? ref.watch(ownPlayerIdProvider) : null;
 
+  /// The most players a side seats: the match's cap from the saved setting
+  /// (playtest settings, maxPerSide), limited by the level. Read here, as a
+  /// handler runs; build watches it instead.
+  int get _cap => maxPerSideFor(widget.choice.level, ref.read(puzzleSettingsProvider).maxPerSide);
+
   /// A tap picks a side for the host phone's own player (m12-host-touch rule
   /// 5): only its own, and only when that side has room.
   void _pickSide(String id, PuzzleSide side) {
     final taken = _teams.values.where((s) => s == side).length;
-    if (_teams[id] == side || taken >= maxPerSide) return;
+    if (_teams[id] == side || taken >= _cap) return;
     setState(() => _teams[id] = side);
   }
 
@@ -333,7 +338,8 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
     ];
     final own = _ownPlayer;
     final ownHere = own != null && players.any((p) => p.id == own) ? own : null;
-    final full = sideForNewPlayer(_teams) == null;
+    final cap = maxPerSideFor(widget.choice.level, ref.watch(puzzleSettingsProvider).maxPerSide);
+    final full = sideForNewPlayer(_teams, cap: cap) == null;
     return ControlsClaim(
       controls: const Controls.game(),
       child: Focus(
