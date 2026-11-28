@@ -117,38 +117,48 @@ final class Systest {
   }
 
   /// Lets what is in flight arrive: the in-process link needs only the clock to move; a socket also needs the real
-  /// event loop, which is given up to [_socketWait] and left early once [done] holds.
-  Future<void> settle([Duration time = const Duration(milliseconds: 50), bool Function()? done]) async {
+  /// event loop, which is given up to [_socketWait] and left early once [done] holds. [time] is the clock step.
+  Future<void> settle({Duration time = _settleStep, bool Function()? done}) async {
     if (listener is! InProcessListener) {
       await tester.runAsync(() => _waitForSocket(done));
     }
     await tester.pump(time);
   }
 
-  /// The real time a socket reply needs; it is polled for in [_socketPollSlice] steps, so a known condition ends the
-  /// wait early. Without a condition the whole time is waited, as before, so no test gets shorter or flakier.
+  /// The clock step of one settle, used by [settle] by default and by [until] each time round.
+  static const _settleStep = Duration(milliseconds: 50);
+
+  /// The real time a socket reply needs. Without [done] it is waited in one go, as before the poll existed. With
+  /// [done] it is polled in [_socketPollSlice] steps and ends as soon as [done] holds; it never waits more than
+  /// [_socketWait] in total.
   static const _socketWait = Duration(milliseconds: 40);
-  static const _socketPollSlice = Duration(milliseconds: 2);
+  static const _socketPollSlice = Duration(milliseconds: 10);
 
   static Future<void> _waitForSocket(bool Function()? done) async {
-    for (var waited = Duration.zero; waited < _socketWait; waited += _socketPollSlice) {
-      if (done?.call() == true) return;
-      await Future<void>.delayed(_socketPollSlice);
+    if (done == null) {
+      await Future<void>.delayed(_socketWait);
+      return;
+    }
+    final clock = Stopwatch()..start();
+    while (clock.elapsed < _socketWait) {
+      if (done()) return;
+      final left = _socketWait - clock.elapsed;
+      await Future<void>.delayed(left < _socketPollSlice ? left : _socketPollSlice);
     }
   }
 
   /// Moves the clock on by [total] in steps of [step], letting everything in flight arrive in between.
   Future<void> elapse(Duration total, {Duration step = const Duration(milliseconds: 500)}) async {
     for (var left = total; left > Duration.zero; left -= step) {
-      await settle(left < step ? left : step);
+      await settle(time: left < step ? left : step);
     }
   }
 
   /// Settles until [done] holds, or fails after about [limit] of the clock.
   Future<void> until(bool Function() done, {Duration limit = const Duration(seconds: 10)}) async {
-    for (var spent = Duration.zero; !done(); spent += const Duration(milliseconds: 50)) {
+    for (var spent = Duration.zero; !done(); spent += _settleStep) {
       if (spent > limit) fail('the state was not reached in $limit');
-      await settle(const Duration(milliseconds: 50), done);
+      await settle(done: done);
     }
   }
 
