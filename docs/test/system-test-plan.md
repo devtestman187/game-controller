@@ -7,7 +7,7 @@
 | Last updated | 2026-11-27 (branch m17, base 5142a859; owner answers recorded the same day) |
 | Current phase | Plan written and owner questions answered; nothing from section 3 or later built yet |
 | Next step | Now: S3 checklist and the emulator probe (roadmap 1-2). S1 "systest" before B9 awaits the owner's go. Then the iPad landscape lock (small code item, roadmap 4) |
-| Owner decisions pending | None blocking for S3, the probe or S1. Pending: one owner word for the Dec 20 old-build rebuild and upload (section 7 item 10); the Pixel Tablet setup check (Android version, `adb shell wm size` and `wm density`, stays connected) before roadmap 7; the iPad lock experiment is not decided (roadmap 4) |
+| Owner decisions pending | None blocking for S3, the probe or S1. Old-build APKs are done (Nov 27), so the Dec 20 action is cleared. Pending: the Pixel Tablet setup check (Android version, `adb shell wm size` and `wm density`, stays connected) before roadmap 7; the iPad lock experiment is not decided (roadmap 4) |
 | Last full system run | None yet. The m17.1 device-test list is the nearest thing (sections 2 and 6) |
 
 Decisions taken (owner, 2026-11-27):
@@ -27,10 +27,11 @@ State of each item (update state, commit and batch folder as work lands):
 
 | Item | State | Commit | Batch folder |
 |---|---|---|---|
-| S1 systest gap batch | not started | - | - |
+| S1 systest gap batch | in progress | - | docs/briefs/m17/systest |
 | S2 layout matrix tests | not started | - | - |
-| S3 device checklist file | not started | - | - |
-| Emulator probe (roadmap 2) | not started | - | - |
+| S3 device checklist file | done | f4077333 | - (docs/test/device-checklist.md) |
+| Emulator probe (roadmap 2) | done: WHPX works; AVDs m7_android12 and m8_pixel_tablet boot headless in ~32-37 s; 10.0.2.2 reachable. Gotcha: run `adb shell wm size reset` and `adb shell wm density reset` first (a leftover 75% override was found) | 865b74c2 | - (docs/test/emulator-probe-2026-11-27.md) |
+| Old-build APKs (Dec 20 dated action) | done Nov 27: m16.3 (0.14.0, build 1429) and m16.6 (0.16.6, build 1737) phone+TV APKs attached to those GitHub releases, debug-key signed ("-testsigned", not Play-installable), archived at E:/AI/old-builds/<tag>/ | - | - |
 | iPad landscape lock (code item) | not started | - | - |
 | L1a golden harness + 5-8 stable screens | not started | - | - |
 | L1b City Rush map goldens | not started | - | - |

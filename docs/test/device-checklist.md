@@ -26,8 +26,8 @@ Who runs a row: the agent, wherever a device or emulator allows it. Owner hands 
 | D6 | Drop over 30 s | Phone + TV | Switch the phone off Wi-Fi for 40 s, switch back | Player was removed; phone gets back to the join screen, night goes on for the others | After a protocol change; periodic | |
 | D7 | Guest or isolated Wi-Fi | Phone + TV on a guest network | Try to pair | Clear failure message, no crash (owner records the result; mDNS may be blocked) | Once before the first public release (owner) | |
 | D8 | Kids preset and settings reset, persisted | Any phone and TV | Pick Kids preset, change a setting, close and reopen the app, then reset | Settings survive restart; reset returns defaults | After a settings change; before public release | |
-| D9 | Old phone in a night | Old phone build (m16.3 APK, no `choices` capability) with an m17 TV | Join a night, play a choice round | Old phone gets answers through the fallback; round completes | After a protocol change; before public release. Blocked until the m16.3 APK exists (plan section 7 item 10) | |
-| D10 | Old app vs new app pairing | m16.3 phone with m17 TV, and the reverse | Pair each way | Pairs and plays, or shows a clear message | After a protocol change. Blocked until the old APKs exist. Old iPhone check may be impossible (TestFlight expires) | |
+| D9 | Old phone in a night | Old phone build (m16.3 APK, no `choices` capability) with an m17 TV | Join a night, play a choice round | Old phone gets answers through the fallback; round completes | After a protocol change; before public release. Unblocked: m16.3 APK now on the release and in E:/AI/old-builds/m16.3 | |
+| D10 | Old app vs new app pairing | m16.3 phone with m17 TV, and the reverse | Pair each way | Pairs and plays, or shows a clear message | After a protocol change. Unblocked: old APKs now on the releases and in E:/AI/old-builds. Old iPhone check may be impossible (TestFlight expires) | |
 | D11 | Other screen sizes | Pixel Tablet, small phone, emulator | Open connect, home, choices/vote, night result, shop | No overlapping or clipped text | After a major UX change, until the S2 matrix and goldens cover it | |
 
 ## Notes
