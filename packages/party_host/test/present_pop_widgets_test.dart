@@ -24,6 +24,25 @@ Widget stage(PresentTracker tracker) => Scaffold(
   ),
 );
 
+/// The same stage as [stage], with the confetti's `paused` read from [paused], so a test can freeze and resume it.
+Widget pausableStage(PresentTracker tracker, ValueNotifier<bool> paused) => Scaffold(
+  body: ValueListenableBuilder<bool>(
+    valueListenable: paused,
+    builder: (context, isPaused, _) => Stack(
+      children: [
+        Positioned.fill(
+          child: PresentConfetti(tracker: tracker, paused: isPaused),
+        ),
+      ],
+    ),
+  ),
+);
+
+/// The painter the burst is drawn with now; two of them compare with shouldRepaint to show whether the progress moved.
+CustomPainter burstPainter(WidgetTester tester) =>
+    tester.widget<CustomPaint>(find.byKey(const Key('presentConfetti'))).painter ??
+    (throw StateError('the burst is not drawn'));
+
 void main() {
   const popTime = Duration(milliseconds: PresentRules.popMs);
 
@@ -94,6 +113,50 @@ void main() {
       tracker.feed(presentOn(PuzzleSide.right, popped: true));
       expect(tester.takeException(), isNull, reason: 'a later pop reaches no disposed burst controller');
       expect(tester.hasRunningAnimations, isFalse, reason: 'and starts no burst');
+    });
+
+    testWidgets('paused confetti freezes where it is and resumes from there (${look.name})', (tester) async {
+      final tracker = PresentTracker();
+      final paused = ValueNotifier<bool>(false);
+      await pumpHostLook(tester, look, screen: pausableStage(tracker, paused));
+      tracker.feed(presentOn(PuzzleSide.left, popped: true));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      paused.value = true;
+      await tester.pump();
+      final frozen = burstPainter(tester);
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byKey(const Key('presentConfetti')), findsOneWidget, reason: 'a frozen burst stays on screen');
+      expect(
+        burstPainter(tester).shouldRepaint(frozen),
+        isFalse,
+        reason: 'progress stays at 200 of 1500 ms while paused',
+      );
+
+      paused.value = false;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(burstPainter(tester).shouldRepaint(frozen), isTrue, reason: 'progress moves again once resumed');
+      await tester.pump(popTime);
+      expect(find.byKey(const Key('presentConfetti')), findsNothing, reason: 'the burst ends after the resume');
+      paused.dispose();
+    });
+
+    testWidgets('a pop while paused throws no burst, and resuming does not replay it (${look.name})', (tester) async {
+      final tracker = PresentTracker();
+      final paused = ValueNotifier<bool>(true);
+      await pumpHostLook(tester, look, screen: pausableStage(tracker, paused));
+      tracker.feed(presentOn(PuzzleSide.left, popped: true));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(find.byKey(const Key('presentConfetti')), findsNothing, reason: 'nothing bursts while paused');
+
+      paused.value = false;
+      await tester.pump();
+      await tester.pump(popTime);
+      expect(find.byKey(const Key('presentConfetti')), findsNothing, reason: 'the missed pop is not replayed');
+      paused.dispose();
     });
   }
 

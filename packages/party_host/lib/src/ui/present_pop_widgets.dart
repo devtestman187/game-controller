@@ -57,10 +57,13 @@ const _confettiDepthSpan = 0.6;
 /// touch and uses no asset, so it shows under every look and on the TV.
 class PresentConfetti extends StatefulWidget {
   /// The burst for [tracker]'s pops.
-  const PresentConfetti({super.key, required this.tracker});
+  const PresentConfetti({super.key, required this.tracker, this.paused = false});
 
   /// Tells when the present pops.
   final PresentTracker tracker;
+
+  /// Freezes a burst in flight and holds back new pops while paused; the burst carries on from the same point after.
+  final bool paused;
 
   @override
   State<PresentConfetti> createState() => _PresentConfettiState();
@@ -78,11 +81,17 @@ class _PresentConfettiState extends State<PresentConfetti> with SingleTickerProv
     widget.tracker.pops.addListener(_pop);
   }
 
-  void _pop() => _burst.forward(from: 0);
+  void _pop() {
+    if (widget.paused) return;
+    _burst.forward(from: 0);
+  }
 
   @override
   void didUpdateWidget(PresentConfetti old) {
     super.didUpdateWidget(old);
+    // A pause freezes the burst where it is; the resume carries on from that same value.
+    if (widget.paused && !old.paused && _burst.isAnimating) _burst.stop(canceled: false);
+    if (!widget.paused && old.paused && _burst.value > 0 && _burst.value < 1) _burst.forward();
     if (old.tracker == widget.tracker) return;
     old.tracker.pops.removeListener(_pop);
     widget.tracker.pops.addListener(_pop);
@@ -102,7 +111,8 @@ class _PresentConfettiState extends State<PresentConfetti> with SingleTickerProv
     return IgnorePointer(
       child: AnimatedBuilder(
         animation: _burst,
-        builder: (context, _) => _burst.isAnimating
+        // A frozen burst (paused partway) stays on screen until it resumes and ends.
+        builder: (context, _) => _burst.isAnimating || (widget.paused && _burst.value > 0 && _burst.value < 1)
             ? CustomPaint(
                 key: const Key('presentConfetti'),
                 size: Size.infinite,

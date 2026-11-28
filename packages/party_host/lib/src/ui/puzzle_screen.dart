@@ -350,11 +350,12 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                       },
                     ),
                   ),
-                  Positioned.fill(child: PresentConfetti(tracker: _present)),
+                  Positioned.fill(
+                    child: PresentConfetti(tracker: _present, paused: paused),
+                  ),
                   if (_cardShown && result != null)
-                    // The results cover the board (it stays mounted: the
-                    // results' photos are its last frame) and are drawn in the
-                    // host's frame, so their way on is always on screen.
+                    // The results cover the board (it stays mounted: the results' photos are its last frame) and are
+                    // drawn in the host's frame, so their way on is always on screen.
                     Positioned.fill(
                       child: _Results(
                         result: result,
