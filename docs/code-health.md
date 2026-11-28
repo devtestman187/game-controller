@@ -427,3 +427,8 @@ Not built. bugs2 wave A with the 1-hour cache showed no large Sonnet cache write
 ## race1c notes (Nov 27)
 - puzzle_screen.dart `_present.dispose()` has no test; golden_slot.dart:68 line over 120; `GoldenInputs` constructor dartdoc; golden_slot_test `game.player(id)!`; fuse_skill_test `_breaksSnapRule` doc; confetti piece fixed 14 px (check on device); code comments with job tags in golden_slot.dart and present_pop_widgets.dart; match.dart 339 and game.dart 325 lines (over the 300 guide).
 - Open for owner: should the confetti freeze on the pause menu like the golden wait does (one pause rule); golden +2 points have no visual cue (no glow drawn yet).
+
+## glow1 notes (Nov 28)
+- present_pop_widgets.dart `paused` should read `isPaused` (coding-guidelines:50), also puzzle_screen.dart call and the test; a pause before the burst's first frame (value 0) loses the burst; the "not replayed" check (test :156-158) pumps 1500 ms before asserting; `addTearDown(paused.dispose)`; pausableStage repeats stage.
+- slot_paint.dart golden glow constants share one block comment (one doc line each); snapshot.dart lerpTo dartdoc lacks `golden`; golden_glow_paint_test paints Sunny only (add a Night case); puzzle_screen.dart is at 380 lines and puzzle_painter.dart at 378: split before the next edit.
+- Commit 901486e6 subject reads "Subject: `fix(glow1): ...`" (left, no history rewrite).

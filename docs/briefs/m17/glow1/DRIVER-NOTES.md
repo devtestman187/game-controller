@@ -1,0 +1,1 @@
+- 01:12 wave1 stopped on puzzle_screen.dart 381 lines (formatter split the confetti mount); hand-trimmed a comment (-1 line, class: brief). next: restart, runner resumes g1 c1
