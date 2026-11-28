@@ -70,6 +70,25 @@ printf -- '- **must** a.dart:1 bad (FIXED)
 ' > "$r/docs/briefs/m1/b1/REVIEW.md"
 v "$base..$tip" --no-tracker
 expect musts-closed 1 "OK musts"
+printf -- '- **must** a.dart:1 not fixed
+- **must** b unfixed
+- **must** c unanswered
+- **must** d prefixed
+- **must** e not yet fixed
+- **must** f un-fixed
+- **must** g isn'"'"'t fixed
+- **must** h never closed
+' > "$r/docs/briefs/m1/b1/REVIEW.md"
+v "$base..$tip" --no-tracker
+expect musts-negated 1 "FAIL musts: 8 open must finding(s) in docs/briefs/m1/b1/REVIEW.md at line(s): 1 2 3 4 5 6 7 8"
+printf -- '- **must** a.dart:1 Fixed in tl1 (x)
+- **must** b (FIXED)
+- **must** c fixed
+- **must** d closed
+- **must** e answered
+' > "$r/docs/briefs/m1/b1/REVIEW.md"
+v "$base..$tip" --no-tracker
+expect musts-whole-words 1 "OK musts: no open must finding"
 rm "$r/docs/briefs/m1/b1/REVIEW.md"
 GIT_AUTHOR_EMAIL=t@t GIT_COMMITTER_EMAIL=t@t git -C "$r" commit -q --allow-empty -m foreign
 bad="$(git -C "$r" rev-parse HEAD)"
