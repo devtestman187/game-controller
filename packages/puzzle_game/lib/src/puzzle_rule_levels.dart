@@ -35,6 +35,22 @@ const hardMaxBigPieces = 4;
 const hardMinTurnedPieces = 6;
 const hardMaxRepeatedPairs = 2;
 
+/// The fewest pieces a puzzle of [level] may have: its level's min constant.
+int minPiecesOf(Level level) => switch (level) {
+  Level.easy => easyMinPieces,
+  Level.medium => mediumMinPieces,
+  Level.hard => hardMinPieces,
+};
+
+/// How many pieces a side may seat, of the [wanted] a puzzle asks for. Every
+/// player needs 2 pieces a side at least, so a level's cap is half its fewest
+/// pieces: Easy seats 2 a side, Medium 4 and Hard 5. Never fewer than 1.
+int maxPerSideFor(Level level, int wanted) {
+  final cap = minPiecesOf(level) ~/ 2;
+  final limited = wanted > cap ? cap : wanted;
+  return limited < 1 ? 1 : limited;
+}
+
 void _level(Puzzle puzzle, List<LevelIssue> issues) {
   switch (puzzle.level) {
     case Level.easy:
