@@ -27,7 +27,7 @@ State of each item (update state, commit and batch folder as work lands):
 
 | Item | State | Commit | Batch folder |
 |---|---|---|---|
-| S1 systest gap batch | in progress | - | docs/briefs/m17/systest |
+| S1 systest gap batch | done Nov 27: 12 tests in packages/party_host/test/systest/, verify PASS | 3cbc2002 (tests), 4950ad13 (docs) | docs/briefs/m17/systest |
 | S2 layout matrix tests | not started | - | - |
 | S3 device checklist file | done | f4077333 | - (docs/test/device-checklist.md) |
 | Emulator probe (roadmap 2) | done: WHPX works; AVDs m7_android12 and m8_pixel_tablet boot headless in ~32-37 s; 10.0.2.2 reachable. Gotcha: run `adb shell wm size reset` and `adb shell wm density reset` first (a leftover 75% override was found) | 865b74c2 | - (docs/test/emulator-probe-2026-11-27.md) |
@@ -36,10 +36,16 @@ State of each item (update state, commit and batch folder as work lands):
 | L1a golden harness + 5-8 stable screens | not started | - | - |
 | L1b City Rush map goldens | not started | - | - |
 | L2 emulator runs (probe first) | not started | - | - |
-| L3 Pixel Tablet periodic run | not started | - | - |
+| L3 Pixel Tablet periodic run (also a device test of the shared_preferences disk file, S1 note 3) | not started | - | - |
 | L3b Pixel Tablet + Windows dev TV real-Wi-Fi night (unverified idea) | not started | - | - |
 | L4 iOS simulator runs | not started | - | - |
 | L5 hardware-only list (deferred, section 4) | n/a | - | - |
+
+S1 notes (Nov 27):
+1. The helper lives in packages/party_host/test/systest/, because party_host cannot import connection/test.
+2. The grace tests run over a WebSocket with a fake clock plus 40 ms real waits. That is a moderate CI flake risk. To-do: poll on a condition instead.
+3. The disk save uses a DiskPrefs stand-in writing to a real temp dir. The shared_preferences plugin file itself still needs a device test, so it is added to L3 above.
+4. An old phone must list the layout and status capabilities, or it gets no labels.
 
 Exact command per layer (rows marked "planned" do not exist yet; replace with the real command when built):
 
