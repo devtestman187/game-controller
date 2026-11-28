@@ -142,6 +142,7 @@ class MatchPainter extends CustomPainter {
         hud: false,
         cache: cache,
         cat: s.cat?.side == PuzzleSide.values[i] ? s.cat : null,
+        present: s.present,
         characters: characters,
         fillsBackground: fillsBackground,
       ).paint(canvas, box.size);
@@ -189,6 +190,7 @@ class MatchPainter extends CustomPainter {
         cache: cache,
         // One board plays for one side: the cat on it is that side's.
         cat: s.cat != null && (!s.split || s.cat!.side == side) ? s.cat : null,
+        present: s.present,
         // The worker's smallest body is the phone's own measure (design 5a).
         pxPerMm: pxPerMm,
         characters: characters,

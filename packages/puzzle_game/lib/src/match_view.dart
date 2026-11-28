@@ -212,6 +212,7 @@ class _MatchViewState extends State<MatchView> {
               nowMs: _nowMs,
               timeLimitS: widget.timeLimitS,
               cat: snapshot.cat,
+              present: snapshot.present,
               characters: widget.characters,
               fillsBackground: fills,
               roundLabel: widget.roundLabel,

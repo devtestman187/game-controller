@@ -14,6 +14,8 @@ import 'game.dart';
 import 'piece_moments.dart';
 import 'piece_size.dart';
 import 'points.dart';
+import 'present.dart';
+import 'present_painter.dart';
 import 'puzzle.dart';
 import 'puzzle_values.dart';
 import 'snapshot.dart';

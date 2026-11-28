@@ -30,6 +30,7 @@ class PuzzlePainter extends CustomPainter {
     this.hud = true,
     this.pxPerMm,
     this.cat,
+    this.present,
     this.characters = const {},
     this.fillsBackground = true,
     this.roundLabel,
@@ -86,6 +87,9 @@ class PuzzlePainter extends CustomPainter {
   /// The cat, while it visits this board (M14 a2); null when it is away or on
   /// the other side's board.
   final CatView? cat;
+
+  /// The present, while it is out (M17 r3a); it is drawn only on the board of the side that holds it. Null: none.
+  final PresentState? present;
 
   /// Who each player is drawn as, by player number (M16 identity): the
   /// character the host gave them, or a missing entry for the default their
@@ -149,6 +153,7 @@ class PuzzlePainter extends CustomPainter {
         share: catMoments?.progress(c.state, nowMs) ?? 1,
       );
     }
+    if (present case final p?) paintPresent(canvas, p, field: field, look: look, side: s.side ?? PuzzleSide.left);
     // The burst and the confetti come over the field, round the board's edge
     // and never over the picture (design 3a item 2).
     _paintStars(canvas, px);
