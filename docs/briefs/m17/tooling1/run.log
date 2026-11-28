@@ -19,3 +19,9 @@
 2026-11-28 09:14:16 committed tl2: ee2162aa Systest settle: poll for a known condition instead of a fixed 40 ms
 2026-11-28 09:14:16 phase: review (apply took 4s)
 2026-11-28 09:14:16 wave review skipped: wave 1 is the whole run, the run review covers it
+2026-11-28 09:14:17 start the run's review
+METRICS run-review worker=claude model=claude-haiku-5-5 turns=17 in=22 out=17520 cache=293256 min=1.4 wall=- result=0
+METRICS tl1 worker=claude model=claude-haiku-5-5 turns=10 in=20 out=11306 cache=229821 min=1.6 wall=2.1 result=0
+METRICS tl2 worker=claude model=claude-haiku-5-5 turns=12 in=22 out=9383 cache=222404 min=2.4 wall=3.1 result=0
+2026-11-28 09:16:12 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/tooling1/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 2 jobs, 15 min
