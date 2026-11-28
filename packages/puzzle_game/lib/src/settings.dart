@@ -159,3 +159,20 @@ final class PuzzleSettings {
   /// A copy with one setting changed (by its JSON name).
   PuzzleSettings withValue(String key, Object value) => fromJson({...toJson(), key: value});
 }
+
+/// The hot-potato present's fuse numbers (M17 r3b, r3g), in one place. [PresentRules] reads them under the same names.
+/// Every value here is PROVISIONAL and locks only after the kid playtest.
+abstract final class FuseParams {
+  /// PROVISIONAL: locks after the kid playtest (Nov 28 2026). Seconds of a round before the first present.
+  static const startDelayS = 20.0;
+
+  /// PROVISIONAL: locks after the kid playtest (Nov 28 2026). The fuse a present starts with, in ms.
+  static const startFuseMs = 12000;
+
+  /// PROVISIONAL: locks after the kid playtest (Nov 28 2026). Ms the fuse loses on each snap by the holder.
+  static const snapCutMs = 1500;
+
+  /// PROVISIONAL: locks after the kid playtest (Nov 28 2026). The least fuse a snap leaves, in ms: a present is never
+  /// shorter than this.
+  static const minFuseMs = 4000;
+}

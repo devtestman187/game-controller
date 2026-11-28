@@ -12,18 +12,17 @@ final class PresentRules {
   /// owner may change here in one place.
   static bool enabled(PuzzleSettings s) => s.chaos == Chaos.party && s.catPreset != CatPreset.wild;
 
-  /// PROVISIONAL (fuse values lock after the kid playtest, r3g). Seconds of a round before the first present.
-  static const startDelayS = 20.0;
+  /// Seconds of a round before the first present: see [FuseParams.startDelayS].
+  static const startDelayS = FuseParams.startDelayS;
 
-  /// PROVISIONAL (fuse values lock after the kid playtest, r3g). The fuse a present starts with, in ms.
-  static const startFuseMs = 12000;
+  /// The fuse a present starts with, in ms: see [FuseParams.startFuseMs].
+  static const startFuseMs = FuseParams.startFuseMs;
 
-  /// PROVISIONAL (fuse values lock after the kid playtest, r3g). Ms the fuse loses on each snap by the holder.
-  static const snapCutMs = 1500;
+  /// Ms the fuse loses on each snap by the holder: see [FuseParams.snapCutMs].
+  static const snapCutMs = FuseParams.snapCutMs;
 
-  /// PROVISIONAL (fuse values lock after the kid playtest, r3g). The least fuse a snap leaves, in ms: a present is
-  /// never shorter than this.
-  static const minFuseMs = 4000;
+  /// The least fuse a snap leaves, in ms: see [FuseParams.minFuseMs].
+  static const minFuseMs = FuseParams.minFuseMs;
 
   /// PROVISIONAL (fuse values lock after the kid playtest, r3g). Ms a popped present stays on the view.
   static const popMs = 1500;
