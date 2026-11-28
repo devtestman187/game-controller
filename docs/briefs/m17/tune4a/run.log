@@ -26,3 +26,5 @@
 2026-11-28 08:29:27 phase: apply (check took 18s)
 2026-11-28 08:29:29 committed h4b: 8da7b691 tune4a h4b: report that REPORT-v3 is blocked on the missing v3 run
 2026-11-28 08:29:29 phase: review (apply took 2s)
+2026-11-28 08:30:27 reviewed wave1: 13 finding(s)
+2026-11-28 08:30:28 reviewed wave2: 0 finding(s)
