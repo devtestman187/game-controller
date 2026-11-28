@@ -24,7 +24,10 @@ enum MatchFormat {
   team('team'),
   oneVsOne('1v1'),
   twoVsOne('2v1'),
-  twoVsTwo('2v2');
+  twoVsTwo('2v2'),
+  threeVsThree('3v3'),
+  fourVsFour('4v4'),
+  uneven('uneven');
 
   const MatchFormat(this.label);
 
@@ -33,14 +36,18 @@ enum MatchFormat {
 
   bool get split => this != solo && this != team;
 
-  /// The format for these sides. A side holds at most two players.
+  /// The format for these sides. A side holds up to four players; any unequal
+  /// split other than 2 vs 1 is [uneven].
   static MatchFormat of(Map<String, PuzzleSide> teams) {
     final left = teams.values.where((s) => s == PuzzleSide.left).length;
     final right = teams.length - left;
     if (left == 0 || right == 0) return teams.length >= 2 ? team : solo;
     if (left == 1 && right == 1) return oneVsOne;
     if (left == 2 && right == 2) return twoVsTwo;
-    return twoVsOne;
+    if (left == 3 && right == 3) return threeVsThree;
+    if (left == 4 && right == 4) return fourVsFour;
+    if ((left == 2 && right == 1) || (left == 1 && right == 2)) return twoVsOne;
+    return uneven;
   }
 }
 

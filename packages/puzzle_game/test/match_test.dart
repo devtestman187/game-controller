@@ -29,6 +29,9 @@ void main() {
       expect(MatchFormat.oneVsOne.split, isTrue);
       expect(MatchFormat.twoVsOne.split, isTrue);
       expect(MatchFormat.twoVsTwo.split, isTrue);
+      expect(MatchFormat.threeVsThree.split, isTrue);
+      expect(MatchFormat.fourVsFour.split, isTrue);
+      expect(MatchFormat.uneven.split, isTrue);
       // A solo player gets the whole field …
       final solo = begin(load('house'), {'p1': PuzzleSide.left});
       expect(solo.sides, hasLength(1));
@@ -344,6 +347,21 @@ void main() {
         expect(events.where((e) => e.event.kind == PuzzleEventKind.help), isEmpty);
       },
     );
+
+    test('a side of three or four has its own format, and any other unequal split is uneven', () {
+      Map<String, PuzzleSide> sidesOf(int left, int right) => {
+        for (var i = 0; i < left; i++) 'l$i': PuzzleSide.left,
+        for (var i = 0; i < right; i++) 'r$i': PuzzleSide.right,
+      };
+      expect(MatchFormat.of(sidesOf(3, 3)), MatchFormat.threeVsThree);
+      expect(MatchFormat.of(sidesOf(4, 4)), MatchFormat.fourVsFour);
+      expect(MatchFormat.of(sidesOf(2, 1)), MatchFormat.twoVsOne);
+      expect(MatchFormat.of(sidesOf(1, 2)), MatchFormat.twoVsOne);
+      expect(MatchFormat.of(sidesOf(3, 2)), MatchFormat.uneven);
+      expect(MatchFormat.of(sidesOf(4, 1)), MatchFormat.uneven);
+      expect(MatchFormat.of(sidesOf(4, 2)), MatchFormat.uneven);
+      expect(MatchFormat.of(sidesOf(1, 3)), MatchFormat.uneven);
+    });
 
     test('a solo player carries big pieces at full speed, also as the lone side of a 2 vs 1', () {
       final solo = begin(crateAndBall(), {'p1': PuzzleSide.left});

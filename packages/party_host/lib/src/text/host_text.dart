@@ -43,8 +43,7 @@ abstract final class HostText {
   /// A button that plays any puzzle of a level: "Any Easy puzzle".
   static String anyPuzzle(String levelName) => 'Any $levelName puzzle';
 
-  /// The same in a title, where it runs on after the game's name: "any Easy
-  /// puzzle".
+  /// The same in a title, where it runs on after the game's name: "any Easy puzzle".
   static String anyPuzzleTitle(String levelName) => 'any $levelName puzzle';
 
   // The join screen.
@@ -68,8 +67,7 @@ abstract final class HostText {
   /// A title and its detail: "Shape Race · Tree".
   static String titled(String title, String detail) => '$title$separator$detail';
 
-  /// A joining player's row: its name, then whether it is simulated and
-  /// whether it is this host's own player.
+  /// A joining player's row: its name, then whether it is simulated and whether it is this host's own player.
   static String playerLabel(String label, {required bool simulated, required bool own}) =>
       '$label${simulated ? ' (simulated)' : ''}${own ? ' (you)' : ''}';
 
@@ -80,8 +78,7 @@ abstract final class HostText {
   static String notJoined(String names, {bool full = false}) =>
       full ? 'Game full, watching: $names' : 'Not joined: $names';
 
-  /// A player whose phone dropped, while the join screen holds their side
-  /// (M16 item 2): "Mia is away".
+  /// A player whose phone dropped, while the join screen holds their side (M16 item 2): "Mia is away".
   static String awayLabel(String name) => '$name is away';
 
   /// The format the joined players make: "1 vs 1", "2 vs 2".
@@ -91,6 +88,9 @@ abstract final class HostText {
     MatchFormat.oneVsOne => '1 vs 1',
     MatchFormat.twoVsOne => '2 vs 1',
     MatchFormat.twoVsTwo => '2 vs 2',
+    MatchFormat.threeVsThree => '3 vs 3',
+    MatchFormat.fourVsFour => '4 vs 4',
+    MatchFormat.uneven => 'uneven sides',
   };
 
   // The pause menu.
@@ -149,8 +149,7 @@ abstract final class HostText {
   /// played (B-011): "You have played every Easy puzzle".
   static String playedEvery(String levelName) => 'You have played every $levelName puzzle';
 
-  /// The button that takes a series on to [levelName] (B-011): "Continue to
-  /// Medium".
+  /// The button that takes a series on to [levelName] (B-011): "Continue to Medium".
   static String continueTo(String levelName) => 'Continue to $levelName';
 
   // The Arena.

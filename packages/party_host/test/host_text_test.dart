@@ -21,6 +21,9 @@ void main() {
     expect(HostText.level(Level.hard), 'Hard');
     expect(HostText.anyPuzzle('Easy'), 'Any Easy puzzle');
     expect(HostText.formatName(MatchFormat.oneVsOne), '1 vs 1');
+    expect(HostText.formatName(MatchFormat.threeVsThree), '3 vs 3');
+    expect(HostText.formatName(MatchFormat.fourVsFour), '4 vs 4');
+    expect(HostText.formatName(MatchFormat.uneven), 'uneven sides');
     expect(HostText.titled('Shape Race', 'Tree'), 'Shape Race · Tree');
     expect(HostText.playerLabel('P1', simulated: false, own: true), 'P1 (you)');
     expect(HostText.playerLabel('P2', simulated: true, own: false), 'P2 (simulated)');
