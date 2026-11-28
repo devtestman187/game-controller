@@ -1,7 +1,4 @@
-import 'dart:async';
-
-import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
+import 'frame_stats.dart';
 
 /// How long the probe keeps frames, summed: the last ten seconds of the game.
 const Duration _defaultFrameWindow = Duration(seconds: 10);
@@ -12,27 +9,6 @@ const Duration _defaultDroppedFrame = Duration(microseconds: 25000);
 /// The share of frames a p95 is the slowest of, by the nearest-rank rule.
 const double _p95Share = 0.95;
 
-/// Microseconds in a millisecond, to show a frame time in ms.
-const _microsPerMs = 1000;
-
-/// The numbers the hook shows for the frames the probe holds.
-final class FrameStats {
-  /// Creates the stats of a window of frames.
-  const FrameStats({required this.count, required this.average, required this.p95, required this.dropped});
-
-  /// How many frames the window holds.
-  final int count;
-
-  /// The mean frame time of the window.
-  final Duration average;
-
-  /// The 95th-percentile frame time of the window, by the nearest-rank rule.
-  final Duration p95;
-
-  /// How many frames of the window were longer than the probe's budget.
-  final int dropped;
-}
-
 /// Keeps the frame times of the last window and reports their [FrameStats]. Pure: it reads no clock,
 /// so a test feeds it the times.
 final class FrameProbe {
@@ -40,7 +16,7 @@ final class FrameProbe {
   /// than [budget] as dropped.
   FrameProbe({this.window = _defaultFrameWindow, this.budget = _defaultDroppedFrame});
 
-  /// The summed frame time the probe keeps, the newest frames first to be kept.
+  /// The summed frame time the probe keeps. Once the window is full, the oldest frames are dropped first.
   final Duration window;
 
   /// The frame time above which a frame counts as dropped.
@@ -74,77 +50,4 @@ final class FrameProbe {
       dropped: sorted.where((frame) => frame > budget).length,
     );
   }
-}
-
-/// Shows the frame stats of [child] in a corner, as small text, so a developer can read the frame
-/// rate on a device. Nothing mounts it yet.
-class CityFrameHook extends StatefulWidget {
-  /// Creates the hook around [child]. Frames come from [frames] when given, else from the binding.
-  const CityFrameHook({required this.child, this.frames, super.key});
-
-  /// What the hook sits over.
-  final Widget child;
-
-  /// Frame times to read instead of the scheduler's timings, for tests.
-  final Stream<Duration>? frames;
-
-  @override
-  State<CityFrameHook> createState() => _CityFrameHookState();
-}
-
-class _CityFrameHookState extends State<CityFrameHook> {
-  final FrameProbe _probe = FrameProbe();
-  StreamSubscription<Duration>? _subscription;
-
-  @override
-  void initState() {
-    super.initState();
-    final frames = widget.frames;
-    if (frames != null) {
-      _subscription = frames.listen(_onFrame);
-    } else {
-      SchedulerBinding.instance.addTimingsCallback(_onTimings);
-    }
-  }
-
-  @override
-  void dispose() {
-    unawaited(_subscription?.cancel());
-    if (widget.frames == null) SchedulerBinding.instance.removeTimingsCallback(_onTimings);
-    super.dispose();
-  }
-
-  void _onFrame(Duration frameTime) => _record([frameTime]);
-
-  void _onTimings(List<FrameTiming> timings) => _record([for (final timing in timings) timing.totalSpan]);
-
-  /// Adds [frameTimes] to the probe and rebuilds the text that shows its stats.
-  void _record(List<Duration> frameTimes) {
-    setState(() {
-      for (final frameTime in frameTimes) {
-        _probe.add(frameTime);
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final stats = _probe.stats;
-    return Stack(
-      children: [
-        widget.child,
-        Positioned(
-          top: 0,
-          right: 0,
-          child: IgnorePointer(child: Text(_summary(stats), style: Theme.of(context).textTheme.labelSmall)),
-        ),
-      ],
-    );
-  }
-
-  /// The one line the hook shows: the average and p95 frame times in milliseconds, then the dropped count.
-  static String _summary(FrameStats stats) =>
-      'avg ${_ms(stats.average)} ms, p95 ${_ms(stats.p95)} ms, dropped ${stats.dropped}';
-
-  static String _ms(Duration time) => (time.inMicroseconds / _microsPerMs).toStringAsFixed(1);
 }

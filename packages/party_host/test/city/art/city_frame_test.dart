@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:party_host/src/city/art/city_frame_hook.dart';
 import 'package:party_host/src/city/art/city_layout.dart';
 import 'package:party_host/src/city/art/city_overlay_painter.dart';
 import 'package:party_host/src/city/art/city_painter.dart';
@@ -203,6 +204,37 @@ void main() {
       expect(frames.hasListener, isTrue);
       await tester.pumpWidget(const MaterialApp(home: SizedBox()));
       expect(frames.hasListener, isFalse);
+    });
+
+    testWidgets('frames that leave the shown text unchanged do not rebuild the hook', (tester) async {
+      final rebuilt = <Element>[];
+      final previous = debugOnRebuildDirtyWidget;
+      debugOnRebuildDirtyWidget = (element, _) {
+        if (element.widget is CityFrameHook) rebuilt.add(element);
+      };
+      addTearDown(() => debugOnRebuildDirtyWidget = previous);
+      final frames = StreamController<Duration>();
+      addTearDown(frames.close);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: CityFrameHook(frames: frames.stream, child: const SizedBox()),
+        ),
+      );
+      frames.add(_ms(10));
+      await tester.pump();
+      expect(find.text('avg 10.0 ms, p95 10.0 ms, dropped 0'), findsOneWidget);
+      final rebuildsAfterChange = rebuilt.length;
+      expect(rebuildsAfterChange, greaterThan(0), reason: 'the first 10 ms frame changes the text from zeros');
+      for (var i = 0; i < 3; i++) {
+        frames.add(_ms(10));
+        await tester.pump();
+      }
+      expect(
+        rebuilt,
+        hasLength(rebuildsAfterChange),
+        reason: 'three more 10 ms frames leave avg, p95 and dropped as they were',
+      );
+      expect(find.text('avg 10.0 ms, p95 10.0 ms, dropped 0'), findsOneWidget);
     });
   });
 
