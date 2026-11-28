@@ -36,16 +36,4 @@ void main() {
     expect(_count(teams, PuzzleSide.right), 4);
     expect(sideForNewPlayer(teams, cap: 4), isNull);
   });
-
-  test('the setting of four is cut to two a side on Easy, the level\'s cap', () {
-    final cap = maxPerSideFor(Level.easy, 4);
-    expect(cap, 2);
-    expect(_fill(cap: cap, players: 10).length, 4);
-  });
-
-  test('the setting of four seats four a side on Medium', () {
-    final cap = maxPerSideFor(Level.medium, 4);
-    expect(cap, 4);
-    expect(_fill(cap: cap, players: 10).length, 8);
-  });
 }

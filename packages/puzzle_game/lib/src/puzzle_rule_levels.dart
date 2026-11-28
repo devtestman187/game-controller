@@ -42,12 +42,13 @@ int minPiecesOf(Level level) => switch (level) {
   Level.hard => hardMinPieces,
 };
 
-/// How many pieces a side may seat, of the [wanted] a puzzle asks for. Every
-/// player needs 2 pieces a side at least, so a level's cap is half its fewest
-/// pieces: Easy seats 2 a side, Medium 4 and Hard 5. Never fewer than 1.
-int maxPerSideFor(Level level, int wanted) {
+/// How many players a side may seat (players per side, not pieces), of the
+/// [wantedPerSide] the saved setting asks for. Every player needs 2 pieces a
+/// side at least, so a level's cap is half its fewest pieces: Easy seats 2 a
+/// side, Medium 4 and Hard 5. Never fewer than 1.
+int maxPerSideFor(Level level, int wantedPerSide) {
   final cap = minPiecesOf(level) ~/ 2;
-  final limited = wanted > cap ? cap : wanted;
+  final limited = wantedPerSide > cap ? cap : wantedPerSide;
   return limited < 1 ? 1 : limited;
 }
 
