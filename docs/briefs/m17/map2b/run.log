@@ -24,3 +24,9 @@
 2026-11-28 04:52:13 committed m2d: 85b22132 map2b: frame sampler, draw-call budget test, measure hook
 2026-11-28 04:52:13 phase: review (apply took 4s)
 2026-11-28 04:52:13 wave review skipped: wave 1 is the whole run, the run review covers it
+2026-11-28 04:52:14 start the run's review
+METRICS m2c worker=claude model=claude-sonnet-5-5 turns=33 in=36 out=12247 cache=663899 min=3.7 wall=4.4 result=0
+METRICS m2d worker=claude model=claude-haiku-5-5 turns=2 in=6 out=382 cache=192654 min=0.1 wall=29.0 result=0
+METRICS run-review worker=claude model=claude-haiku-5-5 turns=23 in=26 out=19776 cache=436352 min=1.5 wall=- result=0
+2026-11-28 04:54:14 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/map2b/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 2 jobs, 37 min
