@@ -1,4 +1,5 @@
 **Resume here (race1a, B9, Nov 27, see docs/briefs/m17/race1a/REPORT.md):** Shape Race 3 or 4 a side: MatchFormat 3v3/4v4/uneven, maxPerSide setting 2-4 (default 2) with a settings row, level limit (Easy 2, Medium/Hard 4), side panel N seats, popup cap scales. Full check passed. Tip: 12a95581 (closing docs commit). Next: B10 (race1b) on the owner word; owner device check of 3 and 4 a side.
+**Resume here (race1b, B10, Nov 27, see docs/briefs/m17/race1b/REPORT.md):** PresentState in the match snapshot (optional key pr, versions stay 2, old peers ignore it), present rules (provisional fuse values), painter with fuse warning, knock Wild only, phone-path test. Full check passed. Next: B11 (race1c). Owner: confirm the present gate (chaos on + Calm/Lively). Tip: see the closing commit.
 
 **Resume here (systest S1, Nov 27, see docs/briefs/m17/systest/REPORT.md):** 12 party_host tests in test/systest (3-phone night per picker, drop mid-vote, old-phone vote, 30 s grace on a fake clock, night on a real temp dir); no product code changed, no bug found. Full check passed; tip: 3cbc2002 (tests) plus the closing docs commit. Next: B9 on the owner word.
 

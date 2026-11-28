@@ -7,7 +7,7 @@
 - Read: the whole change `6359a020..5c6cafe7` (34 files, read as the diff plus each new file), all wave reviews, every `*-report.md`, run.log, run-findings.md. No code changed, no tests run.
 - Carried over: all wave1 and wave3 items hold in the final code (wave3's second must is downgraded to should). run-findings.md:1 holds. wave1's summary says 4 should, its list has 6. No REVIEW-VERDICTS.md, so nothing skipped. run.log has no HAND-FIX lines.
 - Five that matter most:
-  1. present_wiring_test.dart:91 must: "a frame with no present draws none" compares two identical frames; it cannot fail.
+  1. present_wiring_test.dart:91 must (fixed): "a frame with no present draws none" compares two identical frames; it cannot fail.
   2. present_snapshot_test.dart:98 should: the 40-byte budget has no lower bound, so it passes with no present.
   3. present.dart:34, :36, :37 and snapshot.dart:361 should: bare `0.5` in the halfway switch.
   4. match_painter.dart:193 should: the phone path draws the present; no test at any phone size.
@@ -17,7 +17,7 @@
 
 ## Findings
 
-- **must** packages/puzzle_game/test/present_wiring_test.dart:91 "a frame with no present draws none" calls `changed(…, null)`, which builds `frame(puzzle)` for both frames, so it always gets 0 and cannot fail; it passes on the old code → delete the test; the two "held by" tests already compare against a frame with no present (from: wave3)
+- **must** (closed, fixed: the vacuous test was deleted; the two positive tests carry the proof) packages/puzzle_game/test/present_wiring_test.dart:91 "a frame with no present draws none" calls `changed(…, null)`, which builds `frame(puzzle)` for both frames, so it always gets 0 and cannot fail; it passes on the old code → delete the test; the two "held by" tests already compare against a frame with no present (from: wave3)
 - **should** packages/puzzle_game/test/present_snapshot_test.dart:98 the 40-byte budget uses only `lessThanOrEqualTo(presentMaxBytes)`, so it passes when `pr` is never written (0 bytes added) → add `greaterThan(0)` with a reason (from: wave1)
 - **should** packages/puzzle_game/lib/src/match_painter.dart:193 [phone-pinned file] the phone path passes `present: s.present`, and the wiring test only runs a 640x360 split window → add a phone-size case to present_wiring_test.dart (rule A1, A6) (from: wave3)
 - **should** packages/puzzle_game/lib/src/present.dart:34 [snapshot.dart:361 is phone-pinned] the bare `0.5` appears at :34, :36, :37 and snapshot.dart:361 → one named `static const` with a doc comment (the switch is at halfway), used on all four lines (from: wave1)

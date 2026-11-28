@@ -1,0 +1,4 @@
+batch-close: run.log gets the full check line
+batch-close: ORPHAN 28292 bash 184s "C:/Program Files/Git/usr/bin/bash.exe" -c "until [ -s 'E:/AI/game-controller-m17/docs/briefs/m17/race1b/close.out' ] ||
+batch-close: proc-sweep: 1 process(es) listed (0 orphaned flutter_tester/dart)
+batch-close: docs/briefs/m17/STATUS.md has no "**Resume here (race1b" line

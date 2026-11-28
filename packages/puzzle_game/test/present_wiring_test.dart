@@ -87,9 +87,4 @@ void main() {
     expect(right, greaterThan(0), reason: 'the box and its fuse are on the right board');
     expect(left, 0, reason: 'the left board has no present');
   });
-
-  testWidgets('a frame with no present draws none', (tester) async {
-    final (left, right) = await changed(tester, load('boat'), null);
-    expect(left + right, 0);
-  });
 }

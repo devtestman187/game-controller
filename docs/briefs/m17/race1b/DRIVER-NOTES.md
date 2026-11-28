@@ -1,0 +1,1 @@
+- 20:40 stop r3b/r3d: review layers (present_paint name) = brief class (part-of view.dart not seen); renamed present_painter, hand-committed, f1 added
