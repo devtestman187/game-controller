@@ -1,0 +1,1 @@
+- 03:24 m2b hand-fixed 'dynamic' in doc comments (class: brief), committed 4b6ae05a. next: restart for run review

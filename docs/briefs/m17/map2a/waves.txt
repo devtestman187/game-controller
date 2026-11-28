@@ -1,3 +1,6 @@
-# map2a: m2b needs the geometry from m2a, so two waves; m2e is the fix round, written after the reviews
+# map2a: m2b needs the geometry from m2a, so two waves
 m2a
 m2b
+# fix round (m2e): f1 and f2 share no files; f3 renames fields the overlay and its test use, so it follows f1
+f1 f2
+f3
