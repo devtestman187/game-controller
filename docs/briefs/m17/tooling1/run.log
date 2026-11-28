@@ -78,3 +78,8 @@ RESULT: DONE: 4 jobs, 19 min
 2026-11-28 09:48:27 committed f3: 6adf8b3a Negation words in the musts check: accept isnt, wont, hasnt, dont
 2026-11-28 09:48:27 phase: review (apply took 1s)
 2026-11-28 09:51:21 reviewed wave3: 4 finding(s)
+2026-11-28 09:51:22 start the run's review
+METRICS f3 worker=claude model=claude-haiku-5-5 turns=13 in=26 out=7835 cache=270346 min=2.0 wall=2.5 result=0
+METRICS wave3-review worker=claude model=claude-haiku-5-5 turns=24 in=30 out=26461 cache=568440 min=2.5 wall=- result=0
+2026-11-28 09:55:10 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/tooling1/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 5 jobs, 17 min
