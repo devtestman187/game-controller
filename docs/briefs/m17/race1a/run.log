@@ -75,3 +75,26 @@ RESULT: DONE: 4 jobs, 26 min
 2026-11-27 19:14:09 finding: f1c's report has no Summary block in its first 40 lines
 2026-11-27 19:14:10 STOPPED: commit of f1c refused (see .dart_tool/run-jobs/docs_briefs_m17_race1a/run-commit.log)
 RESULT: STOPPED: commit of f1c refused (see .dart_tool/run-jobs/docs_briefs_m17_race1a/run-commit.log)
+2026-11-27 19:14:31 RUN_MAX_MIN=82 min (computed backstop of the jobs still to do)
+2026-11-27 19:14:31 start at 1a8b14dc on m17
+2026-11-27 19:14:31 worker: claude
+2026-11-27 19:14:32 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-27 19:14:36 phase: preflight
+2026-11-27 19:14:43 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-27 19:14:58 phase: worker (preflight took 22s)
+2026-11-27 19:14:59 skip f1a (already done)
+2026-11-27 19:14:59 skip f1d (already done)
+2026-11-27 19:15:15 phase: worker (worker took 16s)
+2026-11-27 19:15:15 skip f1b (already done)
+2026-11-27 19:15:30 phase: worker (worker took 16s)
+2026-11-27 19:15:31 start f1c
+2026-11-27 19:15:31 skip f1e (already done)
+2026-11-27 19:22:40 f1c finished: result 0 (79 turns, 7 min) model claude-sonnet-5-5, ladder 2, tokens in/read/write/out 78/2046465/61017/21217
+2026-11-27 19:22:41 phase: tests-first (worker took 431s)
+2026-11-27 19:23:56 tests-first ok: packages/party_host/test/join_seats_test.dart fails on the old code
+2026-11-27 19:24:09 phase: check (tests-first took 88s)
+2026-11-27 19:24:26 combined check: skips protocol connection metrics kit look arena tools (no job's change reaches them)
+2026-11-27 19:28:36 phase: apply (check took 267s)
+2026-11-27 19:28:38 committed f1c: 61287f2e race1a f1c: side panel draws N seats, pop-up cap scales
+2026-11-27 19:28:38 phase: review (apply took 2s)
+2026-11-27 19:28:39 wave 3 review skipped: the committed wave3-review-report.md already covers f1c
