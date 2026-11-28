@@ -68,6 +68,8 @@ void main() {
     for (var n = 1; n <= 5; n++) {
       await press(tester, fake, 'p$n', GamepadButton.a);
     }
+    expect(_onSide('left', 'P1 iPhone 3F1C'), findsOneWidget);
+    expect(_onSide('right', 'P2 Phone 2'), findsOneWidget);
     expect(_onSide('left', 'P3 Phone 3'), findsOneWidget);
     expect(_onSide('right', 'P4 Phone 4'), findsOneWidget);
     _expectNotSeated('P5 Phone 5', reason: 'Easy seats 2 a side');
@@ -79,6 +81,8 @@ void main() {
       await press(tester, fake, 'p$n', GamepadButton.a);
     }
     expect(_onSide('left', 'P1 iPhone 3F1C'), findsOneWidget);
+    expect(_onSide('right', 'P2 Phone 2'), findsOneWidget);
+    expect(_onSide('left', 'P3 Phone 3'), findsOneWidget);
     expect(_onSide('right', 'P4 Phone 4'), findsOneWidget);
     _expectNotSeated('P5 Phone 5', reason: 'the default seats 2 a side');
   });

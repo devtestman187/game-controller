@@ -1,3 +1,5 @@
+**Resume here (race1a, B9, Nov 27, see docs/briefs/m17/race1a/REPORT.md):** Shape Race 3 or 4 a side: MatchFormat 3v3/4v4/uneven, maxPerSide setting 2-4 (default 2) with a settings row, level limit (Easy 2, Medium/Hard 4), side panel N seats, popup cap scales. Full check passed. Tip: see the closing commit (STATUS block names it). Next: B10 (race1b) on the owner word; owner device check of 3 and 4 a side.
+
 **Resume here (systest S1, Nov 27, see docs/briefs/m17/systest/REPORT.md):** 12 party_host tests in test/systest (3-phone night per picker, drop mid-vote, old-phone vote, 30 s grace on a fake clock, night on a real temp dir); no product code changed, no bug found. Full check passed; tip: 3cbc2002 (tests) plus the closing docs commit. Next: B9 on the owner word.
 
 **Resume here (costtool, Nov 27, see docs/briefs/m17/costtool/REPORT.md):** five cost changes landed in d5c23471 (verify-batch musts check, driver context pack, one-call hand-fix, thumb-wait tail -20, agents synced); check passed.

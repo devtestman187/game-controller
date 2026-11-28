@@ -68,3 +68,10 @@ Fixed, unverified: none. No fix in the run was made by reasoning alone (f1b, f1a
 - The TV and phone look of the split layout at 3v3, 4v4 and uneven (needs a device; not possible here).
 - docs/coding-guidelines.md, docs/review-rules.md (in full) and docs/project-notes.md were not read in full; the worker extract was the rule set used.
 - Whether the rest of the wave's tests still pass on the base; I checked the code and the diff only.
+
+## Driver verdicts (Claude, after the fixes)
+- run review F1 (screen test for the cap), F4 (duplicate tests), F6 (unit of maxPerSideFor): fixed by f2.
+- run review F2, F3, F9 (panel seats, popup cap, docs) and the settings row (open question 6): fixed by f1c and f1e.
+- run review F5 (Hard cap 4 or 5): minor, code-health (setting is clamped to 4, so 5 is unreachable). F7 (5v5 label), F8 (host_text.dart at the 380 gate), the could items: minor, code-health.
+- Open question 1 to 8: Hard cap stays as is; "uneven sides" wording and the 3v3/4v4 split layout on a TV and a phone go to the owner device check.
+- wave4 review: **must** (screen test passes on the old code) - closed: the brief exempted it, and the worker showed the Medium test fails when the cap is forced to 2 (f2-report.md:16). should (Easy and default tests assert only some seats) - fixed by hand (P1, P2, P3 asserted; test passes). should (f2 report has no self-check and no Summary block) - minor, code-health. could - fixed with the should above.
