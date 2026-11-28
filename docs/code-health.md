@@ -360,6 +360,7 @@ Not built. bugs2 wave A with the 1-hour cache showed no large Sonnet cache write
 ## pausewire notes (Nov 26)
 - choice_round_pausable_test.dart: the "closing removes the pausable" test passes without detach (a closed round ignores pause); use a recording NightPausable-style check. "Picks stay" is not asserted after pause/resume (only lockedIds). `_Setup` has 6 parameters and bare magic numbers (lines 37, 66-82).
 - ChoiceRoundPausable is unexported and no night path creates a ChoiceRound yet: M17b build stop must construct it next to the round (and cover host away / "Get ready" cases).
+- Night pause (NightFlowController.pause) does not stop puzzle rounds; the B10 present fuse keeps running. M17b must register the puzzle round as a NightPausable.
 
 ## night2a notes (Nov 27)
 - Director not wired: nightNextVariantProvider is still null. B8 must (a) convert the map tier (String on ArenaMap) to Level where tierOfMap is built, (b) apply the pick's map and tier at game start (the n1i hook opens a game by NightVariant only, and cannot start an Arena race), (c) keep the played list for the director (not saved with the night, so a restart forgets it), (d) decide whether a close table at the top tier needs its own DirectorReason (today it says steady).

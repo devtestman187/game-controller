@@ -1,0 +1,7 @@
+# seatfit diagnosis (Nov 27)
+
+Seats. The widget that takes height only while the lobby is partly filled is the "Not joined: ..." line, `_NotJoined` (join_screen_widgets.dart:35-51), added to `_JoinBody`'s Column only `if (watching.isNotEmpty)` (join_screen_widgets.dart:201) with its 8 px gap. It has no maxLines, so waiting phones' names can also wrap. A full lobby with nobody waiting has no such line, so `_Sides`'s Expanded gets that much more. `_SidePanel` (join_side_panel.dart:122-130) floors the row at `scoreRowBadgePx` (38), so 4 seats need 28 + 12 + 4 + 4 x 38 = 196 px; when the room is smaller the ToyCard Column (toy_card.dart:129) overflows. Reproduced: 5-6 px at 640x360, 800x360 and 960x540 with 1-4 a side joined and phones waiting; with nobody waiting no size overflowed. (The 36 px figure needs a longer waiting line.)
+
+Fix (join_side_panel.dart only): when the seats need more than the room, the card is drawn at its needed height and scaled down to the room (FittedBox scaleDown), as `_JoinBody` already does for the body.
+
+Badge. `_JoinCode` is not clipped. At 640x360, 800x360 and 960x540 its rect ends 16 px inside the screen (card right edge 784 at 800 wide) and the "0427" text is inside the card. The "clip" in the race1a screenshots is Flutter's red DEBUG banner drawn over the top-right corner: the test harness MaterialApp (test/support/host_harness.dart) lacked `debugShowCheckedModeBanner: false`; the shipped controller_app and tv_test_app already set it. One-line fix in the harness.
