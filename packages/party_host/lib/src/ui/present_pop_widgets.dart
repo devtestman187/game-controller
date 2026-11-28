@@ -129,7 +129,8 @@ class _ConfettiPainter extends CustomPainter {
     for (var i = 0; i < _confettiPieces; i++) {
       final angle = i * _goldenAngle;
       // Pieces fly to different depths, and fade out over the burst's last half.
-      final depth = _confettiDepthNear + _confettiDepthSpan * ((i % _confettiDepthLevels) / (_confettiDepthLevels - 1));
+      final level = (i % _confettiDepthLevels) / (_confettiDepthLevels - 1);
+      final depth = _confettiDepthNear + _confettiDepthSpan * level;
       final at = centre + Offset(cos(angle), sin(angle)) * (reach * depth);
       paint.color = colours[i % colours.length].withValues(alpha: (1 - progress).clamp(0, 1));
       canvas.save();
