@@ -420,3 +420,6 @@ Not built. bugs2 wave A with the 1-hour cache showed no large Sonnet cache write
 - puzzle_painter.dart is 373 lines and match.dart 328: near the size gate.
 - present_wiring_test.dart:91 no-present case compares plain with plain (still proves a deterministic render).
 - Stale file names (present_paint) in r3d-report.md.
+
+## seatfit notes (Nov 27)
+- _NotJoined (join_screen_widgets.dart:35-51) has no maxLines: with many phones waiting it wraps and the side cards scale to about 0.89 (seatfit test pins 0.84). Consider maxLines 2 with ellipsis.
