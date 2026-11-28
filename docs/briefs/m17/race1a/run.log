@@ -109,3 +109,9 @@ RESULT: STOPPED: commit of f1c refused (see .dart_tool/run-jobs/docs_briefs_m17_
 2026-11-27 19:41:37 finding: f2's report has no Summary block in its first 40 lines
 2026-11-27 19:41:38 committed f2: 8a0bfbf2 race1a f2: review fixes for the seat cap Add a join screen test for the per-side cap at Medium and Easy, and the default of two. The screen's cap came from the saved setting but no test pumped the screen, so a broken read would have passed. Delete the two join_cap tests that only repeated per_side_rule_test.dart. Rename maxPerSideFor's parameter to wantedPerSide and document that the result is players per side, not pieces. No behaviour change. ```
 2026-11-27 19:41:38 phase: review (apply took 2s)
+2026-11-27 19:43:43 reviewed wave4: 5 finding(s)
+METRICS f1e worker=claude model=claude-haiku-5-5 turns=12 in=16 out=8185 cache=188416 min=2.0 wall=2.7 result=0
+METRICS f2 worker=claude model=claude-haiku-5-5 turns=36 in=68 out=19269 cache=1390611 min=6.5 wall=7.1 result=0
+METRICS wave4-review worker=claude model=claude-haiku-5-5 turns=23 in=28 out=20944 cache=607035 min=1.7 wall=- result=0
+2026-11-27 19:43:48 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/race1a/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 6 jobs, 29 min
