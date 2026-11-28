@@ -14,9 +14,7 @@ import 'package:party_host/src/city/rules.dart';
 import 'package:toy_look/toy_look.dart';
 
 import '../../support/all_looks.dart';
-
-const _tvSize = Size(1920, 1080);
-const _phonePortrait = Size(360, 640);
+import 'city_art_support.dart';
 
 /// The most canvas calls one overlay frame may make: eight tokens on the standard board at 1920x1080,
 /// in each look. Measured by the counting canvas: the menu look made 74 calls, and the TV look passed
@@ -61,31 +59,12 @@ final class _StaticRedrawPainter extends CustomPainter {
 
 Duration _ms(int ms) => Duration(milliseconds: ms);
 
-/// The eight districts of the standard board, each road ending at its Plaza.
-Board _standardBoard() {
-  final rules = CityRules.standard;
-  final starts = [
-    for (final corner in rules.corners) (id: corner, laneOf: null),
-    for (final corner in rules.corners) (id: '$corner${rules.laneSuffix}', laneOf: corner),
-  ];
-  return Board(
-    districts: [
-      for (final start in starts)
-        District(
-          id: start.id,
-          laneOf: start.laneOf,
-          road: [for (var i = 0; i < rules.roadLength - 1; i++) Tile('${start.id}/t$i'), Plaza('${start.id}/plaza')],
-        ),
-    ],
-  );
-}
-
 ToyLook _lookOf(HostLook look) => ToyLook.build(palette: ToyPalette.sunny, tv: look == HostLook.tv);
 
 CityPainter _cityPainter(Board board, CityStaticCache cache) {
   final rules = CityRules.standard;
   return CityPainter(
-    layout: CityLayout.compute(size: _tvSize, board: board, rules: rules),
+    layout: CityLayout.compute(size: tvSize, board: board, rules: rules),
     board: board,
     look: _lookOf(HostLook.menu),
     cache: cache,
@@ -95,8 +74,8 @@ CityPainter _cityPainter(Board board, CityStaticCache cache) {
 /// The canvas calls of one overlay frame: eight tokens, one on each road, at 1920x1080 in [look].
 int _overlayCalls(HostLook look) {
   final rules = CityRules.standard;
-  final board = _standardBoard();
-  final layout = CityLayout.compute(size: _tvSize, board: board, rules: rules);
+  final board = standardBoard();
+  final layout = CityLayout.compute(size: tvSize, board: board, rules: rules);
   final tokens = [
     for (final district in board.districts) Token(playerId: 'p${district.id}', roadId: district.id, tilePosition: 0),
   ];
@@ -105,20 +84,8 @@ int _overlayCalls(HostLook look) {
     layout,
   );
   final canvas = _CountingCanvas();
-  CityOverlayPainter(layout: layout, scene: scene, look: _lookOf(look)).paint(canvas, _tvSize);
+  CityOverlayPainter(layout: layout, scene: scene, look: _lookOf(look)).paint(canvas, tvSize);
   return canvas.total;
-}
-
-Future<void> _untilBuilt(WidgetTester tester, CityStaticCache cache, void Function() trigger) async {
-  final done = Completer<void>();
-  void onBuilt() {
-    if (!done.isCompleted) done.complete();
-  }
-
-  cache.addListener(onBuilt);
-  trigger();
-  await tester.runAsync(() => done.future);
-  cache.removeListener(onBuilt);
 }
 
 void main() {
@@ -173,7 +140,7 @@ void main() {
   });
 
   group('CityFrameHook', () {
-    for (final size in [_tvSize, _phonePortrait]) {
+    for (final size in [tvSize, phonePortrait]) {
       testWidgets('shows average, p95 and dropped from an injected stream at $size', (tester) async {
         tester.view.physicalSize = size;
         tester.view.devicePixelRatio = 1;
@@ -242,10 +209,10 @@ void main() {
     testWidgets('a cached CityPainter frame at 1920x1080 is one drawImage and nothing else', (tester) async {
       final cache = CityStaticCache();
       addTearDown(cache.dispose);
-      final painter = _cityPainter(_standardBoard(), cache);
-      await _untilBuilt(tester, cache, () => painter.paint(_CountingCanvas(), _tvSize));
+      final painter = _cityPainter(standardBoard(), cache);
+      await untilBuilt(tester, cache, tvSize, () => painter.paint(_CountingCanvas(), tvSize));
       final canvas = _CountingCanvas();
-      painter.paint(canvas, _tvSize);
+      painter.paint(canvas, tvSize);
       expect(canvas.calls.keys.toList(), ['Symbol("drawImage")']);
       expect(canvas.total, _cachedFrameCalls);
     });
@@ -259,9 +226,9 @@ void main() {
     test('the budget flags a painter that redraws the static layer on every frame', () {
       final cache = CityStaticCache();
       addTearDown(cache.dispose);
-      final redraw = _StaticRedrawPainter(_cityPainter(_standardBoard(), cache));
+      final redraw = _StaticRedrawPainter(_cityPainter(standardBoard(), cache));
       final canvas = _CountingCanvas();
-      redraw.paint(canvas, _tvSize);
+      redraw.paint(canvas, tvSize);
       expect(canvas.total, greaterThan(_cachedFrameCalls));
     });
   });

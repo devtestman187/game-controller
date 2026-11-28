@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/src/city/art/city_map_view.dart';
@@ -11,19 +9,14 @@ import 'package:party_host/src/city/board.dart';
 import 'package:party_host/src/city/rules.dart';
 
 import '../../support/all_looks.dart';
+import 'city_art_support.dart';
 
-const _phonePortrait = Size(360, 640);
 const _phoneLandscape = Size(640, 360);
 const _phoneWide = Size(800, 360);
 const _tablet = Size(960, 540);
-const _tvSize = Size(1920, 1080);
-const _allSizes = [_phonePortrait, _phoneLandscape, _phoneWide, _tablet, _tvSize];
+const _allSizes = [phonePortrait, _phoneLandscape, _phoneWide, _tablet, tvSize];
 const _playerCounts = [2, 4, 8];
 const _eightPlayers = 8;
-
-/// How long a test waits for the cache's image build before it fails, so a build that never
-/// finishes cannot hang the run.
-const _imageBuildTimeout = Duration(seconds: 5);
 
 /// The tile a token stands on: past the start, short of the Plaza.
 const _tokenTile = 2;
@@ -31,26 +24,8 @@ const _tokenTile = 2;
 /// A road wider than any test screen, to prove an overflow is caught.
 const _tooWide = 5000.0;
 
-Board _boardFor(int players) {
-  final rules = CityRules.standard;
-  final starts = [
-    for (final corner in rules.corners) (id: corner, laneOf: null),
-    for (final corner in rules.corners) (id: '$corner${rules.laneSuffix}', laneOf: corner),
-  ];
-  return Board(
-    districts: [
-      for (final start in starts.take(players))
-        District(
-          id: start.id,
-          laneOf: start.laneOf,
-          road: [for (var i = 0; i < rules.roadLength - 1; i++) Tile('${start.id}/t$i'), Plaza('${start.id}/plaza')],
-        ),
-    ],
-  );
-}
-
 CitySnapshot _snapshotFor(int players) {
-  final board = _boardFor(players);
+  final board = boardFor(players);
   final ids = [for (var i = 0; i < players; i++) 'p$i'];
   return CitySnapshot(
     board: board,
@@ -72,26 +47,9 @@ Future<void> _pump(WidgetTester tester, HostLook look, Size size, CitySnapshot s
     screen: CityMapView(snapshot: snapshot),
     size: size,
   );
-  await _untilImageBuilt(tester, size);
+  // The view requested its static image while it was pumped; this only waits for that build.
+  await untilBuilt(tester, _board(tester).cache, size, () {});
   await tester.pump();
-}
-
-/// Waits until the view's static image is built for [size], listening to its cache the way
-/// `_untilBuilt` does in city_frame_test.dart; returns at once when the image is already there.
-Future<void> _untilImageBuilt(WidgetTester tester, Size size) async {
-  final cache = _board(tester).cache;
-  if (cache.imageFor(size) != null) return;
-  final done = Completer<void>();
-  void onBuilt() {
-    if (!done.isCompleted) done.complete();
-  }
-
-  cache.addListener(onBuilt);
-  try {
-    await tester.runAsync(() => done.future.timeout(_imageBuildTimeout));
-  } finally {
-    cache.removeListener(onBuilt);
-  }
 }
 
 /// The first painter of type [T] among the view's custom paints, typed so callers need no cast.
@@ -128,7 +86,7 @@ void main() {
         tester,
         HostLook.menu,
         screen: const Row(children: [SizedBox(width: _tooWide)]),
-        size: _phonePortrait,
+        size: phonePortrait,
       );
 
       expect(tester.takeException(), isA<FlutterError>());
@@ -138,7 +96,7 @@ void main() {
   group('CityMapView on a phone', () {
     testWidgets('8 players keep tokens at least 24 dp wide on 360x640', (tester) async {
       await forEachLook(tester, (look) async {
-        await _pump(tester, look, _phonePortrait, _snapshotFor(_eightPlayers));
+        await _pump(tester, look, phonePortrait, _snapshotFor(_eightPlayers));
         final overlay = _overlay(tester);
 
         expect(overlay.tokenRadius, greaterThanOrEqualTo(cityMinTokenDiameterDp / 2), reason: look.name);
@@ -152,7 +110,7 @@ void main() {
 
     testWidgets('chips are dropped on 360x640 with 8 players but badge numbers stay', (tester) async {
       await forEachLook(tester, (look) async {
-        await _pump(tester, look, _phonePortrait, _snapshotFor(_eightPlayers));
+        await _pump(tester, look, phonePortrait, _snapshotFor(_eightPlayers));
         final overlay = _overlay(tester);
 
         expect(overlay.layout.tileSize, lessThan(cityChipMinTileSize), reason: look.name);
@@ -165,7 +123,7 @@ void main() {
   group('CityMapView on a TV', () {
     testWidgets('chips are shown on 1920x1080 with 8 players', (tester) async {
       await forEachLook(tester, (look) async {
-        await _pump(tester, look, _tvSize, _snapshotFor(_eightPlayers));
+        await _pump(tester, look, tvSize, _snapshotFor(_eightPlayers));
         final overlay = _overlay(tester);
 
         expect(overlay.layout.tileSize, greaterThanOrEqualTo(cityChipMinTileSize), reason: look.name);
@@ -184,7 +142,7 @@ void main() {
       expect(_board(tester).cache, same(cache));
       expect(cache.buildCount, 1, reason: 'same size, same board');
 
-      await _pump(tester, HostLook.menu, _phonePortrait, _snapshotFor(4));
+      await _pump(tester, HostLook.menu, phonePortrait, _snapshotFor(4));
       expect(_board(tester).cache, same(cache));
       expect(cache.buildCount, 2, reason: 'a new size builds once more');
     });
@@ -200,7 +158,7 @@ void main() {
         screen: SingleChildScrollView(
           child: Column(children: [CityMapView(snapshot: _snapshotFor(2))]),
         ),
-        size: _phonePortrait,
+        size: phonePortrait,
       );
 
       expect(
@@ -219,7 +177,7 @@ void main() {
           scrollDirection: Axis.horizontal,
           child: Row(children: [CityMapView(snapshot: _snapshotFor(2))]),
         ),
-        size: _phonePortrait,
+        size: phonePortrait,
       );
 
       expect(
