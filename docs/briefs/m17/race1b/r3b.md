@@ -1,0 +1,15 @@
+job: race1b r3b — present rules: bat on a snap, shorter fuse, pop on the slow side, never a piece
+stop: no wiring into match.dart or cat_chaos.dart, no painter, no settings; no new PuzzleEventKind (a pop is the state's `popped` flag); the rules never touch a game's pieces
+read: docs/briefs/templates/COMMON.md · packages/puzzle_game/lib/src/present.dart (from r3a: PresentState) · packages/puzzle_game/lib/src/cat_tuning.dart:1-60 (constants pattern) · packages/puzzle_game/lib/src/settings.dart:1-12 (Chaos, CatPreset) · owner plan: "each snap bats it to the other side and shortens the fuse; it pops on the slow side as confetti or a wiggle; never removes a piece; one effect per child at a time" · Q4: "The hot-potato present replaces the cat knock on Calm and Lively; Wild keeps the cat; the present never costs a piece."
+changes: PresentRules (new class) · PresentRules.enabled · PresentRules.onSnap · PresentRules.update
+model: haiku
+turns: 45
+expected-min: 25
+tests-first: exempt new type; the new test file cannot compile before the class exists
+do:
+1 New packages/puzzle_game/lib/src/present_rules.dart, pure Dart (no Flutter), `final class PresentRules`. Constants, all marked `PROVISIONAL (fuse values lock after the kid playtest, r3g)`: startDelayS 20, startFuseMs 12000, snapCutMs 1500, minFuseMs 4000, popMs 1500, gapS 15. API: `static bool enabled(PuzzleSettings s) => s.chaos != Chaos.off && s.catPreset != CatPreset.wild;` (one place, so the owner can change the gate); `PresentState? get state`; `void onSnap(PuzzleSide side)`: when a present is held and `side == holder`, it is batted to the other side and fuseMs drops by snapCutMs (not below minFuseMs; fuseTotalMs stays the start value); a snap by the other side does nothing; no present or already popped: nothing. `void update(double dt, {required bool enabled, required bool oneBoard})`: elapsed time counts; when enabled and not oneBoard and no present and elapsed >= startDelayS (or gapS after the last pop ended), a present appears held by side left (first) and then alternating; while held, fuseMs counts down by dt*1000; at 0 it becomes popped for popMs, then state is null and gapS starts; when `enabled` goes false the present is removed at once. `void end()` clears it for good. Doc comments in plain words; a doc line says the present never costs a piece (no piece code exists here).
+2 New test packages/puzzle_game/test/present_rules_test.dart, written and run first: not before startDelayS; appears once; a snap by the holder bats it and cuts the fuse by snapCutMs; the floor minFuseMs; a snap by the other side changes nothing; the pop after the fuse runs out, state gone after popMs, a new one after gapS; enabled false removes it; oneBoard never has one; end() clears; enabled() true for lively+little, calm+party, false for off and for wild.
+3 Before finishing run `dart analyze` on the files you changed and fix every info, warning and error.
+allow: packages/puzzle_game/lib/src/present_rules.dart · packages/puzzle_game/lib/puzzle_game.dart · packages/puzzle_game/test/present_rules_test.dart
+check: format analyze
+report: docs/briefs/m17/race1b/r3b-report.md

@@ -1,0 +1,16 @@
+job: race1b r3a — PresentState in the match snapshot (contract), with the 2 KB check and an older-peer test
+stop: no rules, no painter, no match.dart or settings change; PuzzleSnapshot.version and MatchSnapshot.version stay 2 (an old peer throws on a bumped v)
+read: docs/briefs/templates/COMMON.md · packages/puzzle_game/lib/src/snapshot.dart:268-354 (MatchSnapshot) · packages/puzzle_game/lib/src/cat_view.dart:49-110 (CatView: the pattern to copy) · packages/puzzle_game/test/snapshot_eight_players_test.dart:1-85 (nightFrame, maxBytes) · packages/puzzle_game/test/cat_snapshot_test.dart:70-110 · owner plan: "PresentState (holder, fuse, popped) in the snapshot, with the 2 KB check"
+changes: PresentState (new class) · MatchSnapshot.present · MatchSnapshot json key 'pr'
+model: haiku
+turns: 45
+expected-min: 25
+tests-first: exempt new type; the new test file cannot compile before the class exists
+do:
+1 New packages/puzzle_game/lib/src/present.dart: `final class PresentState { const PresentState({required this.holder, required this.fuseMs, required this.fuseTotalMs, this.popped = false}); final PuzzleSide holder; final int fuseMs; final int fuseTotalMs; final bool popped; }` with `List<Object> toJson() => [holder.index, fuseMs, fuseTotalMs, popped ? 1 : 0]`, `static PresentState fromJson(List<Object?> j)`, `lerpTo(PresentState next, double t)` (holder, fuseTotalMs and popped from this frame when t < 0.5, else next; fuseMs linear), ==/hashCode. Doc comments in the style of cat_view.dart: the hot-potato present is batted between sides, its fuse runs down, it pops on the slow side and never takes a piece.
+2 snapshot.dart: add `this.present` (PresentState?) to MatchSnapshot's constructor, toJson key 'pr' (only when non-null, like 'cat'), fromJson reads it when present (absent key = null; an old frame without 'pr' decodes as before), lerpTo like the cat (both frames: lerp; one: nearer frame's). Export present.dart from packages/puzzle_game/lib/puzzle_game.dart (alphabetical). snapshot.dart is 354 lines: keep the growth under 12 lines.
+3 New test packages/puzzle_game/test/present_snapshot_test.dart, written and run first: round trip with and without present; an older-peer test: a frame WITH 'pr' still decodes where the key is ignored, shown by removing 'pr' from the map and checking boards, seed and cat are equal, and a JSON map with an unknown extra key 'zz' still decodes (this is what the m17.1 phone does); lerp cases; size: use the nightFrame helper pattern from snapshot_eight_players_test.dart (copy the helper, or import it if public) to prove a frame with a present adds at most 40 bytes at 4, 6 and 8 players and the 4-player frame stays under PuzzleSnapshot.maxBytes. Also add a present to the existing nightFrame in snapshot_eight_players_test.dart.
+4 Before finishing run `dart analyze` on the files you changed and fix every info, warning and error.
+allow: packages/puzzle_game/lib/src/present.dart · packages/puzzle_game/lib/src/snapshot.dart · packages/puzzle_game/lib/puzzle_game.dart · packages/puzzle_game/test/present_snapshot_test.dart · packages/puzzle_game/test/snapshot_eight_players_test.dart · packages/puzzle_game/test/cat_snapshot_test.dart
+check: format analyze
+report: docs/briefs/m17/race1b/r3a-report.md

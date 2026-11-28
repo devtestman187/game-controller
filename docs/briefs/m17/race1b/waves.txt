@@ -1,0 +1,6 @@
+# wave 1: the contract (PresentState in the snapshot)
+r3a
+# wave 2: rules and painter, no shared files (both need r3a)
+r3b r3d
+# wave 3: wiring (needs r3b)
+r3c
