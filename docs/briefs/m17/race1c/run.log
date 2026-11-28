@@ -78,3 +78,10 @@ RESULT: DONE: 3 jobs, 48 min
 2026-11-27 23:35:08 committed r3h2: ae9f19dc party_host: held line listens to pops, tracker disposes, named depths
 2026-11-27 23:35:10 committed r3h3: 4e7c84f1 race1c r3h3: a snap only shortens the fuse
 2026-11-27 23:35:10 phase: review (apply took 5s)
+2026-11-27 23:38:38 reviewed wave4: 10 finding(s)
+METRICS r3h worker=claude model=claude-haiku-5-5 turns=31 in=42 out=28027 cache=880725 min=2.9 wall=3.9 result=0
+METRICS r3h2 worker=claude model=claude-haiku-5-5 turns=28 in=42 out=19129 cache=669051 min=3.6 wall=4.3 result=0
+METRICS r3h3 worker=claude model=claude-haiku-5-5 turns=20 in=22 out=15489 cache=307923 min=2.2 wall=2.7 result=0
+METRICS wave4-review worker=claude model=claude-haiku-5-5 turns=42 in=42 out=39631 cache=1270809 min=3.1 wall=- result=0
+2026-11-27 23:38:43 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/race1c/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 6 jobs, 15 min
