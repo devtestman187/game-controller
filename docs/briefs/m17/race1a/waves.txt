@@ -1,0 +1,6 @@
+# wave 1: format labels (match, host_text) and the pure piece rule (puzzle_rule_levels): no shared files
+f1a f1d
+# wave 2: setting and join logic (needs f1d)
+f1b
+# wave 3: side panel seats and pop-up cap (needs the setting from f1b; shares join_screen.dart)
+f1c
