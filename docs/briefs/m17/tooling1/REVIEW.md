@@ -84,3 +84,10 @@ tooling1 run review: 0 must, 9 should, 6 could in REVIEW.md. Open: one fix batch
 ## Delete
 
 - none
+
+## Verdicts (driver, Nov 28)
+Round 1 and 2 musts (isnt/wont forms, f1/f2 self-check) were fixed by f2/f3 or are report-format only (REVIEW-round1.md, REVIEW-round2.md). Round 3: 0 must; max fix rounds reached.
+- should: curly apostrophe, missing bare-form test lines, real-time socket wait, unmeasured cause, new-file test placement - code-health (docs/code-health.md, tooling1 entries).
+- should: system-test-plan.md:9,46 and driver-kit.md:149 - trivial, fixed by hand.
+- should: f1/f2 report self-check, f1 run-log claim - minor, noted in code-health; no f1run*.log exists in the tree.
+- Owner questions: keep ee2162aa/f1 poll (suite no faster: 10 s both)? keep real-time socket wait (code-health entry)?
