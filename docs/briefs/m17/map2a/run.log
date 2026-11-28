@@ -76,3 +76,13 @@ RESULT: DONE: 2 jobs, 9 min
 2026-11-28 03:44:02 committed f2: c295429b map2a: city cache handles failed builds, paint size assert
 2026-11-28 03:44:04 committed f1: b1b2bd87 Built tiles use the star colour, not the unbuilt paper
 2026-11-28 03:44:04 phase: review (apply took 4s)
+2026-11-28 03:44:26 phase: worker (review took 22s)
+2026-11-28 03:44:26 start f3
+2026-11-28 03:47:59 f3 finished: result 0 (51 turns, 3 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 30/469322/37952/18112
+2026-11-28 03:48:31 WARN: job f3 used 51 turns, over its cap of 35 (its own checks passed; accepted)
+2026-11-28 03:48:31 phase: tests-first (worker took 245s)
+2026-11-28 03:48:34 phase: check (tests-first took 3s)
+2026-11-28 03:48:39 combined check: skips protocol connection metrics kit look arena puzzle tools (no job's change reaches them)
+2026-11-28 03:51:59 phase: apply (check took 205s)
+2026-11-28 03:52:00 committed f3: 4dbd33ac map2a: boolean names in the city scene, late-joiner test uses the rule
+2026-11-28 03:52:01 phase: review (apply took 2s)
