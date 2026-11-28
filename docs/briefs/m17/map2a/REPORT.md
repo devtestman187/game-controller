@@ -38,3 +38,8 @@ wave4-review claude claude-haiku-5-5     20 22 11884  334196     1.0    - 0 (sub
 - Full check on the tip: All checks passed (30s, 11 cached). Fixed, unverified: none on device. Proposed lessons: 0.
 - agent-cost: total $2.56 (opus 0.93, sonnet 1.20, haiku 0.26, fable 0.17), inline waits >1: 1 agent.
 - Driver calls: about 14; thumb-wait waiters: 10, 4 and 8 wait-run calls; thumb-haiku packs: 2.
+
+## proc-sweep
+ORPHAN 59740 flutter_tester 10543s C:/src/flutter/bin/cache/artifacts/engine/windows-x64/flutter_tester.exe --disable-vm-service --enable-checked-mode --ve
+proc-sweep: 1 process(es) listed (1 orphaned flutter_tester/dart)
+no background command of mine is still running
