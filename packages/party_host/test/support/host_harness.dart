@@ -140,6 +140,9 @@ class _HarnessApp extends ConsumerWidget {
       look: look,
       child: MaterialApp(
         title: 'Thumb Party host',
+        // The shipped app hides the debug banner; a screenshot taken here must
+        // not show it over the header's code chip (seatfit).
+        debugShowCheckedModeBanner: false,
         theme: toyTheme(look),
         navigatorObservers: [ref.watch(toyLookRouteObserverProvider)],
         // The phones work every screen like the remote (PRD v2 T21), and a

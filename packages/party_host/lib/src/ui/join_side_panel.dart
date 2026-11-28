@@ -156,7 +156,20 @@ class _SidePanel extends StatelessWidget {
             ],
           ),
         );
-        return GestureDetector(behavior: HitTestBehavior.opaque, onTap: tap, child: card);
+        // The seats never go below a badge, so a side with seats to draw and
+        // little room (a waiting phone's line under the sides, a short stage)
+        // would overflow its card: the card is then drawn at the height its
+        // seats need and scaled down to the room, as the body is (seatfit).
+        final needed = _sideHeaderPx + _seatHeadroomPx + 2 * look.sizes.outlineWidth + seats * rowPx;
+        final fits = !room.hasBoundedHeight || needed <= room.maxHeight;
+        final drawn = fits
+            ? card
+            : FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.topCenter,
+                child: SizedBox(width: room.maxWidth, height: needed, child: card),
+              );
+        return GestureDetector(behavior: HitTestBehavior.opaque, onTap: tap, child: drawn);
       },
     );
   }
