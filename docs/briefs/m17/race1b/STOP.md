@@ -1,0 +1,29 @@
+STOP 2026-11-27 20:32:16 docs/briefs/m17/race1b
+cause: tools/review.sh found a FAIL after r3d r3b (see .dart_tool/run-jobs/docs_briefs_m17_race1b/run-review.log); nothing of this wave is committed
+class: review-fail
+repair: run bash tools/review.sh, fix the FAIL lines it prints in the code (never a rule), then restart (docs/flash-digest.md "Repair a stop").
+failing tests and errors (run-check.log):
+  none found
+files outside allow (flash log):
+  none found
+run.log (last 20 lines):
+  2026-11-27 20:12:02 start r3a
+  2026-11-27 20:16:02 r3a finished: result 0 (23 turns, 3 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 24/341839/33008/19924
+  2026-11-27 20:16:03 phase: tests-first (worker took 242s)
+  2026-11-27 20:16:18 tests-first ok: packages/puzzle_game/test/present_snapshot_test.dart fails on the old code
+  2026-11-27 20:16:30 phase: check (tests-first took 27s)
+  2026-11-27 20:16:38 combined check: skips protocol connection metrics kit look arena tools (no job's change reaches them)
+  2026-11-27 20:20:34 phase: apply (check took 244s)
+  2026-11-27 20:20:36 committed r3a: af673590 Add PresentState to the match snapshot, with a 40-byte budget
+  2026-11-27 20:20:36 phase: review (apply took 2s)
+  2026-11-27 20:20:57 phase: worker (review took 21s)
+  2026-11-27 20:20:58 start r3b
+  2026-11-27 20:22:40 start r3d
+  2026-11-27 20:26:41 r3d finished: result 0 (31 turns, 3 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 42/913292/59904/36257
+  2026-11-27 20:27:12 r3b finished: result 0 (16 turns, 6 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 30/400093/30430/20821
+  2026-11-27 20:27:13 phase: tests-first (worker took 375s)
+  2026-11-27 20:27:28 tests-first ok: packages/puzzle_game/test/present_paint_test.dart fails on the old code
+  2026-11-27 20:27:37 tests-first ok: packages/puzzle_game/test/present_rules_test.dart fails on the old code
+  2026-11-27 20:28:11 phase: check (tests-first took 59s)
+  2026-11-27 20:28:20 combined check: skips protocol connection metrics kit look arena tools (no job's change reaches them)
+  2026-11-27 20:32:16 STOPPED: tools/review.sh found a FAIL after r3d r3b (see .dart_tool/run-jobs/docs_briefs_m17_race1b/run-review.log); nothing of this wave is committed
