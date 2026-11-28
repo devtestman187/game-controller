@@ -40,8 +40,8 @@ void main() {
     expect(w.bats.single.knocked, isTrue, reason: 'Wild keeps the cat\'s knock of the side ahead');
   });
 
-  test('a present comes after its start delay on Little and Party, Calm and Lively', () {
-    for (final (chaos, preset) in [(Chaos.little, CatPreset.lively), (Chaos.party, CatPreset.calm)]) {
+  test('a present comes after its start delay at A lot, Calm and Lively', () {
+    for (final (chaos, preset) in [(Chaos.party, CatPreset.lively), (Chaos.party, CatPreset.calm)]) {
       final m = raceOn(preset, chaos: chaos);
       final w = Watch(m);
       w.to(PresentRules.startDelayS - 1);
@@ -51,19 +51,20 @@ void main() {
     }
   });
 
-  test('no present on Off, on Wild, or on one board', () {
+  test('no present on Off, on A little, on Wild, or on one board', () {
     final off = Watch(raceOn(CatPreset.lively, chaos: Chaos.off));
-    final wild = Watch(raceOn(CatPreset.wild, chaos: Chaos.little));
-    final solo = Watch(soloOn(Chaos.little));
+    final wild = Watch(raceOn(CatPreset.wild, chaos: Chaos.party));
+    final little = Watch(raceOn(CatPreset.lively, chaos: Chaos.little));
+    final solo = Watch(soloOn(Chaos.party));
     final end = PresentRules.startDelayS + 5;
-    for (final w in [off, wild, solo]) {
+    for (final w in [off, little, wild, solo]) {
       w.to(end);
       expect(w.match.snapshot().present, isNull);
     }
   });
 
   test('a snap by the side holding the present bats it to the other side', () {
-    final m = raceOn(CatPreset.lively, chaos: Chaos.little);
+    final m = raceOn(CatPreset.lively, chaos: Chaos.party);
     final w = Watch(m);
     w.to(PresentRules.startDelayS + 1);
     expect(m.snapshot().present!.holder, PuzzleSide.left, reason: 'the left side holds the first present');
@@ -74,7 +75,7 @@ void main() {
   });
 
   test('the present never changes a side\'s placed count, even when its fuse pops', () {
-    final m = raceOn(CatPreset.lively, chaos: Chaos.little);
+    final m = raceOn(CatPreset.lively, chaos: Chaos.party);
     final left = m.gameOf(PuzzleSide.left);
     final right = m.gameOf(PuzzleSide.right);
     put(m, left, 'p1', 0);

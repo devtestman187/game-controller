@@ -112,13 +112,16 @@ void main() {
     expect(rules.state, isNull);
   });
 
-  test('enabled is true for Little chaos on Lively, and for Party chaos on Calm', () {
-    expect(PresentRules.enabled(const PuzzleSettings(chaos: Chaos.little)), isTrue);
-    expect(PresentRules.enabled(const PuzzleSettings(chaos: Chaos.party, catPreset: CatPreset.calm)), isTrue);
-  });
-
-  test('enabled is false with chaos off, and false on Wild', () {
-    expect(PresentRules.enabled(const PuzzleSettings()), isFalse);
-    expect(PresentRules.enabled(const PuzzleSettings(chaos: Chaos.little, catPreset: CatPreset.wild)), isFalse);
+  test('enabled over chaos x pace: the present only at A lot on Calm and Lively', () {
+    for (final chaos in Chaos.values) {
+      for (final preset in CatPreset.values) {
+        final want = chaos == Chaos.party && preset != CatPreset.wild;
+        expect(
+          PresentRules.enabled(PuzzleSettings(chaos: chaos, catPreset: preset)),
+          want,
+          reason: '${chaos.name} ${preset.name}',
+        );
+      }
+    }
   });
 }

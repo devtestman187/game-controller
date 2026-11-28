@@ -8,9 +8,9 @@ import 'settings.dart';
 /// it on and shortens its fuse, and how it pops on the slow side. Pure Dart: it never draws. The present never costs
 /// a piece, as no piece code runs here.
 final class PresentRules {
-  /// How the present's rules run in a round: a present only where chaos is on and the cat is not Wild, which the
+  /// How the present's rules run in a round: a present only at A lot chaos and not on Wild (owner, Nov 27: A little has none), which the
   /// owner may change here in one place.
-  static bool enabled(PuzzleSettings s) => s.chaos != Chaos.off && s.catPreset != CatPreset.wild;
+  static bool enabled(PuzzleSettings s) => s.chaos == Chaos.party && s.catPreset != CatPreset.wild;
 
   /// PROVISIONAL (fuse values lock after the kid playtest, r3g). Seconds of a round before the first present.
   static const startDelayS = 20.0;
