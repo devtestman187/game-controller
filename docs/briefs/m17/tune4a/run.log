@@ -36,3 +36,21 @@ METRICS wave1-review worker=claude model=claude-haiku-5-5 turns=16 in=20 out=258
 METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=8 in=12 out=6462 cache=115928 min=0.5 wall=- result=0
 2026-11-28 08:32:39 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/tune4a/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 2 jobs, 21 min
+2026-11-28 08:34:58 RUN_MAX_MIN=45 min (computed backstop of the jobs still to do)
+2026-11-28 08:34:58 start at c265d9d9 on m17
+2026-11-28 08:34:58 worker: claude
+2026-11-28 08:34:59 proc-sweep: ORPHAN 59740 flutter_tester 27349s C:/src/flutter/bin/cache/artifacts/engine/windows-x64/flutter_tester.exe --disable-vm-service --enable-checked-mode --ve
+2026-11-28 08:34:59 proc-sweep: ORPHAN 89384 bash 3s "C:/Program Files/Git/bin/../usr/bin/bash.exe" -c "source /c/Users/mrman/.claude/shell-snapshots/snapshot-bash-179555545
+2026-11-28 08:34:59 proc-sweep: proc-sweep: 2 process(es) listed (1 orphaned flutter_tester/dart)
+2026-11-28 08:35:01 phase: preflight
+2026-11-28 08:35:08 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-28 08:35:23 phase: worker (preflight took 22s)
+2026-11-28 08:35:24 start h4b2
+2026-11-28 08:38:11 h4b2 finished: result 0 (18 turns, 2 min) model claude-sonnet-5-5, ladder 1, tokens in/read/write/out 22/295423/40469/19886
+2026-11-28 08:38:12 phase: tests-first (worker took 169s)
+2026-11-28 08:38:12 phase: check (tests-first took 0s)
+2026-11-28 08:38:14 combined check: skips protocol connection metrics kit look arena puzzle host phone tv tools (no job's change reaches them)
+2026-11-28 08:38:30 phase: apply (check took 18s)
+2026-11-28 08:38:32 committed h4b2: d27af608 tune4a h4b2: City Rush tuning report v3
+2026-11-28 08:38:32 phase: review (apply took 2s)
+2026-11-28 08:38:32 wave review skipped: wave 1 is the whole run, the run review covers it
