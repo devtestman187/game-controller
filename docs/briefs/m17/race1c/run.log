@@ -51,3 +51,30 @@ METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=17 in=20 out=251
 METRICS wave3-review worker=claude model=claude-haiku-5-5 turns=20 in=22 out=13044 cache=339952 min=1.1 wall=- result=0
 2026-11-27 23:21:54 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/race1c/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 3 jobs, 48 min
+2026-11-27 23:22:54 RUN_MAX_MIN=107 min (computed backstop of the jobs still to do)
+2026-11-27 23:22:55 start at 5dcb5e79 on m17
+2026-11-27 23:22:55 worker: claude
+2026-11-27 23:22:56 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-27 23:23:06 phase: preflight
+2026-11-27 23:23:13 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-27 23:23:28 phase: worker (preflight took 22s)
+2026-11-27 23:23:29 skip r3e (already done)
+2026-11-27 23:23:44 phase: worker (worker took 16s)
+2026-11-27 23:23:44 skip r3f (already done)
+2026-11-27 23:24:00 phase: worker (worker took 16s)
+2026-11-27 23:24:00 skip r3g (already done)
+2026-11-27 23:24:16 phase: worker (worker took 16s)
+2026-11-27 23:24:16 start r3h
+2026-11-27 23:24:42 start r3h2
+2026-11-27 23:28:06 start r3h3
+2026-11-27 23:28:07 r3h finished: result 0 (31 turns, 3 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 42/826438/54287/28027
+2026-11-27 23:29:00 r3h2 finished: result 0 (28 turns, 4 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 42/635467/33584/19129
+2026-11-27 23:30:49 r3h3 finished: result 0 (20 turns, 2 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 22/279959/27964/15489
+2026-11-27 23:30:49 phase: tests-first (worker took 393s)
+2026-11-27 23:31:02 phase: check (tests-first took 13s)
+2026-11-27 23:31:17 combined check: skips protocol connection metrics kit look arena tools (no job's change reaches them)
+2026-11-27 23:35:05 phase: apply (check took 243s)
+2026-11-27 23:35:07 committed r3h: 01a76e8f Fix the golden slot: a wrong re-snap does not claim it
+2026-11-27 23:35:08 committed r3h2: ae9f19dc party_host: held line listens to pops, tracker disposes, named depths
+2026-11-27 23:35:10 committed r3h3: 4e7c84f1 race1c r3h3: a snap only shortens the fuse
+2026-11-27 23:35:10 phase: review (apply took 5s)
