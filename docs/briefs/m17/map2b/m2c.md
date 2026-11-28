@@ -1,0 +1,17 @@
+job: map2b m2c — city map widget that fits phone and TV sizes (scale, token floor, label density)
+stop: no night logic, no wiring into a game or screen, no "Try the map" entry. No rule, tuning or FuseParams change. Do not touch city_painter.dart, city_layout.dart, city_scene.dart.
+read: docs/briefs/templates/COMMON.md · packages/party_host/lib/src/city/art/city_painter.dart:34-70,138-160 (CityPainter, CityStaticCache.request) · packages/party_host/lib/src/city/art/city_overlay_painter.dart:19-60 (token radius, chips) · packages/party_host/lib/src/city/art/city_scene.dart:27-58,138-165 (CitySnapshot, CityScene.from) · packages/party_host/lib/src/city/art/city_layout.dart:41-85 · packages/party_host/lib/src/city/art/city_tokens.dart:1-30 · packages/party_host/test/city/art/city_scene_test.dart:1-60 (board helper) · packages/party_host/test/support/all_looks.dart · owner: map must also draw when the host is a phone; tokens at 8 players stay at least 24 dp on the phone
+changes: CityMapView (new, city/art/city_map_view.dart) · CityOverlayPainter.minTokenDiameter (new optional named param, default 0)
+model: sonnet
+turns: 80
+expected-min: 30
+tests-first: exempt new file only; the widget test fails on an empty stub by construction
+do:
+1 New city/art/city_map_view.dart: `CityMapView({required CitySnapshot snapshot})`, a StatefulWidget. It owns a CityStaticCache (dispose it) and in a LayoutBuilder computes CityLayout.compute for the constraints, then stacks a CustomPaint(CityPainter) and a CustomPaint(CityOverlayPainter) at that size (RepaintBoundary on the overlay). Look from ToyLookScope.of(context). Rebuild the layout only when size, board or rules change. No night or rule logic: it only draws the snapshot.
+2 Phone floor: add optional `minTokenDiameter` (double, default 0) to CityOverlayPainter in city_overlay_painter.dart; token radius = max(tileSize * cityTokenRadiusShare, minTokenDiameter / 2). The view passes 24 (a const `cityMinTokenDiameterDp` in city_map_view.dart). Label density: the view drops the chips (snapshot copy with bolts null) when layout.tileSize < a const `cityChipMinTileSize` (14), so a phone is not cluttered; badge numbers stay.
+3 Tests (write first, run first) test/city/art/city_map_view_test.dart: pump the view in sizes 360x640, 640x360, 800x360, 960x540 and 1920x1080 (TV: toyTvProvider.overrideWithValue(true)), each with 2, 4 and 8 players under every look (forEachLook from all_looks.dart); assert no tester.takeException (no overflow), the token radius used is >= 12 dp at 8 players on 360x640 (read it from the overlay painter via the CustomPaint widget), chips absent at 360x640 with 8 players and present at 1920x1080, the cache builds once per size. Add a case proving the test catches overflow: a deliberately oversized widget in the same harness throws (expect the overflow exception) so the assertion is not vacuous.
+4 Each file under 380 lines. Run `dart analyze` on changed files and fix every info, warning and error. Also run the existing city/art tests.
+allow: packages/party_host/lib/src/city/art/city_map_view.dart · packages/party_host/lib/src/city/art/city_overlay_painter.dart · packages/party_host/test/city/art/city_map_view_test.dart · packages/party_host/test/city/art/city_overlay_painter_test.dart
+check: format analyze
+touch-target: exempt non-interactive map drawing, no buttons
+report: docs/briefs/m17/map2b/m2c-report.md

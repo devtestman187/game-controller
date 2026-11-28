@@ -1,0 +1,1 @@
+The golden slot now glows on both boards, and the confetti holds still while the game is paused. Behind the scenes the City Rush map art is ready (painted city, tokens, gate, roadworks cone) and now fits phone and TV screens (in progress); it is not in any game yet, so there is nothing to test.
