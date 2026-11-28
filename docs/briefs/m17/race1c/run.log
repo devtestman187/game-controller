@@ -17,3 +17,14 @@
 2026-11-27 22:58:21 phase: apply (check took 347s)
 2026-11-27 22:58:22 committed r3e: 7ba40d43 race1c r3e: golden slot rules (double snap, two boards)
 2026-11-27 22:58:23 phase: review (apply took 2s)
+2026-11-27 22:58:39 phase: worker (review took 16s)
+2026-11-27 22:58:40 start r3f
+2026-11-27 23:03:00 r3f finished: result 0 (30 turns, 4 min) model claude-sonnet-5-5, ladder 1, tokens in/read/write/out 36/537226/48076/15845
+2026-11-27 23:03:00 phase: tests-first (worker took 261s)
+2026-11-27 23:04:14 tests-first ok: packages/party_host/test/present_pop_widgets_test.dart fails on the old code
+2026-11-27 23:04:29 phase: check (tests-first took 89s)
+2026-11-27 23:04:37 combined check: skips protocol connection metrics kit look arena puzzle tools (no job's change reaches them)
+2026-11-27 23:08:02 phase: apply (check took 213s)
+2026-11-27 23:08:02 finding: r3f's report has no Summary block in its first 40 lines
+2026-11-27 23:08:03 committed r3f: c78edb95 race1c r3f: pop confetti and who-held-it results line
+2026-11-27 23:08:04 phase: review (apply took 2s)
