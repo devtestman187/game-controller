@@ -432,3 +432,4 @@ Not built. bugs2 wave A with the 1-hour cache showed no large Sonnet cache write
 - present_pop_widgets.dart `paused` should read `isPaused` (coding-guidelines:50), also puzzle_screen.dart call and the test; a pause before the burst's first frame (value 0) loses the burst; the "not replayed" check (test :156-158) pumps 1500 ms before asserting; `addTearDown(paused.dispose)`; pausableStage repeats stage.
 - slot_paint.dart golden glow constants share one block comment (one doc line each); snapshot.dart lerpTo dartdoc lacks `golden`; golden_glow_paint_test paints Sunny only (add a Night case); puzzle_screen.dart is at 380 lines and puzzle_painter.dart at 378: split before the next edit.
 - Commit 901486e6 subject reads "Subject: `fix(glow1): ...`" (left, no history rewrite).
+- glow1 f1 (wave 3 review): golden_match_painter_test shouldRepaint test cannot fail as written (rewrite to check what it names); pin the painter pixel checks to target 0's slot rectangle.

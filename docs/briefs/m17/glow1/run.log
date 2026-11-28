@@ -86,3 +86,4 @@ METRICS f1 worker=claude model=claude-haiku-5-5 turns=22 in=38 out=17142 cache=5
 METRICS wave3-review worker=claude model=claude-haiku-5-5 turns=24 in=22 out=22127 cache=439563 min=1.8 wall=- result=0
 2026-11-28 01:40:23 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/glow1/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 4 jobs, 9 min
+full check: All checks passed (327s, 7 cached). Logs: C:\Users\mrman\AppData\Local\Temp/thumbparty-check-20261128-014046 2026-11-28 d23099de

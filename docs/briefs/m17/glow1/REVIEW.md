@@ -15,7 +15,7 @@ Questions only the owner can answer: pop during a pause dropped or replayed (ope
 
 ## Findings
 
-- **must** packages/puzzle_game/lib/src/match.dart:338 `golden: golden,` in `Match.snapshot()` is untested: the five tests in golden_snapshot_test.dart build `MatchSnapshot` by hand → add a new test file that calls `PuzzleMatch.snapshot()` on a split match with a golden target and checks `golden` (from: g1, wave 1 review)
+- **must** packages/puzzle_game/lib/src/match.dart:338 `golden: golden,` in `Match.snapshot()` is untested: the five tests in golden_snapshot_test.dart build `MatchSnapshot` by hand → add a new test file that calls `PuzzleMatch.snapshot()` on a split match with a golden target and checks `golden` (from: g1, wave 1 review) -- fixed by f1 (5a38c50c)
 - **should** packages/puzzle_game/lib/src/snapshot.dart:273 and :328 `gd` is a wire change with no `version` bump (`version = 2` at :275) and no release route, against the Nov 27 owner rule → Claude decides: bump, or document why an old phone ignores the key, and how it ships (from: across jobs, g1)
 - **should** packages/party_host/lib/src/ui/present_pop_widgets.dart:66 (field) and :60 (constructor) `paused` is a boolean named as an adjective; `docs/coding-guidelines.md:50` says booleans read as questions → rename to `isPaused` here, at the call site `puzzle_screen.dart:353-355`, and in the test file (from: c1; the wave-1 review missed this rule)
 - **should** commit 901486e6 (c1) subject is ``Subject: `fix(glow1): confetti freezes while the game is paused` `` → the commit subject should be `fix(glow1): confetti freezes while the game is paused`; reword only if Claude approves a history change (from: c1; run.log:37)
