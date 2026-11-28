@@ -43,7 +43,7 @@ wave4-review claude claude-haiku-5-5    16 18 18611  281596     1.5    - 0 (subt
 - Behaviour change: the cat's knock is now Wild only (CatChaos._mayKnock). Calm and Lively with Chaos on get the present instead.
 
 ## Owner questions
-1. Present gate (PresentRules.enabled, one line): present appears when cat chaos is A little or A lot and pace is Calm or Lively (default). Alternative: only with A lot (exactly where the knock was). Default kept so the tester build shows it.
+1. Present gate: DECIDED by the owner Nov 27 (1A): the present appears only at A lot on Calm and Lively; A little has neither present nor knock; Wild keeps the cat knock (see presentgate batch).
 2. Fuse values are PROVISIONAL (start delay 20 s, fuse 12 s, each snap cuts 1.5 s to a 4 s floor, pop 1.5 s, gap 15 s); they lock after the kid playtest (r3g in B11).
 3. Not verified: that night pause and host-away stop PuzzleMatch.update (the present clock depends on it); noted in code-health.
 
