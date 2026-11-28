@@ -37,7 +37,7 @@ CityScene _sceneOf(
   Map<String, int> built = const {},
   List<Token> tokens = const [],
   Bolts? bolts,
-  bool roadworks = false,
+  bool hasRoadworks = false,
 }) {
   final snapshot = CitySnapshot(
     board: board,
@@ -45,7 +45,7 @@ CityScene _sceneOf(
     tilesBuilt: built,
     tokens: tokens,
     bolts: bolts,
-    roadworks: roadworks,
+    hasRoadworks: hasRoadworks,
   );
   return CityScene.from(snapshot, _layoutOf(board));
 }
@@ -58,12 +58,12 @@ void main() {
       expect(scene.roads, hasLength(_fourPlayers));
       for (final road in scene.roads) {
         expect(road.builtTiles, 0, reason: road.roadId);
-        expect(road.complete, isFalse, reason: road.roadId);
+        expect(road.isComplete, isFalse, reason: road.roadId);
         expect(road.roadLength, CityRules.standard.roadLength);
       }
       expect(scene.tokens, isEmpty);
       expect(scene.gate, isNull);
-      expect(scene.roadworksCone, isFalse);
+      expect(scene.hasRoadworksCone, isFalse);
       expect(scene.chips, isEmpty);
     });
 
@@ -83,9 +83,9 @@ void main() {
 
       expect(scene.roads[0].roadId, 'cog-hill');
       expect(scene.roads[0].builtTiles, 2);
-      expect(scene.roads[0].complete, isFalse);
+      expect(scene.roads[0].isComplete, isFalse);
       expect(scene.roads[1].builtTiles, 4);
-      expect(scene.roads[1].complete, isFalse);
+      expect(scene.roads[1].isComplete, isFalse);
       expect(scene.tokens[0].centre, layout.tileCenter('cog-hill', 2));
       expect(scene.tokens[0].absent, isFalse);
       expect(scene.tokens[0].badgeNumber, isNull);
@@ -108,16 +108,16 @@ void main() {
       final shut = _sceneOf(board);
       expect(shut.gate, isNotNull);
       expect(shut.gate!.centre, layout.tileCenter('cog-hill', 3));
-      expect(shut.gate!.open, isFalse);
+      expect(shut.gate!.isOpen, isFalse);
 
       board.openGate();
-      expect(_sceneOf(board).gate!.open, isTrue);
+      expect(_sceneOf(board).gate!.isOpen, isTrue);
     });
 
     test('roadworks puts the cone on the board and leaves the roads as they were', () {
-      final scene = _sceneOf(_boardFor(_fourPlayers), roadworks: true);
+      final scene = _sceneOf(_boardFor(_fourPlayers), hasRoadworks: true);
 
-      expect(scene.roadworksCone, isTrue);
+      expect(scene.hasRoadworksCone, isTrue);
       expect(scene.roads.every((road) => road.builtTiles == 0), isTrue);
     });
 
@@ -126,15 +126,15 @@ void main() {
       final almost = _sceneOf(_boardFor(_fourPlayers), built: const {'candy-harbour': 4});
 
       expect(scene.roads[1].builtTiles, 5);
-      expect(scene.roads[1].complete, isTrue);
-      expect(almost.roads[1].complete, isFalse);
+      expect(scene.roads[1].isComplete, isTrue);
+      expect(almost.roads[1].isComplete, isFalse);
     });
 
     test('built tiles are kept between none and the whole road length', () {
       final scene = _sceneOf(_boardFor(_fourPlayers), built: const {'cog-hill': 99, 'candy-harbour': -2});
 
       expect(scene.roads[0].builtTiles, CityRules.standard.roadLength);
-      expect(scene.roads[0].complete, isTrue);
+      expect(scene.roads[0].isComplete, isTrue);
       expect(scene.roads[1].builtTiles, 0);
     });
 
@@ -153,12 +153,13 @@ void main() {
     test('a late joiner starts on the lateJoinTilePosition tile like any other token', () {
       final board = _boardFor(_fourPlayers);
       final layout = _layoutOf(board);
+      final tilePosition = lateJoinTilePosition([3, 1, 4]);
       final scene = _sceneOf(
         board,
-        tokens: const [Token(playerId: 'late', roadId: 'pepper-park', tilePosition: 1)],
+        tokens: [Token(playerId: 'late', roadId: 'pepper-park', tilePosition: tilePosition)],
       );
 
-      expect(scene.tokens.single.centre, layout.tileCenter('pepper-park', 1));
+      expect(scene.tokens.single.centre, layout.tileCenter('pepper-park', tilePosition));
       expect(scene.tokens.single.absent, isFalse);
     });
 

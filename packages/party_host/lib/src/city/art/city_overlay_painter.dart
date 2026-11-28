@@ -33,7 +33,7 @@ final class CityOverlayPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     for (final road in scene.roads) {
       _paintBuiltTiles(canvas, road);
-      if (road.complete) _paintCompleteRoad(canvas, road.roadId);
+      if (road.isComplete) _paintCompleteRoad(canvas, road.roadId);
     }
     final gate = scene.gate;
     if (gate != null) {
@@ -41,11 +41,11 @@ final class CityOverlayPainter extends CustomPainter {
         canvas,
         gate.centre,
         layout.tileSize * cityGateRadiusShare,
-        gate.open ? look.colors.good : look.colors.bad,
+        gate.isOpen ? look.colors.good : look.colors.bad,
         look,
       );
     }
-    if (scene.roadworksCone) _paintCone(canvas);
+    if (scene.hasRoadworksCone) _paintCone(canvas);
     for (final token in scene.tokens) {
       final colour = cityTokenColour(look, token.slot, absent: token.absent);
       paintCityDisc(canvas, token.centre, layout.tileSize * cityTokenRadiusShare, colour, look);

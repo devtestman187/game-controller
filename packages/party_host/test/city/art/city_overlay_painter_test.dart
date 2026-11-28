@@ -44,7 +44,7 @@ CityLayout _layoutOf(Size size, int players) =>
 ToyLook _lookOf(HostLook look) => ToyLook.build(palette: ToyPalette.sunny, tv: look == HostLook.tv);
 
 CityRoadScene _road(String roadId, {int built = 0, bool complete = false}) =>
-    CityRoadScene(roadId: roadId, roadLength: CityRules.standard.roadLength, builtTiles: built, complete: complete);
+    CityRoadScene(roadId: roadId, roadLength: CityRules.standard.roadLength, builtTiles: built, isComplete: complete);
 
 /// A scene built by hand, so each layer is painted on its own.
 CityScene _scene({
@@ -53,7 +53,7 @@ CityScene _scene({
   CityGateScene? gate,
   bool cone = false,
   List<CityChipScene> chips = const [],
-}) => CityScene(roads: roads, tokens: tokens, gate: gate, roadworksCone: cone, chips: chips);
+}) => CityScene(roads: roads, tokens: tokens, gate: gate, hasRoadworksCone: cone, chips: chips);
 
 CityTokenScene _token(Offset centre, {int slot = 0, bool absent = false, int? badge}) =>
     CityTokenScene(playerId: 'p$slot', slot: slot, centre: centre, absent: absent, badgeNumber: badge);
@@ -135,9 +135,9 @@ void main() {
 
         test('a gate is one disc of three paths, shut or open', () {
           final layout = _layoutOf(size, _fourPlayers);
-          final gate = CityGateScene(centre: layout.tileCenter('cog-hill', 3), open: false);
+          final gate = CityGateScene(centre: layout.tileCenter('cog-hill', 3), isOpen: false);
           final canvas = paint(_scene(gate: gate));
-          final open = paint(_scene(gate: CityGateScene(centre: gate.centre, open: true)));
+          final open = paint(_scene(gate: CityGateScene(centre: gate.centre, isOpen: true)));
 
           expect(canvas.count('drawPath'), 3);
           expect(open.count('drawPath'), 3);

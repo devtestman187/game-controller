@@ -33,7 +33,7 @@ final class CitySnapshot {
     required this.tilesBuilt,
     required this.tokens,
     required this.bolts,
-    required this.roadworks,
+    required this.hasRoadworks,
   });
 
   /// The districts and the gate.
@@ -52,7 +52,7 @@ final class CitySnapshot {
   final Bolts? bolts;
 
   /// Whether a roadworks cone stands on the board this frame.
-  final bool roadworks;
+  final bool hasRoadworks;
 }
 
 /// One road's state in a [CityScene].
@@ -63,7 +63,7 @@ final class CityRoadScene {
     required this.roadId,
     required this.roadLength,
     required this.builtTiles,
-    required this.complete,
+    required this.isComplete,
   });
 
   /// The id of the district whose road this is.
@@ -77,7 +77,7 @@ final class CityRoadScene {
   final int builtTiles;
 
   /// Whether every tile before the Plaza is built.
-  final bool complete;
+  final bool isComplete;
 }
 
 /// One token's place in a [CityScene].
@@ -110,13 +110,13 @@ final class CityTokenScene {
 /// The gate's place in a [CityScene].
 final class CityGateScene {
   /// Creates the gate's marker at [centre], open or not.
-  const CityGateScene({required this.centre, required this.open});
+  const CityGateScene({required this.centre, required this.isOpen});
 
   /// The middle of the gate's tile on the screen.
   final Offset centre;
 
   /// Whether the gate is open for every player.
-  final bool open;
+  final bool isOpen;
 }
 
 /// One player's Bolts chip in a [CityScene].
@@ -141,7 +141,7 @@ final class CityScene {
     required this.roads,
     required this.tokens,
     required this.gate,
-    required this.roadworksCone,
+    required this.hasRoadworksCone,
     required this.chips,
   });
 
@@ -156,7 +156,7 @@ final class CityScene {
       roads: [for (final district in snapshot.board.districts) _roadOf(district.id, snapshot)],
       tokens: [for (final token in snapshot.tokens) _tokenOf(token, players.indexOf(token.playerId), layout)],
       gate: _gateOf(snapshot.board, layout),
-      roadworksCone: snapshot.roadworks,
+      hasRoadworksCone: snapshot.hasRoadworks,
       chips: _chipsOf(snapshot.bolts, players, layout),
     );
   }
@@ -171,7 +171,7 @@ final class CityScene {
   final CityGateScene? gate;
 
   /// Whether the roadworks cone stands on the board.
-  final bool roadworksCone;
+  final bool hasRoadworksCone;
 
   /// One Bolts chip per player with a token; empty while the chips are not shown.
   final List<CityChipScene> chips;
@@ -182,7 +182,7 @@ final class CityScene {
 CityRoadScene _roadOf(String roadId, CitySnapshot snapshot) {
   final roadLength = snapshot.rules.roadLength;
   final built = math.min(math.max(snapshot.tilesBuilt[roadId] ?? 0, 0), roadLength);
-  return CityRoadScene(roadId: roadId, roadLength: roadLength, builtTiles: built, complete: built >= roadLength - 1);
+  return CityRoadScene(roadId: roadId, roadLength: roadLength, builtTiles: built, isComplete: built >= roadLength - 1);
 }
 
 CityTokenScene _tokenOf(Token token, int slot, CityLayout layout) => CityTokenScene(
@@ -196,7 +196,7 @@ CityTokenScene _tokenOf(Token token, int slot, CityLayout layout) => CityTokenSc
 CityGateScene? _gateOf(Board board, CityLayout layout) {
   final gate = board.gate;
   if (gate == null) return null;
-  return CityGateScene(centre: layout.tileCenter(gate.roadId, gate.tileIndex), open: board.gateOpen);
+  return CityGateScene(centre: layout.tileCenter(gate.roadId, gate.tileIndex), isOpen: board.gateOpen);
 }
 
 /// The chips for [players] in their order, laid out in a row under the Centre Plaza and centred on
