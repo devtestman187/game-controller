@@ -161,7 +161,8 @@ final class PuzzleSettings {
 }
 
 /// The hot-potato present's fuse numbers (M17 r3b, r3g), in one place. [PresentRules] reads them under the same names.
-/// Every value here is PROVISIONAL and locks only after the kid playtest.
+/// Every value here is PROVISIONAL and locks only after the kid playtest. Not here: the pop's on-screen time (popMs)
+/// and the gap between presents (gapS) stay in present_rules.dart, also PROVISIONAL.
 abstract final class FuseParams {
   /// PROVISIONAL: locks after the kid playtest (Nov 28 2026). Seconds of a round before the first present.
   static const startDelayS = 20.0;

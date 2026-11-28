@@ -50,6 +50,13 @@ void main() {
     expect(rules.state, const PresentState(holder: PuzzleSide.left, fuseMs: 4000, fuseTotalMs: 12000));
   });
 
+  test('a snap on a fuse already under the 4000 ms floor leaves the fuse as it was', () {
+    final rules = PresentRules();
+    _run(rules, PresentRules.startDelayS.round() + 9); // 12000 less 9000 ms run down: 3000 left
+    rules.onSnap(PuzzleSide.left); // right holds, the 3000 ms fuse stays, it is not lifted to 4000
+    expect(rules.state, const PresentState(holder: PuzzleSide.right, fuseMs: 3000, fuseTotalMs: 12000));
+  });
+
   test('a snap by the other side changes nothing', () {
     final rules = PresentRules();
     _run(rules, PresentRules.startDelayS.round() + 3);

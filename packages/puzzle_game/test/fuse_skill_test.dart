@@ -21,15 +21,16 @@ const _fastestReactionS = 0.5;
 /// Presents each bot plays in a simulation.
 const _presentsPerBot = 200;
 
-/// Most bats one present takes in the simulation. A snap that finds the fuse nearly out lifts it back to the floor
-/// (PresentRules.onSnap), so a present may never pop; this cap ends such a present.
+/// Most bats one present takes in the simulation: a safety stop so a present that never pops still ends. A fuse only
+/// shortens (PresentRules.onSnap), so every simulated present pops first; the test checks that the cap is never hit.
 const _maxBatsPerPresent = 50;
 
 /// The seed of every simulation's draws, so both bots face the same presents on every run.
 const _seed = 42;
 
-/// One simulated present: its bats, whether the cap ended it, and the lowest fuse a snap left, in ms.
-typedef _Present = ({int bats, bool capped, int lowestFuseMs});
+/// One simulated present: its bats, whether the cap ended it, and how many snaps broke the snap rule: a snap that
+/// raised the fuse, or took it below both the floor and the fuse it found.
+typedef _Present = ({int bats, bool capped, int badSnaps});
 
 /// How long a bot takes to snap the present it holds, in seconds. The pace follows the bot's performance, drawn from
 /// its profile each time it receives the present: a higher performance is quicker, never quicker than
@@ -47,16 +48,16 @@ _Present _playPresent(BotProfile bot, Random r) {
   }
   var dueS = clockS + _reactionS(bot, r);
   var bats = 0;
-  var lowestFuseMs = FuseParams.startFuseMs;
+  var badSnaps = 0;
   while (true) {
     final state = rules.state;
-    if (state == null || state.popped) return (bats: bats, capped: false, lowestFuseMs: lowestFuseMs);
-    if (bats == _maxBatsPerPresent) return (bats: bats, capped: true, lowestFuseMs: lowestFuseMs);
+    if (state == null || state.popped) return (bats: bats, capped: false, badSnaps: badSnaps);
+    if (bats == _maxBatsPerPresent) return (bats: bats, capped: true, badSnaps: badSnaps);
     if (clockS >= dueS) {
       rules.onSnap(state.holder);
       bats++;
       final after = rules.state;
-      if (after != null && after.fuseMs < lowestFuseMs) lowestFuseMs = after.fuseMs;
+      if (after != null && _breaksSnapRule(state.fuseMs, after.fuseMs)) badSnaps++;
       dueS = clockS + _reactionS(bot, r);
     }
     rules.update(_stepS, enabled: true, oneBoard: false);
@@ -69,6 +70,10 @@ List<_Present> _simulate(BotProfile bot) {
   final r = Random(_seed);
   return [for (var i = 0; i < _presentsPerBot; i++) _playPresent(bot, r)];
 }
+
+/// Whether a snap that found the fuse at [beforeMs] and left it at [afterMs] broke the rule: it never raises the fuse,
+/// and it takes it no lower than the floor, unless the fuse was already under the floor.
+bool _breaksSnapRule(int beforeMs, int afterMs) => afterMs > beforeMs || afterMs < min(beforeMs, FuseParams.minFuseMs);
 
 /// The mean bats per present.
 double _meanBats(List<_Present> presents) => presents.fold(0, (sum, p) => sum + p.bats) / presents.length;
@@ -89,10 +94,17 @@ void main() {
     expect(clockS - spawnedAtS, closeTo(FuseParams.startFuseMs / _msPerS, _stepS * 2));
   });
 
-  test('after any number of snaps the fuse stays at or above minFuseMs, for a child and for an adult', () {
+  test('no snap raises the fuse or takes it below minFuseMs, for a child and for an adult', () {
     for (final bot in [childBot, adultBot]) {
-      final lowest = _simulate(bot).map((p) => p.lowestFuseMs).reduce((a, b) => a < b ? a : b);
-      expect(lowest, greaterThanOrEqualTo(FuseParams.minFuseMs), reason: bot.name);
+      final broken = _simulate(bot).fold(0, (sum, p) => sum + p.badSnaps);
+      expect(broken, 0, reason: bot.name);
+    }
+  });
+
+  test('no present reaches the bat cap, so every one pops, for a child and for an adult', () {
+    for (final bot in [childBot, adultBot]) {
+      final capped = _simulate(bot).where((p) => p.capped).length;
+      expect(capped, 0, reason: bot.name);
     }
   });
 

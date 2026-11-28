@@ -68,12 +68,13 @@ final class PresentRules {
   }
 
   /// A snap by [side]. When a present is held and [side] holds it, it is batted to the other side and its fuse is cut
-  /// by [snapCutMs], never below [minFuseMs]. A snap by the other side, or with no present out, does nothing.
+  /// by [snapCutMs], never below [minFuseMs]. A fuse already under [minFuseMs] is left as it is: a snap only shortens
+  /// the fuse, never lengthens it. A snap by the other side, or with no present out, does nothing.
   void onSnap(PuzzleSide side) {
     final holder = _holder;
     if (holder == null || _popped || side != holder) return;
     _holder = holder == PuzzleSide.left ? PuzzleSide.right : PuzzleSide.left;
-    _fuseMs = max(minFuseMs.toDouble(), _fuseMs - snapCutMs);
+    _fuseMs = min(_fuseMs, max(minFuseMs.toDouble(), _fuseMs - snapCutMs));
   }
 
   /// Moves the rules on by [dt] seconds. With the rules [enabled] and not on one board, a present comes once the
