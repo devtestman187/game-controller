@@ -335,5 +335,6 @@ class PuzzleMatch {
     seed: format.split || target == LayoutTarget.phones ? seed : null,
     cat: _cat.view,
     present: present,
+    golden: golden,
   );
 }

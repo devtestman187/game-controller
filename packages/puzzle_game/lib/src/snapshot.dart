@@ -270,7 +270,7 @@ double _lerpAngleDeg(double from, double to, double t) {
 /// A whole match as the view sees it (S8): one board, or the left and right
 /// boards of the split screen.
 final class MatchSnapshot implements GameSnapshot {
-  const MatchSnapshot({required this.boards, this.seed, this.cat, this.present});
+  const MatchSnapshot({required this.boards, this.seed, this.cat, this.present, this.golden});
 
   static const version = 2;
 
@@ -288,6 +288,9 @@ final class MatchSnapshot implements GameSnapshot {
   /// The present, while it is out (M17 r3a); null while it is away. A frame from before it has no `pr` and decodes
   /// with none.
   final PresentState? present;
+
+  /// The target the golden slot glows on (M17 glow1), the same index on both boards; null while none does.
+  final int? golden;
 
   bool get split => boards.length == 2;
 
@@ -322,6 +325,7 @@ final class MatchSnapshot implements GameSnapshot {
     'sd': ?seed,
     if (cat case final c?) 'cat': c.toJson(),
     if (present case final p?) 'pr': p.toJson(),
+    'gd': ?golden,
   };
 
   String encode() => jsonEncode(toJson());
@@ -335,6 +339,7 @@ final class MatchSnapshot implements GameSnapshot {
       seed: j['sd'] as int?,
       cat: j['cat'] == null ? null : CatView.fromJson((j['cat'] as List).cast<Object?>()),
       present: j['pr'] == null ? null : PresentState.fromJson((j['pr'] as List).cast<Object?>()),
+      golden: j['gd'] as int?,
     );
   }
 
@@ -359,6 +364,7 @@ final class MatchSnapshot implements GameSnapshot {
       seed: seed,
       cat: a != null && b != null ? a.lerpTo(b, t) : (t < 0.5 ? a : b),
       present: pa != null && pb != null ? pa.lerpTo(pb, t) : (t < 0.5 ? pa : pb),
+      golden: t < 0.5 ? golden : next.golden,
     );
   }
 }
