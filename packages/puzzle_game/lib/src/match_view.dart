@@ -216,6 +216,7 @@ class _MatchViewState extends State<MatchView> {
               characters: widget.characters,
               fillsBackground: fills,
               roundLabel: widget.roundLabel,
+              golden: snapshot.golden,
             ),
     );
   }

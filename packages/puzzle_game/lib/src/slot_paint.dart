@@ -18,6 +18,14 @@ const _targetEdgeShare = 1.5;
 const _hintGlowAlpha = 0.5;
 const _hintGlowPx = 2.5;
 
+/// The golden slot's glow (M17 glow1): twice the hint's spread, so the bigger
+/// mark reads as the one a player is to find, and its alpha swings between the
+/// two bounds once every [_goldenPulseMs].
+const _goldenGlowPx = _hintGlowPx * 2;
+const _goldenGlowMinAlpha = 0.35;
+const _goldenGlowMaxAlpha = 0.75;
+const _goldenPulseMs = 1200;
+
 /// An empty target's slot and its edge (design section 5): the recess in the
 /// mat, Easy's tint, a ready target's fill, a hint's glow, and the dashed edge
 /// that waits for a piece.
@@ -27,10 +35,17 @@ extension _SlotPaint on PuzzlePainter {
   /// the grape one (design section 5, decided at device test 3).
   Color get _slotFill => Color.lerp(_colours.board, _colours.onBackground, _slotMix)!;
 
+  /// The golden slot's glow alpha at [nowMs]: a sine swinging between its two
+  /// bounds, so the glow breathes once every [_goldenPulseMs].
+  double get _goldenAlpha {
+    final phase = sin(2 * pi * nowMs / _goldenPulseMs);
+    return _goldenGlowMinAlpha + (_goldenGlowMaxAlpha - _goldenGlowMinAlpha) * (1 + phase) / 2;
+  }
+
   /// An empty target's slot: the recess in the mat, Easy's tint of the piece's
-  /// own colour, a ready target's stronger one and a hint's glow, all drawn
-  /// under the picture. A ready target and a hint keep their meaning, in `good`
-  /// and `focus`.
+  /// own colour, a ready target's stronger one, the golden slot's pulsing glow
+  /// and a hint's glow, all drawn under the picture. A ready target and a hint
+  /// keep their meaning, in `good` and `focus`.
   void _slot(Canvas canvas, int i, double scale, ToyShapeStyle style) {
     final spec = puzzle.pieces[i];
     final path = _path(spec.shape, _targetAt(i), spec.targetAngle);
@@ -39,6 +54,14 @@ extension _SlotPaint on PuzzlePainter {
     if (ready || puzzle.level.colouredOutlines) {
       final fill = puzzle.level.colouredOutlines ? Color(spec.color) : _colours.targetNeutral;
       canvas.drawPath(path, Paint()..color = fill.withValues(alpha: ready ? _targetReadyFill : _slotEasyTint));
+    }
+    if (golden == i) {
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = _colours.star.withValues(alpha: _goldenAlpha)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, _goldenGlowPx / scale),
+      );
     }
     if (s.hintTargets.contains(i)) {
       canvas.drawPath(

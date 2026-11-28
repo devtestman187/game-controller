@@ -145,6 +145,7 @@ class MatchPainter extends CustomPainter {
         present: s.present,
         characters: characters,
         fillsBackground: fillsBackground,
+        golden: s.golden,
       ).paint(canvas, box.size);
       _dimming(canvas, box.size, i);
       canvas.restore();
@@ -195,6 +196,7 @@ class MatchPainter extends CustomPainter {
         pxPerMm: pxPerMm,
         characters: characters,
         fillsBackground: fillsBackground,
+        golden: s.golden,
       ).paint(canvas, layout.left.size);
       _dimming(canvas, layout.left.size, s.split ? side.index : 0);
       canvas.restore();

@@ -34,6 +34,7 @@ class PuzzlePainter extends CustomPainter {
     this.characters = const {},
     this.fillsBackground = true,
     this.roundLabel,
+    this.golden,
   });
 
   final Puzzle puzzle;
@@ -77,6 +78,9 @@ class PuzzlePainter extends CustomPainter {
   /// The night's round, "Round N of M", drawn before the puzzle's name on the
   /// first board (M16 A2); null: the name alone, as a round outside a night.
   final String? roundLabel;
+
+  /// The golden slot's target, which glows while its slot is empty (M17 glow1); null: none glows.
+  final int? golden;
 
   /// The side's world: the one-board layout or a half of the split screen.
   final PuzzleField field;
@@ -369,5 +373,6 @@ class PuzzlePainter extends CustomPainter {
       old.nowMs != nowMs ||
       old.look != look ||
       old.roundLabel != roundLabel ||
-      !mapEquals(old.characters, characters);
+      !mapEquals(old.characters, characters) ||
+      old.golden != golden;
 }
