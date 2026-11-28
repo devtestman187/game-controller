@@ -64,4 +64,35 @@ void main() {
     await tester.pump();
     expect(container.read(puzzleSettingsProvider).chaos, Chaos.little);
   });
+
+  testWidgets('the players-per-side row shows 2 and its + stops at 4', (tester) async {
+    await pumpHost(tester, screen: const StubHome());
+    await tapVisible(tester, find.byKey(const Key('openPlay')));
+    await tester.pumpAndSettle();
+    await tapVisible(tester, find.byKey(const Key('openPuzzleSettings')));
+    await tester.pumpAndSettle();
+    final row = find.byKey(const Key('setting-maxPerSide'));
+    await tester.scrollUntilVisible(row, 200);
+    await tester.pumpAndSettle();
+    expect(find.text('Players per side'), findsOneWidget);
+    expect(
+      find.descendant(of: row, matching: find.text('2')),
+      findsOneWidget,
+      reason: 'the default is 2',
+    );
+    final container = ProviderScope.containerOf(tester.element(find.byType(PuzzleSettingsScreen)));
+    await tester.tap(find.descendant(of: row, matching: find.byTooltip('More Players per side')));
+    await tester.pump();
+    expect(find.descendant(of: row, matching: find.text('3')), findsOneWidget);
+    expect(container.read(puzzleSettingsProvider).maxPerSide, 3);
+    await tester.tap(find.descendant(of: row, matching: find.byTooltip('More Players per side')));
+    await tester.pump();
+    expect(find.descendant(of: row, matching: find.text('4')), findsOneWidget);
+    expect(container.read(puzzleSettingsProvider).maxPerSide, 4);
+    await tester.tap(find.descendant(of: row, matching: find.byTooltip('More Players per side')));
+    await tester.pump();
+    expect(container.read(puzzleSettingsProvider).maxPerSide, 4, reason: 'the range stops at 4');
+    expect(find.descendant(of: row, matching: find.text('4')), findsOneWidget);
+    expect(container.read(prefsProvider).getString('puzzleSettings'), contains('"maxPerSide":4'));
+  });
 }

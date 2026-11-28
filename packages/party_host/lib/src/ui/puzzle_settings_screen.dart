@@ -6,6 +6,7 @@ import 'package:toy_look/toy_look.dart';
 
 import '../providers.dart';
 import '../text/host_text.dart';
+import '../text/race_text.dart';
 import 'host_button.dart';
 import 'host_focus_ring.dart';
 import 'host_screen.dart';
@@ -24,6 +25,7 @@ class PuzzleSettingsScreen extends ConsumerWidget {
     ('pickupRange', HostText.pickupRange),
     ('hintDelayS', HostText.hintDelay),
     ('timeLimitS', HostText.timeLimit),
+    ('maxPerSide', playersPerSideLabel),
     ('warningS', HostText.warningPeriod),
     ('soloBigSpeed', HostText.soloBigSpeed),
     ('helpIntervalS', HostText.helpInterval),
@@ -76,7 +78,9 @@ class PuzzleSettingsScreen extends ConsumerWidget {
             _Row(
               key: Key('setting-$key'),
               label: label,
-              value: HostText.settingValue(key, json[key]! as num),
+              value: key == 'maxPerSide'
+                  ? playersPerSideValue(json[key]! as num)
+                  : HostText.settingValue(key, json[key]! as num),
               autofocus: i == 0,
               onLess: () => notifier.set(_step(s, key, -1)),
               onMore: () => notifier.set(_step(s, key, 1)),
