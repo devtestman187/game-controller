@@ -1,0 +1,21 @@
+2026-11-27 18:38:21 RUN_MAX_MIN=132 min (computed backstop of the jobs still to do)
+2026-11-27 18:38:22 start at 66f5847a on m17
+2026-11-27 18:38:22 worker: claude
+2026-11-27 18:38:23 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-27 18:38:23 run-base 66f5847ae0a6c9b31ac16fb294ef5ee5eb5f208b
+2026-11-27 18:38:35 phase: preflight
+2026-11-27 18:38:43 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-27 18:38:58 phase: worker (preflight took 23s)
+2026-11-27 18:38:58 start f1a
+2026-11-27 18:39:24 start f1d
+2026-11-27 18:41:00 f1d finished: result 0 (11 turns, 1 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 14/136963/16183/6583
+2026-11-27 18:43:40 f1a finished: result 0 (19 turns, 4 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 24/302531/26067/13009
+2026-11-27 18:43:40 phase: tests-first (worker took 282s)
+2026-11-27 18:43:55 tests-first ok: packages/puzzle_game/test/per_side_rule_test.dart fails on the old code
+2026-11-27 18:44:03 phase: check (tests-first took 23s)
+2026-11-27 18:44:12 combined check: skips protocol connection metrics kit look arena tools (no job's change reaches them)
+2026-11-27 18:48:18 phase: apply (check took 255s)
+2026-11-27 18:48:18 finding: f1d's report has no Summary block in its first 40 lines
+2026-11-27 18:48:20 committed f1d: 00ef5726 Add per-side seat cap: 2 pieces per player minimum
+2026-11-27 18:48:22 committed f1a: 586f76a0 race1a f1a: MatchFormat for 3v3, 4v4 and uneven sides
+2026-11-27 18:48:22 phase: review (apply took 4s)
