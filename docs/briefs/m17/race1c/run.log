@@ -1,0 +1,19 @@
+2026-11-27 22:33:42 RUN_MAX_MIN=125 min (computed backstop of the jobs still to do)
+2026-11-27 22:33:42 start at a83c0aa6 on m17
+2026-11-27 22:33:43 worker: claude
+2026-11-27 22:33:43 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-27 22:33:44 run-base a83c0aa62649a9efce10ed31b85bb1c12aa13a15
+2026-11-27 22:33:53 phase: preflight
+2026-11-27 22:34:03 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-27 22:34:19 phase: worker (preflight took 26s)
+2026-11-27 22:34:19 start r3e
+2026-11-27 22:51:14 r3e finished: result 0 (66 turns, 16 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 84/3075897/100929/64857
+2026-11-27 22:51:57 WARN: job r3e used 66 turns, over its cap of 60 (its own checks passed; accepted)
+2026-11-27 22:51:57 phase: tests-first (worker took 1058s)
+2026-11-27 22:52:13 tests-first ok: packages/puzzle_game/test/golden_slot_test.dart fails on the old code
+2026-11-27 22:52:34 phase: check (tests-first took 37s)
+2026-11-27 22:52:44 combined check: skips protocol connection metrics kit look arena tools (no job's change reaches them)
+2026-11-27 22:56:22 checks failed; fetching packages and trying once more
+2026-11-27 22:58:21 phase: apply (check took 347s)
+2026-11-27 22:58:22 committed r3e: 7ba40d43 race1c r3e: golden slot rules (double snap, two boards)
+2026-11-27 22:58:23 phase: review (apply took 2s)
