@@ -70,3 +70,4 @@ METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=27 in=28 out=195
 METRICS wave3-review worker=claude model=claude-haiku-5-5 turns=28 in=28 out=28586 cache=579230 min=2.2 wall=- result=0
 2026-11-28 05:15:59 DONE: every job is committed. Claude reads the Summary of docs/briefs/m17/map2b/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 5 jobs, 20 min
+2026-11-28 05:23:25 full check: All checks passed (125s, 9 cached)

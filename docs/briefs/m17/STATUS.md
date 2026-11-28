@@ -1,3 +1,5 @@
+**Resume here (map2b, Nov 28, see docs/briefs/m17/map2b/REPORT.md):** CityMapView (phone and TV fit, 24 dp token floor), FrameProbe, CityFrameHook and a draw-call budget test are in under packages/party_host/lib/src/city/art; mounted nowhere (no Try-the-map entry, owner 6B), so the 8-token 60 fps TV-box check (N4) cannot be run yet: it needs a mount. Rules and FuseParams untouched. Open: chip threshold 20 vs brief 14, phone eye check. Tip 4a227fa9.
+
 **Resume here (map2a, Nov 28, see docs/briefs/m17/map2a/REPORT.md):** city map art in place under packages/party_host/lib/src/city/art (static cached painter, layout, scene, overlay, tokens); not wired into any game, no Try-the-map entry, rules and FuseParams untouched. Open: built-tile colour star and tile size at 360x640 need an eye check; 8 tokens at 60 fps on the TV box is the owner device check. Tip b8afa298.
 
 **Resume here (glow1, Nov 28, see docs/briefs/m17/glow1/REPORT.md):** golden slot glow drawn on both boards (snapshot key gd, slot_paint.dart), confetti freezes on pause; join width bug did not reproduce (test only). FuseParams untouched. Open: ship gd with the next same-day release. Tip 83531b66.
